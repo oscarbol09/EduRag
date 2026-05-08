@@ -9,8 +9,8 @@ on:
       - '.github/workflows/backend.yml'
 
 env:
-  AZURE_WEBAPP_NAME: 'Darius-AI'
-  AZURE_RESOURCE_GROUP: 'Darius_Ai'
+  AZURE_WEBAPP_NAME: 'edurag-api'
+  AZURE_RESOURCE_GROUP: 'EduBot-app'
   PYTHON_VERSION: '3.11'
 
 jobs:
