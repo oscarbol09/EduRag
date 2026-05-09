@@ -1,6 +1,7 @@
-// Server component - exports generateStaticParams for static export
+import EditChatbotClient from "./EditChatbotClient";
+
 export function generateStaticParams() {
   return [];
 }
 
-export { default } from "./EditChatbotClient";
+export default EditChatbotClient;
