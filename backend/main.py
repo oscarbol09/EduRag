@@ -20,6 +20,7 @@ from llm_client import get_llm_client
 from document_uploader import upload_file_to_blob, publish_to_queue
 from auth import get_current_user, get_current_user_optional
 from password import hash_password, verify_password
+from jwt_token import create_jwt_token
 
 app = FastAPI(title="EduRAG API", version="0.1.0")
 
@@ -97,7 +98,11 @@ async def login(body: LoginRequest):
     if not password_hash or not verify_password(body.password, password_hash):
         raise HTTPException(status_code=401, detail="Credenciales inválidas")
     
-    token = user.get("id", str(uuid.uuid4()))
+    token = create_jwt_token(
+        user_id=user.get("id"),
+        email=user.get("email"),
+        role=user.get("role", "teacher")
+    )
     return {"token": token, "user": user}
 
 
@@ -118,7 +123,12 @@ async def register(body: RegisterRequest):
         "created_at": datetime.utcnow().isoformat()
     }
     await create_user(user)
-    return {"token": user_id, "user": user}
+    token = create_jwt_token(
+        user_id=user_id,
+        email=body.email,
+        role=body.role
+    )
+    return {"token": token, "user": user}
 
 
 @app.get("/chatbots")

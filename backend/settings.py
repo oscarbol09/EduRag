@@ -23,6 +23,9 @@ class Settings(BaseSettings):
     ENTRA_AUTHORITY: str = ""
     JWT_AUDIENCE: str = ""
     JWT_ISSUER: str = ""
+    
+    # JWT Settings
+    JWT_SECRET: str = ""
 
     # Google Gemini
     GOOGLE_API_KEY: str = ""
