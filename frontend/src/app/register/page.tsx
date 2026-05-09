@@ -4,35 +4,28 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useApp } from "@/lib/context";
-import { api } from "@/lib/api";
 import { AuthLayout } from "@/components/AuthLayout";
+import { api } from "@/lib/api";
 
 export default function RegisterPage() {
-  const [formData, setFormData] = useState({
-    email: "",
-    password: "",
-    confirmPassword: "",
-    role: "student" as "student" | "teacher",
-  });
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const { login } = useApp();
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
-    if (formData.password !== formData.confirmPassword) {
+    if (password !== confirmPassword) {
       setError("Las contraseñas no coinciden");
       return;
     }
 
-    if (formData.password.length < 6) {
+    if (password.length < 6) {
       setError("La contraseña debe tener al menos 6 caracteres");
       return;
     }
@@ -40,18 +33,20 @@ export default function RegisterPage() {
     setIsLoading(true);
 
     try {
-      await api.auth.register(formData.email, formData.password);
-      await login(formData.email, formData.password);
-      router.push(formData.role === "teacher" ? "/teacher" : "/marketplace");
+      const result = await api.auth.register(email, password);
+      if (result.token) {
+        localStorage.setItem("token", result.token);
+        router.push("/teacher");
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al registrarse");
+      setError(err instanceof Error ? err.message : "Error al registrar usuario");
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <AuthLayout title="Crea tu cuenta gratuita">
+    <AuthLayout title="Crea tu cuenta">
       <form onSubmit={handleSubmit} className="space-y-6">
         <div>
           <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
@@ -59,10 +54,9 @@ export default function RegisterPage() {
           </label>
           <input
             id="email"
-            name="email"
             type="email"
-            value={formData.email}
-            onChange={handleChange}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             placeholder="tu@email.com"
             required
@@ -75,13 +69,13 @@ export default function RegisterPage() {
           </label>
           <input
             id="password"
-            name="password"
             type="password"
-            value={formData.password}
-            onChange={handleChange}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            placeholder="Mínimo 6 caracteres"
+            placeholder="••••••••"
             required
+            minLength={6}
           />
         </div>
 
@@ -91,30 +85,13 @@ export default function RegisterPage() {
           </label>
           <input
             id="confirmPassword"
-            name="confirmPassword"
             type="password"
-            value={formData.confirmPassword}
-            onChange={handleChange}
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            placeholder="Repite la contraseña"
+            placeholder="••••••••"
             required
           />
-        </div>
-
-        <div>
-          <label htmlFor="role" className="block text-sm font-medium text-gray-700 mb-1">
-            Tipo de cuenta
-          </label>
-          <select
-            id="role"
-            name="role"
-            value={formData.role}
-            onChange={handleChange}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="student">Estudiante</option>
-            <option value="teacher">Docente</option>
-          </select>
         </div>
 
         {error && (
