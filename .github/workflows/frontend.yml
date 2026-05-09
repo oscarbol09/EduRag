@@ -1,0 +1,48 @@
+name: Deploy Frontend to Azure SWA
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/frontend.yml'
+
+env:
+  NODE_VERSION: '20'
+  API_URL: 'https://darius-ai-aqfkhna3evdqdte3.brazilsouth-01.azurewebsites.net'
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Create .env.local
+        run: |
+          echo "NEXT_PUBLIC_API_URL=${{ env.API_URL }}" > frontend/.env.local
+
+      - name: Build Next.js Application
+        working-directory: frontend
+        run: npm run build
+
+      - name: Deploy to Azure Static Web App
+        uses: azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_TOKEN }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          action: 'upload'
+          app_location: 'frontend'
+          output_location: 'dist'
