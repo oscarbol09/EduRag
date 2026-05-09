@@ -1,4 +1,8 @@
 // Page component - server component for static export
 import ChatClient from "./ChatClient";
 
-export { ChatClient as default };
+export function generateStaticParams() {
+  return [];
+}
+
+export default ChatClient;
