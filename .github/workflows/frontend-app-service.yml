@@ -35,6 +35,8 @@ jobs:
 
       - name: Build Next.js app
         working-directory: frontend
+        env:
+          NEXT_PUBLIC_API_URL: 'https://edurag-api.azurewebsites.net'
         run: npm run build
 
       - name: Upload artifact
@@ -69,4 +71,4 @@ jobs:
         with:
           app-name: ${{ env.AZURE_WEBAPP_NAME }}
           package: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
-          startup-command: 'node ..next/standalone/server.js'
+          startup-command: 'node .next/standalone/server.js'
