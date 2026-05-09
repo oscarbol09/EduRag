@@ -6,6 +6,11 @@ import Link from "next/link";
 import { api } from "@/lib/api";
 import type { Chatbot, Document, CreateChatbotData } from "@/lib/types";
 
+// Required for static export with dynamic routes
+export function generateStaticParams() {
+  return [];
+}
+
 export default function EditChatbotPage() {
   const params = useParams();
   const router = useRouter();
