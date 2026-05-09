@@ -10,7 +10,7 @@ on:
 
 env:
   NODE_VERSION: '20'
-  API_URL: 'https://darius-ai-aqfkhna3evdqdte3.brazilsouth-01.azurewebsites.net'
+  API_URL: 'https://edurag-api.azurewebsites.net'
 
 jobs:
   build-and-deploy:
