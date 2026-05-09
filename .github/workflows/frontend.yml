@@ -32,7 +32,7 @@ jobs:
         working-directory: frontend
         run: npm ci
 
-      - name: Build Next.js app
+      - name: Build Next.js app (static export)
         working-directory: frontend
         env:
           NEXT_PUBLIC_API_URL: ${{ env.API_URL }}
@@ -45,7 +45,7 @@ jobs:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           action: 'upload'
           app_location: 'frontend'
-          output_location: '.next/standalone'
+          output_location: 'out'
           skip_app_build: true
         env:
           NEXT_PUBLIC_API_URL: ${{ env.API_URL }}
