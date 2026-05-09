@@ -1,9 +1,6 @@
 from azure.cosmos import CosmosClient, PartitionKey
 from typing import Optional
-import sys
-sys.path.insert(0, "..")
-from ..backend.settings import settings
-
+from settings import settings
 
 _client: Optional[CosmosClient] = None
 
@@ -27,18 +24,25 @@ def get_container(container_name: str):
     try:
         return db.get_container_client(container_name)
     except Exception:
+        partition_keys = {
+            "users": PartitionKey(path="/id"),
+            "chatbots": PartitionKey(path="/owner_id"),
+            "documents": PartitionKey(path="/chatbot_id"),
+            "conversations": PartitionKey(path="/chatbot_id"),
+        }
+        pk = partition_keys.get(container_name, PartitionKey(path="/id"))
         container = db.create_container(
             id=container_name,
-            partition_key=PartitionKey(path="/id"),
+            partition_key=pk,
             offer_throughput=400
         )
         return container
 
 
-async def update_document(document_id: str, updates: dict) -> Optional[dict]:
+async def update_document(document_id: str, updates: dict, chatbot_id: str) -> Optional[dict]:
     container = get_container("documents")
     try:
-        item = container.read_item(document_id, partition_key=document_id)
+        item = container.read_item(document_id, partition_key=chatbot_id)
         item.update(updates)
         container.replace_item(document_id, item)
         return item

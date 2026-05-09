@@ -1,9 +1,7 @@
 import asyncio
 import json
-import sys
-sys.path.insert(0, "..")
-from worker.settings import settings
-from worker.document_processor import process_document
+from settings import settings
+from document_processor import process_document
 
 
 class QueueWorker:
@@ -34,7 +32,6 @@ class QueueWorker:
             return
 
         from azure.storage.queue import QueueClient
-        import azure.storage.queue as queue_service
 
         queue_client = QueueClient.from_connection_string(
             settings.AZURE_QUEUE_CONNECTION_STRING,
@@ -47,8 +44,8 @@ class QueueWorker:
         while self.is_running:
             try:
                 messages = queue_client.receive_messages(max_messages=1, visibility_timeout=30)
-                
-                async for message in messages:
+
+                for message in messages:
                     try:
                         content = json.loads(message.content)
                         success = await self.process_message(content)
@@ -60,9 +57,12 @@ class QueueWorker:
                             )
                     except Exception as e:
                         print(f"Error: {str(e)}")
-                        queue_client.update_message(
-                            message.id, message.pop_receipt, visibility_timeout=60
-                        )
+                        try:
+                            queue_client.update_message(
+                                message.id, message.pop_receipt, visibility_timeout=60
+                            )
+                        except Exception:
+                            pass
 
                 await asyncio.sleep(1)
             except Exception as e:
@@ -71,7 +71,7 @@ class QueueWorker:
 
     async def demo_mode(self):
         print("Demo mode: Simulating document processing...")
-        print("Messages would be processed from: processing-queue")
+        print(f"Messages would be processed from: {settings.AZURE_QUEUE_NAME}")
         print("Press Ctrl+C to exit")
         while True:
             await asyncio.sleep(10)

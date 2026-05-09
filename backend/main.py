@@ -18,7 +18,7 @@ from azure_cosmos_db import (
 from vector_store import query_similar, delete_chatbot_vectors
 from llm_client import get_llm_client
 from document_uploader import upload_file_to_blob, publish_to_queue
-from auth import get_current_user_optional, require_auth
+from auth import get_current_user, get_current_user_optional
 
 app = FastAPI(title="EduRAG API", version="0.1.0")
 
@@ -83,49 +83,58 @@ async def readiness_check():
 @app.get("/auth/me")
 async def get_current_user_endpoint(request: Request):
     user = await get_current_user_optional(request)
-    return {"id": user.get("sub"), "email": user.get("email"), "role": user.get("role", "teacher")}
+    return {"id": user.get("sub"), "email": user.get("email"), "role": user.get("role", "anonymous")}
 
 
 @app.post("/auth/login")
-async def login(email: str, password: str):
-    user = await get_user_by_email(email)
-    if not user:
+async def login(body: LoginRequest):
+    user = await get_user_by_email(body.email)
+    if not user or user.get("password") != body.password:
         raise HTTPException(status_code=401, detail="Credenciales inválidas")
-    return {"token": str(uuid.uuid4()), "user": user}
+    token = user.get("id", str(uuid.uuid4()))
+    return {"token": token, "user": user}
 
 
 @app.post("/auth/register")
-async def register(email: str, password: str):
-    existing = await get_user_by_email(email)
+async def register(body: RegisterRequest):
+    existing = await get_user_by_email(body.email)
     if existing:
         raise HTTPException(status_code=400, detail="El email ya está registrado")
     user_id = str(uuid.uuid4())
     user = {
         "id": user_id,
-        "email": email,
-        "password": password,
-        "role": "student",
+        "email": body.email,
+        "password": body.password,
+        "role": body.role,
         "auth_method": "email_password",
         "is_active": True,
         "created_at": datetime.utcnow().isoformat()
     }
     await create_user(user)
-    return user
+    return {"token": user_id, "user": user}
 
 
 @app.get("/chatbots")
-async def get_chatbots(owner_id: Optional[str] = None):
-    chatbots = await list_chatbots(owner_id=owner_id)
+async def get_chatbots(request: Request, owner_id: Optional[str] = None, published_only: bool = False):
+    if not owner_id:
+        user = await get_current_user_optional(request)
+        owner_id = user.get("sub") if user.get("sub") else None
+    chatbots = await list_chatbots(owner_id=owner_id, published_only=published_only)
     return chatbots
 
 
 @app.post("/chatbots")
-async def create_new_chatbot(data: ChatbotCreate):
+async def create_new_chatbot(data: ChatbotCreate, request: Request):
+    user = await get_current_user(request)
+    owner_id = user.get("sub")
+    if not owner_id:
+        raise HTTPException(status_code=401, detail="Usuario no autenticado")
+
     chatbot_id = str(uuid.uuid4())
     now = datetime.utcnow().isoformat()
     chatbot = {
         "id": chatbot_id,
-        "owner_id": "demo-user",
+        "owner_id": owner_id,
         **data.model_dump(),
         "public_url": f"/chat/{chatbot_id}",
         "embed_code": f'<iframe src="/chat/{chatbot_id}" width="100%" height="600"></iframe>',
@@ -146,24 +155,30 @@ async def get_chatbot_details(chatbot_id: str):
 
 
 @app.put("/chatbots/{chatbot_id}")
-async def update_chatbot_details(chatbot_id: str, data: ChatbotCreate):
-    chatbot = await update_chatbot(chatbot_id, data.model_dump(), owner_id="demo-user")
+async def update_chatbot_details(chatbot_id: str, data: ChatbotCreate, request: Request):
+    user = await get_current_user(request)
+    owner_id = user.get("sub")
+    chatbot = await update_chatbot(chatbot_id, data.model_dump(), owner_id=owner_id)
     if not chatbot:
         raise HTTPException(status_code=404, detail="Chatbot no encontrado")
     return chatbot
 
 
 @app.delete("/chatbots/{chatbot_id}")
-async def delete_chatbot_endpoint(chatbot_id: str):
-    await delete_chatbot(chatbot_id, owner_id="demo-user")
+async def delete_chatbot_endpoint(chatbot_id: str, request: Request):
+    user = await get_current_user(request)
+    owner_id = user.get("sub")
+    await delete_chatbot(chatbot_id, owner_id=owner_id)
     delete_chatbot_vectors(chatbot_id)
     return {"message": "Chatbot eliminado"}
 
 
 @app.post("/chatbots/{chatbot_id}/publish")
-async def publish_chatbot(chatbot_id: str):
+async def publish_chatbot(chatbot_id: str, request: Request):
+    user = await get_current_user(request)
+    owner_id = user.get("sub")
     updates = {"is_published": True, "updated_at": datetime.utcnow().isoformat()}
-    chatbot = await update_chatbot(chatbot_id, updates, owner_id="demo-user")
+    chatbot = await update_chatbot(chatbot_id, updates, owner_id=owner_id)
     if not chatbot:
         raise HTTPException(status_code=404, detail="Chatbot no encontrado")
     return chatbot

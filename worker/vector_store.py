@@ -2,10 +2,7 @@ import chromadb
 from chromadb.config import Settings as ChromaSettings
 from typing import Optional
 import os
-import sys
-sys.path.insert(0, "..")
-from worker.settings import settings
-
+from settings import settings
 
 _client: Optional[chromadb.PersistentClient] = None
 

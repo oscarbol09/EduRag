@@ -1,24 +1,27 @@
 import asyncio
 import json
-from azure.storage.blob import BlobServiceClient, ContentSettings
-from azure.storage.queue import QueueClient
-import sys
-sys.path.insert(0, "..")
-from worker.settings import settings
-from worker.azure_cosmos_db import update_document
+import io
+from datetime import datetime
+from azure.storage.blob import BlobServiceClient
+from settings import settings
+from azure_cosmos_db import update_document
+from vector_store import add_documents
 import google.generativeai as genai
 
 
-async def extract_text_from_pdf(blob_url: str) -> str:
+async def _download_from_blob(blob_url: str) -> bytes:
     blob_service = BlobServiceClient.from_connection_string(settings.AZURE_STORAGE_CONNECTION_STRING)
     container_name = settings.AZURE_STORAGE_CONTAINER_NAME
     blob_name = blob_url.split(f"{container_name}/")[-1] if container_name in blob_url else blob_url
 
     blob_client = blob_service.get_blob_client(container_name, blob_name)
-    blob_data = blob_client.download_blob().readall()
+    return blob_client.download_blob().readall()
 
+
+async def extract_text_from_pdf(blob_url: str) -> str:
     try:
         import fitz
+        blob_data = await _download_from_blob(blob_url)
         doc = fitz.open(stream=blob_data, filetype="pdf")
         text = ""
         for page in doc:
@@ -31,15 +34,7 @@ async def extract_text_from_pdf(blob_url: str) -> str:
 
 async def extract_text_from_docx(blob_url: str) -> str:
     from docx import Document
-    import io
-
-    blob_service = BlobServiceClient.from_connection_string(settings.AZURE_STORAGE_CONNECTION_STRING)
-    container_name = settings.AZURE_STORAGE_CONTAINER_NAME
-    blob_name = blob_url.split(f"{container_name}/")[-1] if container_name in blob_url else blob_url
-
-    blob_client = blob_service.get_blob_client(container_name, blob_name)
-    blob_data = blob_client.download_blob().readall()
-
+    blob_data = await _download_from_blob(blob_url)
     doc = Document(io.BytesIO(blob_data))
     text = ""
     for para in doc.paragraphs:
@@ -106,14 +101,11 @@ async def process_document(
     filename: str,
     mime_type: str
 ) -> dict:
-    sys.path.insert(0, "..")
-    from worker.vector_store import add_documents
-
     await update_document(document_id, {"status": "processing"}, chatbot_id)
 
     try:
         text = await extract_text(blob_url, mime_type, filename)
-        
+
         if not text.strip():
             raise Exception("No text extracted from document")
 
@@ -129,12 +121,12 @@ async def process_document(
             document_id=document_id
         )
 
-        result = await update_document(
+        await update_document(
             document_id,
             {
                 "status": "indexed",
                 "chunk_count": len(chunks),
-                "processed_at": __import__("datetime").datetime.utcnow().isoformat()
+                "processed_at": datetime.utcnow().isoformat()
             },
             chatbot_id
         )
@@ -148,15 +140,3 @@ async def process_document(
             chatbot_id
         )
         raise
-
-
-def publish_to_queue(message: dict):
-    from azure.storage.queue import QueueClient
-
-    queue_client = QueueClient.from_connection_string(
-        settings.AZURE_QUEUE_CONNECTION_STRING,
-        settings.AZURE_QUEUE_NAME
-    )
-
-    queue_client.send_message(json.dumps(message))
-    print(f"Message published to queue: {message.get('document_id')}")

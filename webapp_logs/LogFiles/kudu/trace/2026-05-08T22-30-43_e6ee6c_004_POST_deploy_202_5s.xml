@@ -1,0 +1,15 @@
+<step title="Incoming Request" date="2026-05-08T22:30:43.001" instance="e6ee6c" url="/deploy?scmType=ExternalGit&amp;isAsync=true" method="POST" type="request" pid="833,1,19" Host="edurag-api.scm.azurewebsites.net" User-Agent="Azure-WebSites-Controller/108.0.7.45" Authorization="Bas..." Expect="100-continue" Content-Length="85" x-ms-request-id="fdb1131c-bc84-44b2-9196-166d8819b830" X-ARR-LOG-ID="fdb1131c-bc84-44b2-9196-166d8819b830" CLIENT-IP="191.235.228.39:4104" X-SITE-DEPLOYMENT-ID="edurag-api" WAS-DEFAULT-HOSTNAME="edurag-api.scm.azurewebsites.net" X-MS-PLATFORM-INTERNAL="True" X-Forwarded-Proto="https" X-AppService-Proto="https" X-Forwarded-TlsVersion="1.3" X-WAWS-Unencoded-URL="/deploy?scmType=ExternalGit&amp;isAsync=true" X-Client-IP="191.235.228.39" X-Client-Port="4104" >
+  <step title="FetchHandler" date="2026-05-08T22:30:43.503" >
+    <step title="Executing external process" date="2026-05-08T22:30:44.536" type="process" path="git" arguments="rev-parse --git-dir" /><!-- duration: 752ms -->
+    <step title="Executing external process" date="2026-05-08T22:30:45.339" type="process" path="git" arguments="rev-parse --git-dir" /><!-- duration: 89ms -->
+    <step title="Executing external process" date="2026-05-08T22:30:45.440" type="process" path="git" arguments="log -n 1 master --" /><!-- duration: 619ms -->
+    <step title="Start deployment in the background" date="2026-05-08T22:30:46.140" >
+      <step title="Executing external process" date="2026-05-08T22:30:46.330" type="process" path="git" arguments="rev-parse --git-dir" /><!-- duration: 129ms -->
+      <step title="Executing external process" date="2026-05-08T22:30:46.470" type="process" path="git" arguments="rev-parse --git-dir" /><!-- duration: 217ms -->
+      <step title="Executing external process" date="2026-05-08T22:30:46.698" type="process" path="git" arguments="log -n 1 master --" /><!-- duration: 230ms -->
+      <step title="Acquiring Deployment Lock" date="2026-05-08T22:30:46.946" /><!-- duration: 10ms -->
+      <step title="Acquired Deployment Lock" date="2026-05-08T22:30:47.568" /><!-- duration: 19ms -->
+    </step><!-- duration: 2195ms -->
+  </step><!-- duration: 4859ms -->
+  <step title="Outgoing response" date="2026-05-08T22:30:48.382" type="response" statusCode="202" statusText="Accepted" /><!-- duration: 11ms -->
+</step><!-- duration: 5419ms -->

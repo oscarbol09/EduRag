@@ -107,6 +107,17 @@ class Conversation(ConversationBase):
         from_attributes = True
 
 
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+
+class RegisterRequest(BaseModel):
+    email: str
+    password: str
+    role: Literal["teacher", "student"] = "student"
+
+
 class ChatMessage(BaseModel):
     message: str
     conversation_id: Optional[str] = None
