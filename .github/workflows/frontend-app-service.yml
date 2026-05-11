@@ -10,14 +10,17 @@ on:
   workflow_dispatch:
 
 env:
-  NODE_VERSION: '22'
+  NODE_VERSION: '20'
   AZURE_WEBAPP_NAME: 'edurag-frontend'
-  AZURE_WEBAPP_PACKAGE_PATH: 'frontend/.next/standalone'
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    permissions:
+      id-token: write
+      contents: read
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -33,31 +36,20 @@ jobs:
         working-directory: frontend
         run: npm ci
 
-      - name: Build Next.js app
+      - name: Build Next.js app (standalone)
         working-directory: frontend
         env:
           NEXT_PUBLIC_API_URL: 'https://edurag-api.azurewebsites.net'
         run: npm run build
 
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: next-app
-          path: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
-          retention-days: 1
-
-  deploy:
-    needs: build-and-deploy
-    runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-      contents: read
-    steps:
-      - name: Download artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: next-app
-          path: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
+      - name: Prepare standalone package
+        working-directory: frontend
+        run: |
+          # Copy static assets into standalone (required for Next.js standalone to work)
+          cp -r .next/static .next/standalone/.next/static
+          cp -r public .next/standalone/public
+          # Add package.json so Azure knows it's a Node app
+          echo '{"name":"edurag-frontend","version":"1.0.0","scripts":{"start":"node server.js"}}' > .next/standalone/package.json
 
       - name: Login to Azure
         uses: azure/login@v2
@@ -70,5 +62,5 @@ jobs:
         uses: azure/webapps-deploy@v3
         with:
           app-name: ${{ env.AZURE_WEBAPP_NAME }}
-          package: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
-          startup-command: 'node .next/standalone/server.js'
+          package: frontend/.next/standalone
+          startup-command: 'node server.js'
