@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 env:
-  NODE_VERSION: '20'
+  NODE_VERSION: '22'
   AZURE_WEBAPP_NAME: 'edurag-frontend'
 
 jobs:
@@ -45,11 +45,19 @@ jobs:
       - name: Prepare standalone package
         working-directory: frontend
         run: |
-          # Copy static assets into standalone (required for Next.js standalone to work)
+          # Copy static assets into standalone (required for Next.js standalone)
           cp -r .next/static .next/standalone/.next/static
           cp -r public .next/standalone/public
-          # Add package.json so Azure knows it's a Node app
-          echo '{"name":"edurag-frontend","version":"1.0.0","scripts":{"start":"node server.js"}}' > .next/standalone/package.json
+          # package.json with PORT support for Azure App Service (must listen on 8080)
+          cat > .next/standalone/package.json << 'EOF'
+          {
+            "name": "edurag-frontend",
+            "version": "1.0.0",
+            "scripts": {
+              "start": "node server.js"
+            }
+          }
+          EOF
 
       - name: Login to Azure
         uses: azure/login@v2
@@ -63,4 +71,4 @@ jobs:
         with:
           app-name: ${{ env.AZURE_WEBAPP_NAME }}
           package: frontend/.next/standalone
-          startup-command: 'node server.js'
+          startup-command: 'PORT=8080 HOSTNAME=0.0.0.0 node server.js'
