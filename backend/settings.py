@@ -1,5 +1,6 @@
 from pydantic_settings import BaseSettings
 from typing import Optional
+import os
 
 
 class Settings(BaseSettings):
@@ -23,7 +24,7 @@ class Settings(BaseSettings):
     ENTRA_AUTHORITY: str = ""
     JWT_AUDIENCE: str = ""
     JWT_ISSUER: str = ""
-    
+
     # JWT Settings
     JWT_SECRET: str = ""
 
@@ -35,8 +36,16 @@ class Settings(BaseSettings):
 
     # App Settings
     APP_HOST: str = "0.0.0.0"
-    APP_PORT: int = 8000
-    CORS_ORIGINS: list = ["*"]
+    APP_PORT: int = 8080
+
+    # CORS — override via CORS_ORIGINS env var (comma-separated) in Azure App Settings
+    # e.g. CORS_ORIGINS=https://edurag-frontend.azurewebsites.net,http://localhost:3000
+    CORS_ORIGINS: list = [
+        "https://edurag-frontend.azurewebsites.net",
+        "http://localhost:3000",
+        "http://localhost:3001",
+    ]
+
     MAX_FILE_SIZE_MB: int = 20
     ALLOWED_MIME_TYPES: list = [
         "application/pdf",
@@ -57,6 +66,12 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         extra = "allow"
+
+    def model_post_init(self, __context):
+        # Allow overriding CORS_ORIGINS via a single comma-separated env var
+        raw = os.environ.get("CORS_ORIGINS", "")
+        if raw:
+            self.CORS_ORIGINS = [o.strip() for o in raw.split(",") if o.strip()]
 
 
 settings = Settings()
