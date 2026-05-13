@@ -31,8 +31,8 @@ class Settings(BaseSettings):
     # Google Gemini
     GOOGLE_API_KEY: str = ""
 
-    # ChromaDB
-    CHROMA_DB_PATH: str = "./chroma_data"
+    # ChromaDB — /home is the only writable persistent volume in Azure App Service
+    CHROMA_DB_PATH: str = "/home/chroma_data"
 
     # App Settings
     APP_HOST: str = "0.0.0.0"
