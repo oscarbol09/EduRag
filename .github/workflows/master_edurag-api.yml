@@ -19,30 +19,36 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python version
+      - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: Create and start virtual environment and install dependencies
+      - name: Install dependencies into antenv
         run: |
+          cd backend
           python -m venv antenv
           source antenv/bin/activate
-          pip install -r requirements.txt
+          pip install --upgrade pip
+          pip install -r ../requirements.txt
 
-      - name: Prepare deployment package (backend as root)
+      - name: Prepare deployment package
         run: |
           mkdir deploy
           cp -r backend/* deploy/
           cp requirements.txt deploy/
+          cp -r backend/antenv deploy/antenv
 
-      - name: Upload artifact for deployment jobs
+      - name: Zip deployment package
+        run: |
+          cd deploy
+          zip -r ../app.zip . --exclude "*.pyc" --exclude "__pycache__/*"
+
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: python-app
-          path: |
-            deploy/
-            !antenv/
+          path: app.zip
 
   deploy:
     runs-on: ubuntu-latest
@@ -52,7 +58,7 @@ jobs:
       contents: read
 
     steps:
-      - name: Download artifact from build job
+      - name: Download artifact
         uses: actions/download-artifact@v4
         with:
           name: python-app
@@ -64,10 +70,20 @@ jobs:
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_B604F1544FDF4F41B5166626DA5788C7 }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_F2D26BC1196943029A3B7E15C9E4136C }}
 
-      - name: 'Deploy to Azure Web App'
+      - name: Configure App Settings
+        run: |
+          az webapp config appsettings set \
+            --resource-group edubot-app \
+            --name edurag-api \
+            --settings \
+              SCM_DO_BUILD_DURING_DEPLOYMENT=false \
+              CORS_ORIGINS="*"
+          sleep 20
+
+      - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
-        id: deploy-to-webapp
         with:
           app-name: 'edurag-api'
           slot-name: 'Production'
-          package: '.'
+          package: 'app.zip'
+          startup-command: 'cd /home/site/wwwroot && source antenv/bin/activate && python -m uvicorn main:app --host 0.0.0.0 --port 8080 --log-level info'
