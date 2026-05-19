@@ -81,24 +81,32 @@ export const api = {
   },
 
   documents: {
-    upload: (chatbotId: string, file: File) => {
+    upload: async (chatbotId: string, file: File) => {
       const formData = new FormData();
       formData.append("file", file);
       formData.append("chatbot_id", chatbotId);
 
-      return fetch(`${API_URL}/documents/upload`, {
+      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+      const response = await fetch(`${API_URL}/documents/upload`, {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: formData,
-      }).then((res) => res.json());
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ detail: "Error al subir archivo" }));
+        throw new Error(error.detail || `HTTP ${response.status}`);
+      }
+
+      return response.json();
     },
     list: (chatbotId: string) =>
       fetchApi<Document[]>(`/documents?chatbot_id=${chatbotId}`),
     get: (id: string) => fetchApi<Document>(`/documents/${id}`),
-    delete: (id: string) =>
-      fetchApi<void>(`/documents/${id}`, { method: "DELETE" }),
+    delete: (id: string, chatbotId: string) =>
+      fetchApi<void>(`/documents/${id}?chatbot_id=${chatbotId}`, { method: "DELETE" }),
   },
 
   chat: {

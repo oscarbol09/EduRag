@@ -341,7 +341,9 @@ async def get_chat_history(chatbot_id: str, conversation_id: str):
 
 
 @app.post("/admin/teachers")
-async def create_teacher(data: TeacherCreate):
+async def create_teacher(data: TeacherCreate, current_user: dict = Depends(get_current_user)):
+    if current_user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Solo admins pueden crear docentes")
     teacher_id = str(uuid.uuid4())
     teacher = {
         "id": teacher_id,
@@ -358,7 +360,9 @@ async def create_teacher(data: TeacherCreate):
 
 
 @app.get("/admin/teachers")
-async def list_teachers():
+async def list_teachers(current_user: dict = Depends(get_current_user)):
+    if current_user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Solo admins pueden listar docentes")
     teachers = await list_users(role="teacher")
     return teachers
 

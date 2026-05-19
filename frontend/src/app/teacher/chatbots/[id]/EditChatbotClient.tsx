@@ -94,7 +94,7 @@ export default function EditChatbotClient() {
   const handleDeleteDocument = async (documentId: string) => {
     if (!confirm("¿Eliminar este documento?")) return;
     try {
-      await api.documents.delete(documentId);
+      await api.documents.delete(documentId, chatbotId);
       setDocuments((prev) => prev.filter((d) => d.id !== documentId));
     } catch (error) {
       alert("Error al eliminar el documento");

@@ -59,16 +59,18 @@ async def get_user(user_id: str) -> Optional[dict]:
 
 async def get_user_by_email(email: str) -> Optional[dict]:
     container = get_container("users")
-    query = f"SELECT * FROM c WHERE c.email = '{email}'"
-    items = list(container.query_items(query, enable_cross_partition_query=True))
+    query = "SELECT * FROM c WHERE c.email = @email"
+    parameters = [{"name": "@email", "value": email}]
+    items = list(container.query_items(query=query, parameters=parameters, enable_cross_partition_query=True))
     return items[0] if items else None
 
 
 async def list_users(role: Optional[str] = None) -> List[dict]:
     container = get_container("users")
     if role:
-        query = f"SELECT * FROM c WHERE c.role = '{role}'"
-        return list(container.query_items(query, enable_cross_partition_query=True))
+        query = "SELECT * FROM c WHERE c.role = @role"
+        parameters = [{"name": "@role", "value": role}]
+        return list(container.query_items(query=query, parameters=parameters, enable_cross_partition_query=True))
     return list(container.query_items("SELECT * FROM c", enable_cross_partition_query=True))
 
 
@@ -80,15 +82,17 @@ async def create_chatbot(chatbot_data: dict) -> dict:
 
 async def get_chatbot(chatbot_id: str) -> Optional[dict]:
     container = get_container("chatbots")
-    query = f"SELECT * FROM c WHERE c.id = '{chatbot_id}'"
-    items = list(container.query_items(query, enable_cross_partition_query=True))
+    query = "SELECT * FROM c WHERE c.id = @chatbot_id"
+    parameters = [{"name": "@chatbot_id", "value": chatbot_id}]
+    items = list(container.query_items(query=query, parameters=parameters, enable_cross_partition_query=True))
     return items[0] if items else None
 
 
 async def get_chatbot_by_id_and_owner(chatbot_id: str, owner_id: str) -> Optional[dict]:
     container = get_container("chatbots")
-    query = f"SELECT * FROM c WHERE c.id = '{chatbot_id}' AND c.owner_id = '{owner_id}'"
-    items = list(container.query_items(query, enable_cross_partition_query=True))
+    query = "SELECT * FROM c WHERE c.id = @chatbot_id AND c.owner_id = @owner_id"
+    parameters = [{"name": "@chatbot_id", "value": chatbot_id}, {"name": "@owner_id", "value": owner_id}]
+    items = list(container.query_items(query=query, parameters=parameters, enable_cross_partition_query=True))
     return items[0] if items else None
 
 
@@ -137,8 +141,9 @@ async def create_document(document_data: dict) -> dict:
 
 async def get_document(document_id: str) -> Optional[dict]:
     container = get_container("documents")
-    query = f"SELECT * FROM c WHERE c.id = '{document_id}'"
-    items = list(container.query_items(query, enable_cross_partition_query=True))
+    query = "SELECT * FROM c WHERE c.id = @document_id"
+    parameters = [{"name": "@document_id", "value": document_id}]
+    items = list(container.query_items(query=query, parameters=parameters, enable_cross_partition_query=True))
     return items[0] if items else None
 
 
@@ -155,8 +160,9 @@ async def update_document(document_id: str, updates: dict, chatbot_id: str) -> O
 
 async def list_documents(chatbot_id: str) -> List[dict]:
     container = get_container("documents")
-    query = f"SELECT * FROM c WHERE c.chatbot_id = '{chatbot_id}'"
-    return list(container.query_items(query, enable_cross_partition_query=True))
+    query = "SELECT * FROM c WHERE c.chatbot_id = @chatbot_id"
+    parameters = [{"name": "@chatbot_id", "value": chatbot_id}]
+    return list(container.query_items(query=query, parameters=parameters, enable_cross_partition_query=True))
 
 
 async def delete_document(document_id: str, chatbot_id: str) -> bool:
@@ -176,8 +182,9 @@ async def create_conversation(conversation_data: dict) -> dict:
 
 async def get_conversation(conversation_id: str) -> Optional[dict]:
     container = get_container("conversations")
-    query = f"SELECT * FROM c WHERE c.id = '{conversation_id}'"
-    items = list(container.query_items(query, enable_cross_partition_query=True))
+    query = "SELECT * FROM c WHERE c.id = @conversation_id"
+    parameters = [{"name": "@conversation_id", "value": conversation_id}]
+    items = list(container.query_items(query=query, parameters=parameters, enable_cross_partition_query=True))
     return items[0] if items else None
 
 

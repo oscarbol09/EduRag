@@ -15,7 +15,7 @@ export default function TeacherDashboard() {
   const [chatbots, setChatbots] = useState<Chatbot[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
-  const { logout } = useApp();
+  const { user, logout } = useApp();
 
   useEffect(() => {
     loadChatbots();
@@ -23,7 +23,7 @@ export default function TeacherDashboard() {
 
   const loadChatbots = async () => {
     try {
-      const list = await api.chatbots.list();
+      const list = await api.chatbots.list(user?.id);
       setChatbots(list);
     } catch (error) {
       console.error("Error loading chatbots:", error);
