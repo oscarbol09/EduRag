@@ -118,12 +118,13 @@ interface Document {
   id: string;
   chatbot_id: string;
   filename: string;
-  mime_type: string;
+  mime_type: string;  // application/pdf | application/vnd...docx | text/markdown | text/plain
   blob_url: string;
-  status: 'queued' | 'processing' | 'indexed' | 'error';
+  status: 'indexed' | 'error';  // siempre llega a 'indexed' de forma síncrona en el upload
   chunk_count: number;
   error_message?: string;
   created_at: string;
+  processed_at: string;
 }
 
 interface ChatMessage {
@@ -222,7 +223,7 @@ npm run test      # Vitest (tests unitarios)
 
 ## Despliegue
 
-- **Automático** via GitHub Actions (`.github/workflows/frontend.yml`) en cada push a `main`.
+- **Automático** via GitHub Actions (`.github/workflows/frontend-app-service.yml`) en cada push a `master`.
 - Build: `npm run build` → output estático en `.next/`.
 - URL de producción: `https://delightful-sea-04066b61e.7.azurestaticapps.net`.
 - Secret requerido en GitHub Actions: `AZURE_STATIC_WEB_APPS_TOKEN`.
@@ -247,5 +248,6 @@ Tests ubicados en `test/`. Framework: **Vitest**.
 
 - El token JWT se guarda en `localStorage`. Para mayor seguridad en producción, evaluar migrar a `httpOnly cookies` con un endpoint de refresh.
 - Las páginas del docente deben verificar `role === 'teacher'` y redirigir a `/login` si el usuario no está autenticado o no tiene el rol correcto.
-- El polling de estado de documentos (para mostrar progreso de procesamiento en tiempo real) debe hacerse contra `GET /documents/{id}` con un intervalo de 3-5 segundos, deteniéndose cuando `status === 'indexed'` o `status === 'error'`.
+- El upload de documentos es síncrono: el backend extrae el texto y devuelve `status: "indexed"` en el mismo request. No es necesario hacer polling de estado. El campo `status` puede mostrar directamente el valor del response del upload.
+- Formatos de documento soportados por el backend: **PDF, DOCX, MD, TXT**. Actualizar el input de file upload para aceptar `.pdf,.docx,.md,.txt`.
 - El `CLAUDE.md` en este directorio es un alias que apunta a `AGENTS.md` — ambos contienen la misma guía.

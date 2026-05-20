@@ -32,12 +32,13 @@ wheels/
 venv/
 ENV/
 env/
+antenv/
 
-# ChromaDB
+# ChromaDB (legacy — no longer used)
 chroma_data/
 *.sqlite3
 
-# Node (if used)
+# Node
 node_modules/
 npm-debug.log*
 yarn-debug.log*
@@ -47,7 +48,6 @@ yarn-error.log*
 # Next.js
 .next/
 out/
-.next/
 *.tsbuildinfo
 
 # IDE
@@ -60,13 +60,19 @@ out/
 # Logs
 *.log
 logs/
+extracted_logs/
+webapp_logs/
+webapp_logs*/
+
+# Azure deployment artifacts (temporal — no deben estar en el repo)
+*.zip
+deploy_clean/
+backend-deploy.zip
+app_clean*.zip
+app_final.zip
+logs_new.zip
 
 # Azure / credentials
 *.pfx
 *.pem
 *.key
-
-# Secrets (never commit these)
-*secret*
-*credential*
-*.json!

@@ -1,17 +1,20 @@
 # EduRAG — AGENTS.md (Raíz del Proyecto)
 
-Guía de referencia rápida para agentes de IA y colaboradores que trabajen en cualquier parte del repositorio. Para detalle de cada módulo, ver el `AGENTS.md` correspondiente en `backend/`, `frontend/` y `worker/`.
+Guía de referencia rápida para agentes de IA y colaboradores que trabajen en cualquier parte del repositorio. Para detalle de cada módulo, ver el `AGENTS.md` correspondiente en `backend/` y `frontend/`.
 
 ---
 
 ## Contexto del Proyecto
 
-**EduRAG** es una plataforma SaaS educativa multi-tenant. Los docentes crean chatbots RAG a partir de sus propios documentos (PDF, DOCX). Los estudiantes los consumen vía marketplace web o iframe embebido en LMS externos (Moodle).
+**EduRAG** es una plataforma SaaS educativa multi-tenant. Los docentes crean chatbots a partir de sus propios documentos (PDF, DOCX, MD, TXT). Los estudiantes los consumen vía marketplace web o iframe embebido en LMS externos (Moodle).
 
 **Tres restricciones de diseño no negociables:**
 1. Costo operativo $0/mes post-primer-mes (Azure Free Tiers + APIs gratuitas).
 2. Aislamiento estricto de datos por tenant (por `chatbot_id` y `owner_id`).
 3. Arquitectura extensible para múltiples LLMs sin cambios de lógica de negocio.
+
+**Decisión arquitectural clave — sin ChromaDB:**
+ChromaDB fue eliminado porque sus dependencias (~500 MB de venv) causaban `ContainerTimeout` en Azure App Service. El texto de los documentos se almacena en Cosmos DB (`document_contents`) y se pasa directamente al context window de Gemini (~1M tokens). No se usan embeddings ni búsqueda vectorial.
 
 ---
 
@@ -20,16 +23,14 @@ Guía de referencia rápida para agentes de IA y colaboradores que trabajen en c
 | Capa | Tecnología | Dónde |
 |---|---|---|
 | Frontend | Next.js 16 + Tailwind CSS + Radix UI | `frontend/` |
-| Backend | FastAPI (Python 3.11) + Uvicorn | `backend/` |
-| Worker asíncrono | Python puro + azure-storage-queue | `worker/` |
+| Backend | FastAPI (Python 3.11) + Gunicorn + Uvicorn | `backend/` |
 | Base de datos | Azure Cosmos DB for NoSQL — DB: `edubot` | Cloud |
 | Almacenamiento | Azure Blob Storage — `edubotstore2026` | Cloud |
-| Cola | Azure Queue Storage — `document-processing` | Cloud |
+| Cola | Azure Queue Storage — `document-processing` | Cloud (futuro) |
 | Autenticación | JWT propio HS256 (PyJWT + bcrypt) | `backend/jwt_token.py`, `auth.py` |
 | LLM activo | Google Gemini 2.0 Flash | `backend/llm_client.py` |
 | LLM stub | Anthropic Claude (no implementado aún) | `backend/llm_client.py` |
-| Vector store | ChromaDB (local en App Service) | `backend/vector_store.py` |
-| Embeddings | Google text-embedding-004 | `backend/main.py`, `worker/document_processor.py` |
+| Texto de docs | Cosmos DB — colección `document_contents` | `backend/vector_store.py` |
 
 ---
 
@@ -37,11 +38,11 @@ Guía de referencia rápida para agentes de IA y colaboradores que trabajen en c
 
 | Recurso | Tipo | Región | Resource Group | Estado |
 |---|---|---|---|---|
-| `edu-bot-cosmos` | Cosmos DB for NoSQL | West US 2 | EduBot-app | ✅ Activo |
-| `edubotstore2026` | Storage Account | West US 2 | EduBot-app | ✅ Activo |
-| `edurag-api` | App Service Linux B1 | Central US | EduBot-app | ✅ Activo |
-| `edurag-frontend` | Static Web App | West US 2 | EduBot-app | ✅ Activo |
-| `edurag-backend` | Container App | West US 2 | EduBot-app | ❌ Failed — eliminar |
+| `edu-bot-cosmos` | Cosmos DB for NoSQL | West US 2 | edubot-app | ✅ Activo |
+| `edubotstore2026` | Storage Account | West US 2 | edubot-app | ✅ Activo |
+| `edurag-api` | App Service Linux B1 | Central US | edubot-app | ✅ Activo |
+| `edurag-frontend` | Static Web App | West US 2 | edubot-app | ✅ Activo |
+| `edurag-backend` | Container App | West US 2 | edubot-app | ❌ Failed — eliminar |
 
 **URLs de producción:**
 - API: `https://edurag-api.azurewebsites.net`
@@ -56,9 +57,10 @@ Guía de referencia rápida para agentes de IA y colaboradores que trabajen en c
 | `users` | `/id` | Docentes, estudiantes y admins |
 | `chatbots` | `/owner_id` | Configuración de cada chatbot |
 | `documents` | `/chatbot_id` | Metadatos de documentos subidos |
-| `conversations` | `/chatbot_id` | Historial de mensajes (TTL: 90 días) |
+| `document_contents` | `/chatbot_id` | Texto extraído de cada documento |
+| `conversations` | `/chatbot_id` | Historial de mensajes |
 
-**Regla crítica:** toda query a ChromaDB debe filtrar por `chatbot_id`. Nunca exponer vectores de un tenant a consultas de otro.
+**Regla crítica:** toda query a `document_contents` debe filtrar por `chatbot_id`. Nunca exponer contenido de un tenant a consultas de otro.
 
 ---
 
@@ -70,19 +72,22 @@ Guía de referencia rápida para agentes de IA y colaboradores que trabajen en c
 - Registro de estudiantes: `POST /auth/register` (auto-servicio).
 - Creación de docentes: `POST /admin/teachers` (solo admin).
 - Validación de endpoints: `get_current_user(request)` en `backend/auth.py`.
-- Microsoft Entra ID está configurado como referencia de tenant para login social futuro, pero los flujos OAuth no están activos en el MVP.
 
 ---
 
-## Pipeline RAG — Flujo Resumido
+## Pipeline de Documentos — Flujo Resumido
 
 ```
-Ingesta (asíncrona):
-  Upload → Blob Storage → Queue → Worker:
-    descarga → extrae texto → chunking (500/50) → embeddings → ChromaDB → Cosmos DB: indexed
+Upload (síncrono):
+  Archivo (PDF/DOCX/MD/TXT) → extracción texto en memoria
+    → Blob Storage (original) + Cosmos DB document_contents (texto)
+    → documents: status "indexed" (inmediato)
 
-Consulta (síncrona):
-  Mensaje → embedding pregunta → ChromaDB top-5 → prompt build → Gemini 2.0 Flash → respuesta
+Chat (síncrono):
+  Mensaje → Cosmos DB: recuperar todos los document_contents del chatbot
+    → construir contexto con todos los documentos
+    → prompt: system_prompt + contexto + pregunta
+    → Gemini 2.0 Flash → respuesta con fuentes (filenames)
 ```
 
 **Temperatures por restriction_level:**
@@ -109,8 +114,8 @@ Consulta (síncrona):
 
 ```
 # Sistema
-GET  /health                        → keep-alive / health check
-GET  /ready                         → readiness (verifica ChromaDB)
+GET  /health                        → health check
+GET  /ready                         → readiness (verifica Cosmos DB)
 
 # Auth
 POST /auth/login                    → { token, user }
@@ -122,23 +127,23 @@ GET  /chatbots                      → lista (filtros: owner_id, published_only
 POST /chatbots                      → crear [JWT]
 GET  /chatbots/{id}                 → detalle
 PUT  /chatbots/{id}                 → actualizar [JWT owner]
-DELETE /chatbots/{id}               → eliminar + vectores [JWT owner]
+DELETE /chatbots/{id}               → eliminar + document_contents [JWT owner]
 POST /chatbots/{id}/publish         → publicar [JWT owner]
 GET  /chatbots/{id}/embed           → embed_code + public_url
 
 # Documentos
-POST /documents/upload              → subir PDF/DOCX (multipart)
+POST /documents/upload              → subir PDF/DOCX/MD/TXT (multipart)
 GET  /documents?chatbot_id=         → listar
-GET  /documents/{id}                → estado de procesamiento
-DELETE /documents/{id}              → eliminar
+GET  /documents/{id}                → detalle
+DELETE /documents/{id}?chatbot_id=  → eliminar metadatos + contenido
 
 # Chat
-POST /chat/{chatbot_id}             → RAG completo (100 req/min/IP)
+POST /chat/{chatbot_id}             → enviar mensaje (100 req/min/IP)
 GET  /chat/{chatbot_id}/history     → historial
 
 # Admin
-POST /admin/teachers                → crear docente
-GET  /admin/teachers                → listar docentes
+POST /admin/teachers                → crear docente [JWT admin]
+GET  /admin/teachers                → listar docentes [JWT admin]
 ```
 
 ---
@@ -157,7 +162,7 @@ chore:    tareas de mantenimiento (deps, CI, etc.)
 
 ### Branches
 ```
-main          → producción (despliegue automático)
+master        → producción (despliegue automático)
 develop       → integración
 feature/nombre-descriptivo
 fix/nombre-descriptivo
@@ -166,7 +171,7 @@ fix/nombre-descriptivo
 ### Reglas
 - Nunca commitear archivos `.env` ni credenciales.
 - Nunca hardcodear API keys, connection strings ni secrets en código.
-- Todo PR hacia `main` debe pasar los checks de CI.
+- No incluir carpetas `antenv/`, `__pycache__/`, `.env`, `chroma_data/` en deploys.
 
 ---
 
@@ -180,10 +185,6 @@ python test_api.py
 # Frontend — build de producción
 cd frontend
 npm run build
-
-# Worker — ejecución en modo demo (sin queue real)
-cd worker
-python queue_worker.py   # detecta AZURE_QUEUE_CONNECTION_STRING vacío → demo mode
 ```
 
 ---
@@ -191,14 +192,26 @@ python queue_worker.py   # detecta AZURE_QUEUE_CONNECTION_STRING vacío → demo
 ## Despliegue Rápido
 
 ```bash
-# Backend (ZIP deploy manual)
-cd backend
-zip -r ../backend-deploy.zip . --exclude "*.pyc" --exclude "__pycache__/*" \
-  --exclude "chroma_data/*" --exclude ".env"
-az webapp deploy --name edurag-api --resource-group EduBot-app \
-  --src-path ../backend-deploy.zip --type zip
+# Backend (ZIP deploy manual — solo código Python, sin venv)
+mkdir deploy_tmp
+cp backend/*.py deploy_tmp/
+cp requirements.txt deploy_tmp/
+cd deploy_tmp
+zip -r ../backend-deploy.zip . --exclude "*.pyc" --exclude "__pycache__/*"
+cd ..
 
-# Frontend → automático via GitHub Actions en push a main
+az webapp deploy --name edurag-api --resource-group edubot-app \
+  --src-path backend-deploy.zip --type zip
+
+# Frontend → automático via GitHub Actions en push a master
+```
+
+**App Settings requeridos en Azure para el backend:**
+```
+SCM_DO_BUILD_DURING_DEPLOYMENT=true
+ENABLE_ORYX_BUILD=true
+WEBSITES_PORT=8080
+WEBSITES_CONTAINER_START_TIME_LIMIT=600
 ```
 
 ---
@@ -207,12 +220,13 @@ az webapp deploy --name edurag-api --resource-group EduBot-app \
 
 | Variable | Módulo | Descripción |
 |---|---|---|
-| `COSMOS_DB_ENDPOINT` | backend, worker | URL de Cosmos DB |
-| `COSMOS_DB_KEY` | backend, worker | Primary key de Cosmos DB |
-| `GOOGLE_API_KEY` | backend, worker | API key de Google AI (Gemini + embeddings) |
+| `COSMOS_DB_ENDPOINT` | backend | URL de Cosmos DB |
+| `COSMOS_DB_KEY` | backend | Primary key de Cosmos DB |
+| `COSMOS_DB_DATABASE` | backend | Nombre de la base de datos (edubot) |
+| `GOOGLE_API_KEY` | backend | API key de Google AI (Gemini) |
 | `JWT_SECRET` | backend | Secret para firmar tokens JWT (≥32 chars) |
-| `AZURE_STORAGE_CONNECTION_STRING` | backend, worker | Connection string de Storage Account |
-| `AZURE_QUEUE_CONNECTION_STRING` | backend, worker | Connection string para Queue Storage |
+| `AZURE_STORAGE_CONNECTION_STRING` | backend | Connection string de Storage Account |
+| `AZURE_QUEUE_CONNECTION_STRING` | backend | Connection string para Queue Storage |
 | `NEXT_PUBLIC_API_URL` | frontend | URL base de la API backend |
 
 ---
@@ -222,6 +236,7 @@ az webapp deploy --name edurag-api --resource-group EduBot-app \
 - [ ] ¿Afecta multi-tenant? → verificar aislamiento por `chatbot_id` / `owner_id`.
 - [ ] ¿Nuevo endpoint? → documentar en la tabla de API Reference del README.
 - [ ] ¿Nueva variable de entorno? → agregar a `.env.example` del módulo correspondiente.
-- [ ] ¿Nuevo modelo de datos? → actualizar la sección de Modelo de Datos en README.
+- [ ] ¿Nuevo modelo de datos? → actualizar la sección de Modelo de Datos en README y SPEC.
 - [ ] ¿Cambio en costos de Azure? → re-evaluar si sigue dentro del Free Tier.
 - [ ] ¿Cambio en LLM? → hacerlo solo en `llm_client.py` respetando la interfaz `generate()`.
+- [ ] ¿Nueva dependencia Python? → verificar que el virtualenv resultante no supere ~200MB para evitar ContainerTimeout en Azure App Service.
