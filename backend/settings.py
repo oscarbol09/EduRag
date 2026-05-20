@@ -1,5 +1,6 @@
 from pydantic_settings import BaseSettings
-from typing import Optional
+from pydantic import field_validator
+from typing import Optional, List
 import os
 
 
@@ -31,31 +32,40 @@ class Settings(BaseSettings):
     # Google Gemini
     GOOGLE_API_KEY: str = ""
 
-    # ChromaDB — /home is the only writable persistent volume in Azure App Service
-    CHROMA_DB_PATH: str = "/home/chroma_data"
-
     # App Settings
     APP_HOST: str = "0.0.0.0"
     APP_PORT: int = 8080
 
-    # CORS — override via CORS_ORIGINS env var (comma-separated) in Azure App Settings
-    # e.g. CORS_ORIGINS=https://edurag-frontend.azurewebsites.net,http://localhost:3000
-    CORS_ORIGINS: list = [
-        "https://edurag-frontend.azurewebsites.net",
-        "http://localhost:3000",
-        "http://localhost:3001",
-    ]
+    # CORS — stored as raw string, parsed to list via property
+    # Accepts comma-separated string in Azure App Settings:
+    #   e.g. CORS_ORIGINS=https://example.com,http://localhost:3000
+    # OR a JSON array string: ["https://example.com","http://localhost:3000"]
+    CORS_ORIGINS: str = "https://edurag-frontend.azurewebsites.net,http://localhost:3000,https://delightful-sea-04066b61e.7.azurestaticapps.net"
+
+    @property
+    def cors_origins_list(self) -> List[str]:
+        """Parse CORS_ORIGINS env var — accepts comma-separated or JSON array."""
+        raw = self.CORS_ORIGINS.strip()
+        if not raw:
+            return ["*"]
+        # If it looks like a JSON array, parse it
+        if raw.startswith("["):
+            import json
+            try:
+                parsed = json.loads(raw)
+                return [o.strip() for o in parsed if o.strip()]
+            except Exception:
+                pass
+        # Otherwise split by comma
+        return [o.strip() for o in raw.split(",") if o.strip()]
 
     MAX_FILE_SIZE_MB: int = 20
     ALLOWED_MIME_TYPES: list = [
         "application/pdf",
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "text/markdown",
+        "text/plain",
     ]
-
-    # RAG Settings
-    CHUNK_SIZE: int = 500
-    CHUNK_OVERLAP: int = 50
-    RETRIEVAL_TOP_K: int = 5
 
     # Cache
     MAX_CACHE_SIZE: int = 1000
@@ -66,12 +76,6 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         extra = "allow"
-
-    def model_post_init(self, __context):
-        # Allow overriding CORS_ORIGINS via a single comma-separated env var
-        raw = os.environ.get("CORS_ORIGINS", "")
-        if raw:
-            self.CORS_ORIGINS = [o.strip() for o in raw.split(",") if o.strip()]
 
 
 settings = Settings()
