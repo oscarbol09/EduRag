@@ -29,7 +29,7 @@ async def store_document_content(
         "filename": filename,
         "content": content,
     }
-    container.upsert_item(item, partition_key=chatbot_id)
+    container.upsert_item(item)
     return item
 
 

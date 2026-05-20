@@ -1,8 +1,8 @@
-from google import genai
+import google.generativeai as genai
 from typing import Optional
 from settings import settings
 
-client = genai.Client(api_key=settings.GOOGLE_API_KEY)
+genai.configure(api_key=settings.GOOGLE_API_KEY)
 
 
 class LLMClient:
@@ -41,10 +41,10 @@ Pregunta del usuario: {user_message}
 
 Respuesta:"""
 
-        response = client.models.generate_content(
-            model="gemini-2.0-flash",
-            contents=full_prompt,
-            config={
+        model = genai.GenerativeModel("gemini-2.0-flash")
+        response = model.generate_content(
+            full_prompt,
+            generation_config={
                 "temperature": temperature,
                 "max_output_tokens": 2048
             }

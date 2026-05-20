@@ -136,7 +136,7 @@ async def list_chatbots(owner_id: Optional[str] = None, published_only: bool = F
 
 async def create_document(document_data: dict) -> dict:
     container = get_container("documents")
-    container.create_item(document_data, partition_key=document_data["chatbot_id"])
+    container.create_item(document_data)
     return document_data
 
 
