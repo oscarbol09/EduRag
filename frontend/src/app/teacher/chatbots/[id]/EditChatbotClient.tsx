@@ -277,10 +277,10 @@ export default function EditChatbotClient() {
                       </svg>
                     )}
                     <p className="text-sm text-gray-500">{isUploading ? "Subiendo..." : "Arrastra o haz clic para subir documentos"}</p>
-                    <p className="text-xs text-gray-400 mt-1">PDF, DOCX (máx 20MB)</p>
+                    <p className="text-xs text-gray-400 mt-1">PDF, DOCX, MD, TXT (máx 20MB)</p>
                   </div>
                 </div>
-                <input type="file" accept=".pdf,.docx" onChange={handleFileUpload} className="hidden" disabled={isUploading} />
+                <input type="file" accept=".pdf,.docx,.md,.txt" onChange={handleFileUpload} className="hidden" disabled={isUploading} />
               </label>
             </div>
             {documents.length === 0 ? (
