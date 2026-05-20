@@ -70,7 +70,7 @@ jobs:
             --settings \
               SCM_DO_BUILD_DURING_DEPLOYMENT=true \
               ENABLE_ORYX_BUILD=true \
-              WEBSITES_PORT=8080
+              WEBSITES_PORT=8000
           sleep 20
 
       - name: Deploy to Azure Web App
@@ -79,4 +79,4 @@ jobs:
           app-name: 'edurag-api'
           slot-name: 'Production'
           package: 'app.zip'
-          startup-command: 'gunicorn --bind=0.0.0.0:8080 --worker-class uvicorn.workers.UvicornWorker --timeout 120 main:app'
+          startup-command: 'gunicorn --bind=0.0.0.0:8000 --worker-class uvicorn.workers.UvicornWorker --timeout 120 main:app'

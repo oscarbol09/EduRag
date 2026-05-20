@@ -46,7 +46,7 @@ def get_container(container_name: str):
 
 async def create_user(user_data: dict) -> dict:
     container = get_container("users")
-    container.create_item(user_data)
+    container.create_item(user_data, partition_key=user_data["id"])
     return user_data
 
 
@@ -77,7 +77,7 @@ async def list_users(role: Optional[str] = None) -> List[dict]:
 
 async def create_chatbot(chatbot_data: dict) -> dict:
     container = get_container("chatbots")
-    container.create_item(chatbot_data)
+    container.create_item(chatbot_data, partition_key=chatbot_data["owner_id"])
     return chatbot_data
 
 
@@ -103,7 +103,7 @@ async def update_chatbot(chatbot_id: str, updates: dict, owner_id: str) -> Optio
         item = container.read_item(chatbot_id, partition_key=owner_id)
         item.update(updates)
         item["updated_at"] = datetime.utcnow().isoformat()
-        container.replace_item(chatbot_id, item)
+        container.replace_item(chatbot_id, item, partition_key=owner_id)
         return item
     except Exception:
         return None
@@ -153,7 +153,7 @@ async def update_document(document_id: str, updates: dict, chatbot_id: str) -> O
     try:
         item = container.read_item(document_id, partition_key=chatbot_id)
         item.update(updates)
-        container.replace_item(document_id, item)
+        container.replace_item(document_id, item, partition_key=chatbot_id)
         return item
     except Exception:
         return None
@@ -177,7 +177,7 @@ async def delete_document(document_id: str, chatbot_id: str) -> bool:
 
 async def create_conversation(conversation_data: dict) -> dict:
     container = get_container("conversations")
-    container.create_item(conversation_data)
+    container.create_item(conversation_data, partition_key=conversation_data["chatbot_id"])
     return conversation_data
 
 
@@ -196,10 +196,10 @@ async def save_conversation(conversation_data: dict) -> dict:
         item = container.read_item(conversation_data["id"], partition_key=chatbot_id)
         item["messages"] = conversation_data.get("messages", item.get("messages", []))
         item["updated_at"] = datetime.utcnow().isoformat()
-        container.replace_item(conversation_data["id"], item)
+        container.replace_item(conversation_data["id"], item, partition_key=chatbot_id)
         return item
     except Exception:
-        container.create_item(conversation_data)
+        container.create_item(conversation_data, partition_key=chatbot_id)
         return conversation_data
 
 

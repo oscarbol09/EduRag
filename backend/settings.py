@@ -34,7 +34,7 @@ class Settings(BaseSettings):
 
     # App Settings
     APP_HOST: str = "0.0.0.0"
-    APP_PORT: int = 8080
+    APP_PORT: int = 8000
 
     # CORS — stored as raw string, parsed to list via property
     # Accepts comma-separated string in Azure App Settings:
