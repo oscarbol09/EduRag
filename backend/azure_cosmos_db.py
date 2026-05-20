@@ -32,6 +32,7 @@ def get_container(container_name: str):
             "users": PartitionKey(path="/id"),
             "chatbots": PartitionKey(path="/owner_id"),
             "documents": PartitionKey(path="/chatbot_id"),
+            "document_contents": PartitionKey(path="/chatbot_id"),
             "conversations": PartitionKey(path="/chatbot_id"),
         }
         pk = partition_keys.get(container_name, PartitionKey(path="/id"))

@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Request
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
@@ -15,14 +15,19 @@ from azure_cosmos_db import (
     create_document, get_document, update_document, list_documents, delete_document,
     create_conversation, get_conversation, save_conversation, list_conversations
 )
-from vector_store import query_similar, delete_chatbot_vectors
+from vector_store import (
+    store_document_content,
+    get_all_contents_for_chatbot,
+    delete_all_contents_for_chatbot,
+    delete_document_content,
+)
 from llm_client import get_llm_client
-from document_uploader import upload_file_to_blob, publish_to_queue
+from document_uploader import upload_file_to_blob, extract_text_from_file
 from auth import get_current_user, get_current_user_optional
 from password import hash_password, verify_password
 from jwt_token import create_jwt_token
 
-app = FastAPI(title="EduRAG API", version="0.1.0")
+app = FastAPI(title="EduRAG API", version="0.2.0")
 
 limiter = Limiter(key_func=get_remote_address)
 app.state.limiter = limiter
@@ -64,7 +69,7 @@ Siempre cita las fuentes cuando sea posible."""
 
 @app.get("/")
 async def root():
-    return {"name": "EduRAG API", "version": "0.1.0"}
+    return {"name": "EduRAG API", "version": "0.2.0"}
 
 
 @app.get("/health")
@@ -75,8 +80,8 @@ async def health_check():
 @app.get("/ready")
 async def readiness_check():
     try:
-        from vector_store import get_chroma_client
-        get_chroma_client()
+        from azure_cosmos_db import get_cosmos_client
+        get_cosmos_client()
         return {"status": "ready"}
     except Exception as e:
         raise HTTPException(status_code=503, detail=str(e))
@@ -186,7 +191,7 @@ async def delete_chatbot_endpoint(chatbot_id: str, request: Request):
     user = await get_current_user(request)
     owner_id = user.get("sub")
     await delete_chatbot(chatbot_id, owner_id=owner_id)
-    delete_chatbot_vectors(chatbot_id)
+    await delete_all_contents_for_chatbot(chatbot_id)
     return {"message": "Chatbot eliminado"}
 
 
@@ -217,36 +222,55 @@ async def upload_document(
     if file.size and file.size > settings.MAX_FILE_SIZE_MB * 1024 * 1024:
         raise HTTPException(status_code=400, detail=f"Archivo demasiado grande (máx {settings.MAX_FILE_SIZE_MB}MB)")
     
-    allowed_types = ["application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"]
-    if file.content_type not in allowed_types:
-        raise HTTPException(status_code=400, detail="Tipo de archivo no permitido")
+    allowed_types = [
+        "application/pdf",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "text/markdown",
+        "text/plain",
+    ]
+    # Also accept .md files that browsers might send as application/octet-stream
+    filename = file.filename or ""
+    is_md = filename.lower().endswith(".md")
+    is_txt = filename.lower().endswith(".txt")
+
+    if file.content_type not in allowed_types and not is_md and not is_txt:
+        raise HTTPException(status_code=400, detail="Tipo de archivo no permitido. Usa PDF, DOCX, MD o TXT.")
     
     document_id = str(uuid.uuid4())
     now = datetime.utcnow().isoformat()
-    blob_path = f"documents/{chatbot_id}/{document_id}/{file.filename}"
+
+    content_bytes = await file.read()
+
+    # Extract text from the uploaded file
+    text_content = extract_text_from_file(content_bytes, filename, file.content_type)
+
+    if not text_content or not text_content.strip():
+        raise HTTPException(status_code=400, detail="No se pudo extraer texto del archivo.")
+
+    # Upload original file to blob storage
+    blob_path = f"documents/{chatbot_id}/{document_id}/{filename}"
+    blob_url = await upload_file_to_blob(content_bytes, blob_path, file.content_type or "application/octet-stream")
     
-    content = await file.read()
-    blob_url = await upload_file_to_blob(content, blob_path, file.content_type)
-    
+    # Store extracted text in Cosmos DB
+    await store_document_content(
+        document_id=document_id,
+        chatbot_id=chatbot_id,
+        filename=filename,
+        content=text_content,
+    )
+
     document = {
         "id": document_id,
         "chatbot_id": chatbot_id,
-        "filename": file.filename,
-        "mime_type": file.content_type,
+        "filename": filename,
+        "mime_type": file.content_type or "text/plain",
         "blob_url": blob_url,
-        "status": "queued",
-        "chunk_count": 0,
-        "created_at": now
+        "status": "indexed",
+        "chunk_count": 1,
+        "created_at": now,
+        "processed_at": now,
     }
     await create_document(document)
-    
-    publish_to_queue({
-        "document_id": document_id,
-        "chatbot_id": chatbot_id,
-        "blob_url": blob_url,
-        "filename": file.filename,
-        "mime_type": file.content_type
-    })
     
     return document
 
@@ -268,6 +292,7 @@ async def get_documents(chatbot_id: str):
 @app.delete("/documents/{document_id}")
 async def delete_document_endpoint(document_id: str, chatbot_id: str):
     await delete_document(document_id, chatbot_id)
+    await delete_document_content(document_id, chatbot_id)
     return {"message": "Documento eliminado"}
 
 
@@ -286,13 +311,20 @@ async def chat_endpoint(request: Request, chatbot_id: str, body: ChatMessage):
             sources=response_cache[cache_key]["sources"]
         )
 
-    sources = []
-    try:
-        embedding = await generate_embedding(body.message)
-        sources = query_similar(chatbot_id, embedding, top_k=settings.RETRIEVAL_TOP_K)
-        context = "\n\n".join([s["content"] for s in sources])
-    except Exception:
-        context = "No hay documentos indexados para este chatbot."
+    # Retrieve all document contents for this chatbot from Cosmos DB
+    doc_contents = await get_all_contents_for_chatbot(chatbot_id)
+    source_names = [d.get("filename", "documento") for d in doc_contents]
+
+    if doc_contents:
+        # Build context from all documents
+        context_parts = []
+        for doc in doc_contents:
+            fname = doc.get("filename", "documento")
+            text = doc.get("content", "")
+            context_parts.append(f"--- Documento: {fname} ---\n{text}")
+        context = "\n\n".join(context_parts)
+    else:
+        context = "No hay documentos cargados para este chatbot."
 
     system_prompt = chatbot.get("system_prompt_override") or get_default_system_prompt(
         chatbot.get("tone", "friendly"),
@@ -309,7 +341,7 @@ async def chat_endpoint(request: Request, chatbot_id: str, body: ChatMessage):
 
     if len(response_cache) >= settings.MAX_CACHE_SIZE:
         response_cache.pop(next(iter(response_cache)))
-    response_cache[cache_key] = {"response": response_text, "sources": [s.get("content", "")[:100] for s in sources]}
+    response_cache[cache_key] = {"response": response_text, "sources": source_names}
 
     conversation_id = body.conversation_id or str(uuid.uuid4())
     conversation = {
@@ -326,7 +358,7 @@ async def chat_endpoint(request: Request, chatbot_id: str, body: ChatMessage):
     return ChatResponse(
         response=response_text,
         conversation_id=conversation_id,
-        sources=[s.get("content", "")[:100] for s in sources]
+        sources=source_names
     )
 
 
@@ -365,13 +397,6 @@ async def list_teachers(current_user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=403, detail="Solo admins pueden listar docentes")
     teachers = await list_users(role="teacher")
     return teachers
-
-
-async def generate_embedding(text: str) -> list[float]:
-    import google.generativeai as genai
-    genai.configure(api_key=settings.GOOGLE_API_KEY)
-    result = genai.embed_content(model="models/text-embedding-004", content=text, task_type="retrieval_query")
-    return result["embedding"]
 
 
 if __name__ == "__main__":
