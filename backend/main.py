@@ -221,21 +221,16 @@ async def upload_document(
 ):
     if file.size and file.size > settings.MAX_FILE_SIZE_MB * 1024 * 1024:
         raise HTTPException(status_code=400, detail=f"Archivo demasiado grande (máx {settings.MAX_FILE_SIZE_MB}MB)")
-    
-    allowed_types = [
-        "application/pdf",
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        "text/markdown",
-        "text/plain",
-    ]
-    # Also accept .md files that browsers might send as application/octet-stream
+
+    # Only accept .md and .txt — browsers may send these as application/octet-stream,
+    # so we validate by extension rather than content-type alone.
     filename = file.filename or ""
     is_md = filename.lower().endswith(".md")
     is_txt = filename.lower().endswith(".txt")
 
-    if file.content_type not in allowed_types and not is_md and not is_txt:
-        raise HTTPException(status_code=400, detail="Tipo de archivo no permitido. Usa PDF, DOCX, MD o TXT.")
-    
+    if not is_md and not is_txt:
+        raise HTTPException(status_code=400, detail="Tipo de archivo no permitido. Solo se aceptan archivos .md y .txt.")
+
     document_id = str(uuid.uuid4())
     now = datetime.utcnow().isoformat()
 
@@ -250,7 +245,7 @@ async def upload_document(
     # Upload original file to blob storage
     blob_path = f"documents/{chatbot_id}/{document_id}/{filename}"
     blob_url = await upload_file_to_blob(content_bytes, blob_path, file.content_type or "application/octet-stream")
-    
+
     # Store extracted text in Cosmos DB
     await store_document_content(
         document_id=document_id,
@@ -271,7 +266,7 @@ async def upload_document(
         "processed_at": now,
     }
     await create_document(document)
-    
+
     return document
 
 

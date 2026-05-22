@@ -1,5 +1,5 @@
 fastapi==0.136.1
-uvicorn[standard]==0.45.0
+uvicorn==0.45.0
 gunicorn==23.0.0
 azure-cosmos==4.15.0
 azure-storage-blob==12.25.1
