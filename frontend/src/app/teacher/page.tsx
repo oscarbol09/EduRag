@@ -80,11 +80,6 @@ export default function TeacherDashboard() {
                   : auth.user?.email}
               </strong>
             </span>
-            {auth.user?.role === "admin" && (
-              <Link href="/admin" className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg">
-                Admin
-              </Link>
-            )}
             <Link href="/teacher/chatbots/new" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium">
               + Nuevo Chatbot
             </Link>
