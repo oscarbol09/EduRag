@@ -290,7 +290,6 @@ python manual_test_api.py
 
 ---
 
-## Autores
+## Autor
 
-* Oscar Bolívar — [@oscarbol09](https://github.com/oscarbol09)
-* Darío Oviedo — [@dariooviedo2022](https://github.com/dariooviedo2022)
+* Oscar Madera — [@oscarbol09](https://github.com/oscarbol09)
