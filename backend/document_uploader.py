@@ -1,51 +1,40 @@
 """
-Document uploader — handles file uploads to Azure Blob Storage and
+Document uploader — handles file uploads to Supabase Storage and
 text extraction from Markdown and plain-text files.
 """
 
-import json
-from azure.storage.blob import BlobServiceClient, ContentSettings
-from azure.storage.queue import QueueClient
-from settings import settings
+from supabase_db import get_client
 
 
 async def upload_file_to_blob(content: bytes, blob_path: str, content_type: str) -> str:
-    blob_service = BlobServiceClient.from_connection_string(settings.AZURE_STORAGE_CONNECTION_STRING)
-    container_client = blob_service.get_container_client(settings.AZURE_STORAGE_CONTAINER_NAME)
+    client = get_client()
+    bucket = "documents"
 
-    # Ensure the container exists (create if missing)
+    # Ensure bucket exists (create if missing)
     try:
-        container_client.get_container_properties()
+        client.storage.get_bucket(bucket)
     except Exception:
-        container_client.create_container()
+        # Create a private bucket
+        client.storage.create_bucket(bucket, options={"public": False})
 
-    blob_client = container_client.get_blob_client(blob_path)
-
-    blob_client.upload_blob(
-        content,
-        overwrite=True,
-        content_settings=ContentSettings(content_type=content_type),
+    # Upload file
+    client.storage.from_(bucket).upload(
+        path=blob_path,
+        file=content,
+        file_options={"content-type": content_type, "upsert": "true"},
     )
 
-    return f"{container_client.url}/{blob_path}"
-
-
-def publish_to_queue(message: dict):
-    queue_client = QueueClient.from_connection_string(
-        settings.AZURE_QUEUE_CONNECTION_STRING,
-        settings.AZURE_QUEUE_NAME
-    )
-    queue_client.send_message(json.dumps(message))
-    print(f"Published to queue: {message.get('document_id')}")
+    # Return public URL or direct reference
+    # Supabase public bucket has a public URL, but since it is private, get_public_url works if it's permitted,
+    # or we can construct/use the storage API URL. Let's return the public URL representation.
+    return client.storage.from_(bucket).get_public_url(blob_path)
 
 
 def download_from_blob(blob_path: str) -> bytes:
-    blob_service = BlobServiceClient.from_connection_string(settings.AZURE_STORAGE_CONNECTION_STRING)
-    container_name = settings.AZURE_STORAGE_CONTAINER_NAME
-    blob_name = blob_path.split(f"{container_name}/")[-1] if container_name in blob_path else blob_path
-
-    blob_client = blob_service.get_blob_client(container_name, blob_name)
-    return blob_client.download_blob().readall()
+    client = get_client()
+    bucket = "documents"
+    # Extract path inside bucket
+    return client.storage.from_(bucket).download(blob_path)
 
 
 def extract_text_from_file(content: bytes, filename: str, content_type: str | None) -> str:

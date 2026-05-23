@@ -9,7 +9,7 @@ from datetime import datetime
 from typing import Optional
 from settings import settings
 from models import *
-from azure_cosmos_db import (
+from supabase_db import (
     create_user, get_user, get_user_by_email, list_users,
     create_chatbot, get_chatbot, get_chatbot_by_id_and_owner, update_chatbot, delete_chatbot, list_chatbots,
     create_document, get_document, update_document, list_documents, delete_document,
@@ -80,8 +80,8 @@ async def health_check():
 @app.get("/ready")
 async def readiness_check():
     try:
-        from azure_cosmos_db import get_cosmos_client
-        get_cosmos_client()
+        from supabase_db import get_client
+        get_client()
         return {"status": "ready"}
     except Exception as e:
         raise HTTPException(status_code=503, detail=str(e))
@@ -108,21 +108,47 @@ async def login(body: LoginRequest):
         email=user.get("email"),
         role=user.get("role", "teacher")
     )
-    return {"token": token, "user": user}
+    # Parche de seguridad: Eliminar hash del password de la respuesta
+    safe_user = {k: v for k, v in user.items() if k != "password"}
+    return {"token": token, "user": safe_user}
 
 
 @app.post("/auth/register")
 async def register(body: RegisterRequest):
     existing = await get_user_by_email(body.email)
     if existing:
-        raise HTTPException(status_code=400, detail="El email ya está registrado")
+        # Parche de seguridad / Usabilidad: Permitir a docentes precreados reclamar su cuenta
+        if existing.get("auth_method") == "pre_created" and not existing.get("password"):
+            password_hash = hash_password(body.password)
+            
+            # Actualizar contraseña y método de autenticación en Supabase
+            from supabase_db import get_client
+            get_client().table("users").update({
+                "password": password_hash,
+                "auth_method": "email_password"
+            }).eq("id", existing["id"]).execute()
+            
+            # Recargar usuario para tener datos actualizados
+            updated_user = await get_user_by_email(body.email)
+            token = create_jwt_token(
+                user_id=updated_user["id"],
+                email=updated_user["email"],
+                role=updated_user["role"]
+            )
+            safe_user = {k: v for k, v in updated_user.items() if k != "password"}
+            return {"token": token, "user": safe_user}
+        else:
+            raise HTTPException(status_code=400, detail="El email ya está registrado")
+            
     user_id = str(uuid.uuid4())
     password_hash = hash_password(body.password)
+    
+    # Parche de seguridad: Forzar rol 'student' en auto-registro público
     user = {
         "id": user_id,
         "email": body.email,
         "password": password_hash,
-        "role": body.role,
+        "role": "student",
         "auth_method": "email_password",
         "is_active": True,
         "created_at": datetime.utcnow().isoformat()
@@ -131,9 +157,11 @@ async def register(body: RegisterRequest):
     token = create_jwt_token(
         user_id=user_id,
         email=body.email,
-        role=body.role
+        role="student"
     )
-    return {"token": token, "user": user}
+    # Parche de seguridad: Eliminar hash del password de la respuesta
+    safe_user = {k: v for k, v in user.items() if k != "password"}
+    return {"token": token, "user": safe_user}
 
 
 @app.get("/chatbots")
@@ -217,8 +245,14 @@ async def get_chatbot_embed(chatbot_id: str):
 @app.post("/documents/upload")
 async def upload_document(
     file: UploadFile = File(...),
-    chatbot_id: str = Form(...)
+    chatbot_id: str = Form(...),
+    current_user: dict = Depends(get_current_user)
 ):
+    # Parche de seguridad: Validar propiedad del chatbot antes de subir documentos
+    chatbot = await get_chatbot(chatbot_id)
+    if not chatbot or chatbot.get("owner_id") != current_user.get("sub"):
+        raise HTTPException(status_code=403, detail="No tienes permisos para este chatbot.")
+
     if file.size and file.size > settings.MAX_FILE_SIZE_MB * 1024 * 1024:
         raise HTTPException(status_code=400, detail=f"Archivo demasiado grande (máx {settings.MAX_FILE_SIZE_MB}MB)")
 
@@ -271,21 +305,37 @@ async def upload_document(
 
 
 @app.get("/documents/{document_id}")
-async def get_document_details(document_id: str):
+async def get_document_details(document_id: str, current_user: dict = Depends(get_current_user)):
     document = await get_document(document_id)
     if not document:
         raise HTTPException(status_code=404, detail="Documento no encontrado")
+    
+    # Parche de seguridad: Validar propiedad del chatbot asociado
+    chatbot = await get_chatbot(document.get("chatbot_id"))
+    if not chatbot or chatbot.get("owner_id") != current_user.get("sub"):
+        raise HTTPException(status_code=403, detail="No tienes permisos para este documento.")
+        
     return document
 
 
 @app.get("/documents")
-async def get_documents(chatbot_id: str):
+async def get_documents(chatbot_id: str, current_user: dict = Depends(get_current_user)):
+    # Parche de seguridad: Validar propiedad del chatbot antes de listar documentos
+    chatbot = await get_chatbot(chatbot_id)
+    if not chatbot or chatbot.get("owner_id") != current_user.get("sub"):
+        raise HTTPException(status_code=403, detail="No tienes permisos para este chatbot.")
+        
     documents = await list_documents(chatbot_id)
     return documents
 
 
 @app.delete("/documents/{document_id}")
-async def delete_document_endpoint(document_id: str, chatbot_id: str):
+async def delete_document_endpoint(document_id: str, chatbot_id: str, current_user: dict = Depends(get_current_user)):
+    # Parche de seguridad: Validar propiedad del chatbot antes de eliminar documentos
+    chatbot = await get_chatbot(chatbot_id)
+    if not chatbot or chatbot.get("owner_id") != current_user.get("sub"):
+        raise HTTPException(status_code=403, detail="No tienes permisos para este chatbot.")
+        
     await delete_document(document_id, chatbot_id)
     await delete_document_content(document_id, chatbot_id)
     return {"message": "Documento eliminado"}
