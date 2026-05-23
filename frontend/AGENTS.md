@@ -6,7 +6,7 @@ Guía técnica para agentes de IA y desarrolladores que trabajen en el módulo `
 
 ## Propósito del Módulo
 
-SPA construida con **Next.js 16 (App Router)** + **Tailwind CSS** + **Radix UI**. Alojada en **Azure Static Web Apps** (`edurag-frontend`, West US 2). Sirve tres superficies de usuario distintas:
+SPA construida con **Next.js 16 (App Router)** + **Tailwind CSS** + **Radix UI**. Alojada en **Vercel** (`edu-rag`). Sirve tres superficies de usuario distintas:
 
 - **Dashboard del docente** — crear y gestionar chatbots, subir documentos.
 - **Marketplace público** — estudiantes descubren y acceden a chatbots publicados.
@@ -47,7 +47,7 @@ frontend/
 ├── tailwind.config.ts
 ├── tsconfig.json
 ├── vitest.config.ts
-├── staticwebapp.config.json        # Reglas de routing para Azure Static Web Apps
+├── vercel.json                     # Fuerza el preset de Next.js en Vercel
 ├── .env.local                      # Variables de entorno locales (NO commitear)
 └── AGENTS.md                       # Este archivo
 ```
@@ -159,7 +159,7 @@ Esta ruta es especial: debe funcionar correctamente dentro de un `<iframe>` en M
 - No incluir headers de navegación globales — la página debe ser autónoma.
 - Evitar redirecciones que rompan el iframe.
 - El embed code generado por el backend es: `<iframe src="/chat/{botId}" width="100%" height="600"></iframe>`.
-- La URL pública de producción base es: `https://delightful-sea-04066b61e.7.azurestaticapps.net`.
+- La URL pública de producción base es: `https://edu-rag-red.vercel.app`.
 
 ---
 
@@ -167,7 +167,7 @@ Esta ruta es especial: debe funcionar correctamente dentro de un `<iframe>` en M
 
 ```env
 # frontend/.env.local (NO commitear)
-NEXT_PUBLIC_API_URL=https://edurag-api.azurewebsites.net
+NEXT_PUBLIC_API_URL=https://edurag-production.up.railway.app
 ```
 
 Para desarrollo local contra backend local:
@@ -212,21 +212,14 @@ npm run test      # Vitest (tests unitarios)
 
 ---
 
-## Azure Static Web Apps — Configuración
+## Vercel — Configuración y Despliegue
 
-`staticwebapp.config.json` define las reglas de routing para que el App Router de Next.js funcione correctamente:
+El despliegue está configurado en **Vercel** (`edu-rag`) con el preset de Next.js:
 
-- Todas las rutas desconocidas deben redirigir a `index.html` (SPA fallback).
-- Configurar headers CORS si el chat embebible requiere recursos externos.
-
----
-
-## Despliegue
-
-- **Automático** via GitHub Actions (`.github/workflows/frontend-app-service.yml`) en cada push a `master`.
-- Build: `npm run build` → output estático en `.next/`.
-- URL de producción: `https://delightful-sea-04066b61e.7.azurestaticapps.net`.
-- Secret requerido en GitHub Actions: `AZURE_STATIC_WEB_APPS_TOKEN`.
+- **Automático** vía integración Git en Vercel en cada push a la rama `master`.
+- **Compilación**: Vercel ejecuta `npm run build` y sirve la aplicación con soporte completo del App Router de Next.js.
+- **URL de producción**: `https://edu-rag-red.vercel.app`.
+- **Configuración local (`vercel.json`)**: Fuerza el framework de compilación a `"nextjs"` para evitar problemas de autodetección.
 
 ---
 

@@ -76,3 +76,4 @@ logs_new.zip
 *.pfx
 *.pem
 *.key
+.vercel

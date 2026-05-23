@@ -72,7 +72,7 @@ EduRAG resuelve un problema concreto en la educación digital: los materiales de
 | Capa | Tecnología | Proveedor | Tier |
 |---|---|---|---|
 | Frontend SPA | Next.js 16 + Tailwind CSS + Radix UI | Vercel (Recomendado) | Free |
-| API Backend | FastAPI (Python 3.11) + Gunicorn + Uvicorn | Railway / Azure Web App | Free / Económico |
+| API Backend | FastAPI (Python 3.11) + Gunicorn + Uvicorn | Railway | Free / Económico |
 | Base de datos | Supabase PostgreSQL | Supabase | Free Tier permanente |
 | Almacenamiento | Supabase Storage | Supabase (`documents` bucket) | Free (1 GB) |
 | Autenticación | JWT propio (PyJWT + bcrypt) | — | Free |
@@ -257,7 +257,7 @@ GOOGLE_API_KEY=your-google-api-key
 # App Settings
 APP_HOST=0.0.0.0
 APP_PORT=8000
-CORS_ORIGINS=http://localhost:3000,https://delightful-sea-04066b61e.7.azurestaticapps.net
+CORS_ORIGINS=http://localhost:3000,https://edu-rag-red.vercel.app
 MAX_FILE_SIZE_MB=20
 MAX_CACHE_SIZE=1000
 ```

@@ -6,7 +6,7 @@ Guía técnica de referencia para agentes de IA y desarrolladores que trabajen e
 
 ## Propósito del Módulo
 
-API REST construida con **FastAPI (Python 3.11)**. Expone todos los endpoints del sistema: autenticación, gestión de chatbots, carga de documentos y chat con LLM. Desplegada en **Azure App Service Linux** (`edurag-api`, Basic B1, Central US). Sirve con **Gunicorn + Uvicorn** workers.
+API REST construida con **FastAPI (Python 3.11)**. Expone todos los endpoints del sistema: autenticación, gestión de chatbots, carga de documentos y chat con LLM. Desplegada en **Railway** (`edurag`). Sirve con **Uvicorn** worker.
 
 ---
 

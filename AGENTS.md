@@ -14,7 +14,7 @@ Guía de referencia rápida para agentes de IA y colaboradores que trabajen en c
 3. Arquitectura extensible para múltiples LLMs sin cambios de lógica de negocio.
 
 **Decisión arquitectural clave — sin ChromaDB:**
-ChromaDB fue eliminado porque sus dependencias (~500 MB de venv) causaban `ContainerTimeout` en Azure App Service. El texto de los documentos se almacena en Supabase (`document_contents`) y se pasa directamente al context window de Gemini (~1M tokens). No se usan embeddings ni búsqueda vectorial.
+ChromaDB fue eliminado porque sus dependencias (~500 MB de venv) causaban `ContainerTimeout` en servicios de hosting y ralentizaban los deploys. El texto de los documentos se almacena en Supabase (`document_contents`) y se pasa directamente al context window de Gemini (~1M tokens). No se usan embeddings ni búsqueda vectorial.
 
 ---
 
@@ -33,17 +33,17 @@ ChromaDB fue eliminado porque sus dependencias (~500 MB de venv) causaban `Conta
 
 ---
 
-## Recursos Cloud (Supabase & Azure)
+## Recursos Cloud (Supabase, Railway & Vercel)
 
 | Recurso | Tipo | Proveedor | Estado |
 |---|---|---|---|
 | `ndiipkvryycogiabymiu` | PostgreSQL + Storage | Supabase | ✅ Activo |
-| `edurag-api` | App Service Linux B1 | Azure | ✅ Activo |
-| `edurag-frontend` | Static Web App | Azure | ✅ Activo |
+| `edurag` | Backend API | Railway | ✅ Activo |
+| `edu-rag` | Frontend App (Next.js) | Vercel | ✅ Activo |
 
 **URLs de producción:**
-- API: `https://edurag-api.azurewebsites.net`
-- Frontend: `https://delightful-sea-04066b61e.7.azurestaticapps.net`
+- API: `https://edurag-production.up.railway.app`
+- Frontend: `https://edu-rag-red.vercel.app`
 
 ---
 
@@ -206,4 +206,4 @@ npm run build
 - [ ] ¿Nuevo modelo de datos? → actualizar la sección de Modelo de Datos en README y SPEC.
 - [ ] ¿Cambio en costos? → re-evaluar si sigue dentro del Free Tier.
 - [ ] ¿Cambio en LLM? → hacerlo solo en `llm_client.py` respetando la interfaz `generate()`.
-- [ ] ¿Nueva dependencia Python? → verificar que el virtualenv resultante no supere ~200MB para evitar ContainerTimeout en Azure App Service.
+- [ ] ¿Nueva dependencia Python? → verificar que el virtualenv resultante no supere ~200MB para optimizar los tiempos de compilación y despliegue.
