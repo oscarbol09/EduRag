@@ -20,8 +20,14 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      await login(email, password);
-      router.push("/teacher");
+      const user = await login(email, password);
+      if (user.role === "admin") {
+        router.push("/admin");
+      } else if (user.role === "teacher") {
+        router.push("/teacher");
+      } else {
+        router.push("/marketplace");
+      }
     } catch (err) {
       setError("Credenciales inválidas");
     } finally {

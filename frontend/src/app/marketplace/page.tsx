@@ -1,14 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/lib/api";
+import { useApp } from "@/lib/context";
 import type { Chatbot } from "@/lib/types";
 
 export default function MarketplacePage() {
   const [chatbots, setChatbots] = useState<Chatbot[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const router = useRouter();
+  const { auth, logout } = useApp();
 
   useEffect(() => {
     loadChatbots();
@@ -39,13 +43,42 @@ export default function MarketplacePage() {
             <Link href="/" className="text-2xl font-bold text-blue-600">
               EduRAG
             </Link>
-            <div className="flex gap-4">
-              <Link href="/login" className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg">
-                Iniciar sesión
-              </Link>
-              <Link href="/register" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                Regístrate
-              </Link>
+            <div className="flex gap-4 items-center">
+              {auth.user ? (
+                <>
+                  <span className="text-sm text-gray-600">
+                    Hola, <strong className="text-gray-900">{auth.user.email}</strong>
+                  </span>
+                  {auth.user.role === "admin" && (
+                    <Link href="/admin" className="px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg font-medium">
+                      Panel Admin
+                    </Link>
+                  )}
+                  {auth.user.role === "teacher" && (
+                    <Link href="/teacher" className="px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg font-medium">
+                      Panel Docente
+                    </Link>
+                  )}
+                  <button
+                    onClick={() => {
+                      logout();
+                      router.push("/");
+                    }}
+                    className="px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg text-sm font-medium"
+                  >
+                    Cerrar sesión
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link href="/login" className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg">
+                    Iniciar sesión
+                  </Link>
+                  <Link href="/register" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                    Regístrate
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         </div>

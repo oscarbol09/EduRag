@@ -14,7 +14,7 @@ export default function RegisterPage() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
-  const { login } = useApp();
+  const { register } = useApp();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,11 +33,8 @@ export default function RegisterPage() {
     setIsLoading(true);
 
     try {
-      const result = await api.auth.register(email, password);
-      if (result.token) {
-        localStorage.setItem("token", result.token);
-        router.push("/teacher");
-      }
+      await register(email, password);
+      router.push("/marketplace");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al registrar usuario");
     } finally {
@@ -46,7 +43,10 @@ export default function RegisterPage() {
   };
 
   return (
-    <AuthLayout title="Crea tu cuenta">
+    <AuthLayout title="Crea tu cuenta de Estudiante">
+      <div className="bg-blue-50 border border-blue-200 text-blue-800 text-sm rounded-lg p-4 mb-4">
+        💡 <strong>Atención Docentes:</strong> El registro público es exclusivo para estudiantes. Si eres docente, tu cuenta debe ser creada por el administrador de tu institución. Por favor, comunícate con tu administrador.
+      </div>
       <form onSubmit={handleSubmit} className="space-y-6">
         <div>
           <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">

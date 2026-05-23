@@ -18,12 +18,26 @@ export default function TeacherDashboard() {
   const { auth, logout } = useApp();
 
   useEffect(() => {
-    loadChatbots();
-  }, []);
+    if (!auth.isLoading) {
+      if (!auth.token) {
+        router.push("/login");
+      } else if (auth.user) {
+        if (auth.user.role !== "teacher") {
+          if (auth.user.role === "admin") {
+            router.push("/admin");
+          } else {
+            router.push("/marketplace");
+          }
+        } else {
+          loadChatbots();
+        }
+      }
+    }
+  }, [auth.user, auth.token, auth.isLoading]);
 
   const loadChatbots = async () => {
     try {
-      const list = await api.chatbots.list(auth.user?.id);
+      const list = await api.chatbots.list(auth.user?.id || undefined);
       setChatbots(list);
     } catch (error) {
       console.error("Error loading chatbots:", error);
@@ -31,6 +45,18 @@ export default function TeacherDashboard() {
       setIsLoading(false);
     }
   };
+
+  if (auth.isLoading || (auth.token && !auth.user)) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <Spinner />
+      </div>
+    );
+  }
+
+  if (!auth.user || auth.user.role !== "teacher") {
+    return null;
+  }
 
   const handleDeleteChatbot = async (id: string) => {
     if (!confirm("¿Eliminar este chatbot?")) return;

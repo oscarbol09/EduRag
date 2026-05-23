@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react";
 import { api } from "./api";
 import type { User, Chatbot, Conversation } from "./types";
 
@@ -18,7 +18,8 @@ interface AppState {
 }
 
 interface AppContextType extends AppState {
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<User>;
+  register: (email: string, password: string) => Promise<User>;
   logout: () => void;
   loadChatbots: () => Promise<void>;
   setCurrentChatbot: (chatbot: Chatbot | null) => void;
@@ -38,12 +39,43 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [currentChatbot, setCurrentChatbot] = useState<Chatbot | null>(null);
   const [conversations, setConversations] = useState<Record<string, Conversation>>({});
 
+  useEffect(() => {
+    async function loadUser() {
+      if (auth.token && !auth.user) {
+        setAuth((prev) => ({ ...prev, isLoading: true }));
+        try {
+          const user = await api.auth.me();
+          setAuth({ user, token: auth.token, isLoading: false });
+        } catch (error) {
+          console.error("Failed to auto-load user from token:", error);
+          localStorage.removeItem("token");
+          setAuth({ user: null, token: null, isLoading: false });
+        }
+      }
+    }
+    loadUser();
+  }, [auth.token]);
+
   const login = useCallback(async (email: string, password: string) => {
     setAuth((prev) => ({ ...prev, isLoading: true }));
     try {
       const result = await api.auth.login(email, password);
       localStorage.setItem("token", result.token);
       setAuth({ user: result.user, token: result.token, isLoading: false });
+      return result.user;
+    } catch (error) {
+      setAuth((prev) => ({ ...prev, isLoading: false }));
+      throw error;
+    }
+  }, []);
+
+  const register = useCallback(async (email: string, password: string) => {
+    setAuth((prev) => ({ ...prev, isLoading: true }));
+    try {
+      const result = await api.auth.register(email, password);
+      localStorage.setItem("token", result.token);
+      setAuth({ user: result.user, token: result.token, isLoading: false });
+      return result.user;
     } catch (error) {
       setAuth((prev) => ({ ...prev, isLoading: false }));
       throw error;
@@ -93,6 +125,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         currentChatbot,
         conversations,
         login,
+        register,
         logout,
         loadChatbots,
         setCurrentChatbot,

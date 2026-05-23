@@ -50,7 +50,7 @@ export const api = {
     register: (email: string, password: string) =>
       fetchApi<{ token: string; user: User }>("/auth/register", {
         method: "POST",
-        body: JSON.stringify({ email, password, role: "teacher" }),
+        body: JSON.stringify({ email, password, role: "student" }),
       }),
   },
 

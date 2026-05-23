@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/lib/api";
+import { useApp } from "@/lib/context";
 import type { User } from "@/lib/types";
 
 export default function AdminPage() {
@@ -15,10 +17,26 @@ export default function AdminPage() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState("");
+  const router = useRouter();
+  const { auth, logout } = useApp();
 
   useEffect(() => {
-    loadTeachers();
-  }, []);
+    if (!auth.isLoading) {
+      if (!auth.token) {
+        router.push("/login");
+      } else if (auth.user) {
+        if (auth.user.role !== "admin") {
+          if (auth.user.role === "teacher") {
+            router.push("/teacher");
+          } else {
+            router.push("/marketplace");
+          }
+        } else {
+          loadTeachers();
+        }
+      }
+    }
+  }, [auth.user, auth.token, auth.isLoading]);
 
   const loadTeachers = async () => {
     try {
@@ -30,6 +48,18 @@ export default function AdminPage() {
       setIsLoading(false);
     }
   };
+
+  if (auth.isLoading || (auth.token && !auth.user)) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  if (!auth.user || auth.user.role !== "admin") {
+    return null;
+  }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -68,6 +98,9 @@ export default function AdminPage() {
               <Link href="/teacher" className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg">
                 Panel docente
               </Link>
+              <button onClick={() => { logout(); router.push("/"); }} className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg">
+                Cerrar sesión
+              </button>
             </div>
           </div>
         </div>
