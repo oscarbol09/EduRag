@@ -47,7 +47,11 @@ export default function MarketplacePage() {
               {auth.user ? (
                 <>
                   <span className="text-sm text-gray-600">
-                    Hola, <strong className="text-gray-900">{auth.user.email}</strong>
+                    Hola, <strong className="text-gray-900">
+                      {auth.user.institution && auth.user.institution.includes(" | ") 
+                        ? auth.user.institution.split(" | ")[0] 
+                        : auth.user.email}
+                    </strong>
                   </span>
                   {auth.user.role === "admin" && (
                     <Link href="/admin" className="px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg font-medium">

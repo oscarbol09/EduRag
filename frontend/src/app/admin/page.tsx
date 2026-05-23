@@ -11,6 +11,8 @@ export default function AdminPage() {
   const [teachers, setTeachers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [formData, setFormData] = useState({
+    firstName: "",
+    lastName: "",
     email: "",
     institution: "",
     country: "",
@@ -71,13 +73,14 @@ export default function AdminPage() {
     setMessage("");
 
     try {
+      const combinedInstitution = `${formData.firstName.trim()} ${formData.lastName.trim()} | ${formData.institution.trim()}`;
       await api.admin.createTeacher({
         email: formData.email,
-        institution: formData.institution || undefined,
+        institution: combinedInstitution,
         country: formData.country || undefined,
       });
       setMessage("Docente creado exitosamente");
-      setFormData({ email: "", institution: "", country: "" });
+      setFormData({ firstName: "", lastName: "", email: "", institution: "", country: "" });
       await loadTeachers();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Error al crear docente");
@@ -116,6 +119,39 @@ export default function AdminPage() {
           <div className="bg-white rounded-xl shadow p-6">
             <h2 className="text-lg font-semibold mb-4">Crear Docente</h2>
             <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-1">
+                    Nombre *
+                  </label>
+                  <input
+                    id="firstName"
+                    name="firstName"
+                    type="text"
+                    value={formData.firstName}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Ej: Juan"
+                    required
+                  />
+                </div>
+                <div>
+                  <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-1">
+                    Apellido *
+                  </label>
+                  <input
+                    id="lastName"
+                    name="lastName"
+                    type="text"
+                    value={formData.lastName}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Ej: Pérez"
+                    required
+                  />
+                </div>
+              </div>
+
               <div>
                 <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
                   Correo electrónico *
@@ -126,7 +162,7 @@ export default function AdminPage() {
                   type="email"
                   value={formData.email}
                   onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   placeholder="docente@universidad.edu"
                   required
                 />
@@ -134,7 +170,7 @@ export default function AdminPage() {
 
               <div>
                 <label htmlFor="institution" className="block text-sm font-medium text-gray-700 mb-1">
-                  Institución
+                  Institución *
                 </label>
                 <input
                   id="institution"
@@ -143,7 +179,8 @@ export default function AdminPage() {
                   value={formData.institution}
                   onChange={handleChange}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  placeholder="Ej: Universidad Nacional"
+                  placeholder="Ej: Universidad de Córdoba"
+                  required
                 />
               </div>
 
@@ -190,19 +227,36 @@ export default function AdminPage() {
               </div>
             ) : (
               <div className="space-y-3">
-                {teachers.map((teacher) => (
-                  <div key={teacher.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div>
-                      <p className="font-medium text-gray-900">{teacher.email}</p>
-                      <p className="text-sm text-gray-500">
-                        {teacher.institution || "Sin institución"} {teacher.country ? `· ${teacher.country}` : ""}
-                      </p>
+                {teachers.map((teacher) => {
+                  let fullName = "";
+                  let displayInst = "Sin institución";
+                  if (teacher.institution && teacher.institution.includes(" | ")) {
+                    const parts = teacher.institution.split(" | ");
+                    fullName = parts[0];
+                    displayInst = parts[1] || "Sin institución";
+                  } else {
+                    displayInst = teacher.institution || "Sin institución";
+                  }
+
+                  return (
+                    <div key={teacher.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg shadow-sm border border-gray-100">
+                      <div>
+                        <p className="font-semibold text-gray-900">
+                          {fullName || teacher.email}
+                        </p>
+                        {fullName && (
+                          <p className="text-xs text-gray-500 mb-1">{teacher.email}</p>
+                        )}
+                        <p className="text-sm text-gray-600">
+                          🏫 {displayInst} {teacher.country ? `· 📍 ${teacher.country}` : ""}
+                        </p>
+                      </div>
+                      <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${teacher.is_active ? "bg-green-100 text-green-700 border border-green-200" : "bg-red-100 text-red-700 border border-red-200"}`}>
+                        {teacher.is_active ? "Activo" : "Inactivo"}
+                      </span>
                     </div>
-                    <span className={`px-2 py-1 text-xs rounded ${teacher.is_active ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
-                      {teacher.is_active ? "Activo" : "Inactivo"}
-                    </span>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
