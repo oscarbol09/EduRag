@@ -1,118 +1,119 @@
-# EduRAG - Plataforma SaaS Educativa
+# EduRAG - Plataforma SaaS Educativa (Especificación Técnica)
 
 ## 1. Concepto & Visión
 
-EduRAG es una plataforma multi-tenant donde los docentes crean agentes conversacionales basados en sus propios documentos, y los estudiantes los consumen a través de un marketplace centralizado o mediante integración con LMS externos (Moodle). El sistema prioriza costo mínimo ($0/mes post-primer-mes), arquitectura extensible para múltiples LLMs, y experiencias diferenciadas por perfil.
+EduRAG es una plataforma multi-tenant donde los docentes crean agentes conversacionales basados en sus propios documentos, y los estudiantes los consumen a través de un marketplace centralizado o mediante integración con LMS externos (Moodle). El sistema prioriza costo mínimo ($0/mes post-primer-mes), arquitectura extensible para múltiples LLMs, y experiencias de RAG directas en context window.
+
+---
 
 ## 2. Arquitectura del Sistema
 
 ### Stack Tecnológico
 
-| Componente | Servicio Azure | Tier |
+| Componente | Servicio / Proveedor | Tier |
 |------------|----------------|------|
 | Frontend SPA | Azure Static Web Apps | Free |
 | API Backend | Azure App Service Linux (B1) | Basic B1 |
-| Base de datos principal | Azure Cosmos DB for NoSQL | Free Tier permanente |
-| Almacenamiento documentos | Azure Blob Storage | Free (5 GB) |
-| Cola procesamiento asíncrono | Azure Queue Storage | Free |
+| Base de datos principal | Supabase PostgreSQL | Free Tier permanente |
+| Almacenamiento documentos | Supabase Storage (Bucket: `documents`) | Free (1 GB) |
 | Autenticación | JWT propio (PyJWT + bcrypt) | Free |
 | LLM | Google Gemini 2.0 Flash | Free tier |
 
-> **Decisión arquitectural:** ChromaDB fue eliminado. Ver sección 5 (Estrategia de Documentos) para el enfoque actual.
+> **Decisión arquitectural:** ChromaDB fue eliminado para evitar problemas de ContainerTimeout en el App Service (~500 MB venv). El texto plano se pasa de forma directa al context window de Gemini.
 
 ### Estructura del Proyecto
 
 ```
 /
-├── frontend/          # Next.js 16 SPA
-├── backend/           # FastAPI REST API
-├── worker/            # Procesamiento asíncrono (legacy, no activo)
+├── frontend/          # Next.js 1 SPA
+├── backend/           # FastAPI REST API (Supabase & Pytest)
 └── SPEC.md
 ```
 
-## 3. Modelo de Datos (Cosmos DB)
+---
 
-### Colección: users
-```json
-{
-  "id": "string",
-  "email": "string",
-  "password": "bcrypt_hash",
-  "role": "teacher" | "student" | "admin",
-  "auth_method": "pre_created" | "email_password" | "google" | "microsoft",
-  "institution": "string",
-  "country": "string",
-  "created_at": "ISO8601",
-  "is_active": boolean
-}
+## 3. Modelo de Datos (PostgreSQL - Supabase)
+
+### Tabla: users
+```sql
+create table users (
+  id text primary key,
+  email text unique not null,
+  password text,
+  role text not null default 'student' check (role in ('teacher', 'student', 'admin')),
+  auth_method text not null default 'email_password',
+  institution text,
+  country text,
+  is_active boolean default true,
+  created_at timestamptz default now()
+);
 ```
 
-### Colección: chatbots
-```json
-{
-  "id": "string",
-  "owner_id": "string (user.id)",
-  "name": "string",
-  "subject_area": "string",
-  "education_level": "secondary" | "university",
-  "tone": "formal" | "friendly" | "technical",
-  "welcome_message": "string",
-  "system_prompt_override": "string",
-  "restriction_level": "strict" | "guided" | "open",
-  "llm_provider": "gemini" | "claude",
-  "public_url": "string",
-  "embed_code": "string",
-  "is_published": boolean,
-  "created_at": "ISO8601",
-  "updated_at": "ISO8601"
-}
+### Tabla: chatbots
+```sql
+create table chatbots (
+  id text primary key,
+  owner_id text references users(id) on delete cascade,
+  name text not null,
+  subject_area text,
+  education_level text,
+  tone text default 'friendly' check (tone in ('formal', 'friendly', 'technical')),
+  welcome_message text,
+  system_prompt_override text,
+  restriction_level text default 'guided' check (restriction_level in ('strict', 'guided', 'open')),
+  llm_provider text default 'gemini' check (llm_provider in ('gemini', 'claude')),
+  public_url text,
+  embed_code text,
+  is_published boolean default false,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
 ```
 
-### Colección: documents
-```json
-{
-  "id": "string",
-  "chatbot_id": "string",
-  "blob_url": "string",
-  "filename": "string",
-  "mime_type": "string",
-  "status": "indexed",
-  "chunk_count": 1,
-  "created_at": "ISO8601",
-  "processed_at": "ISO8601"
-}
+### Tabla: documents
+```sql
+create table documents (
+  id text primary key,
+  chatbot_id text references chatbots(id) on delete cascade,
+  filename text,
+  mime_type text,
+  blob_url text,
+  status text default 'indexed' check (status in ('queued', 'processing', 'indexed', 'error')),
+  chunk_count int default 1,
+  created_at timestamptz default now(),
+  processed_at timestamptz default now()
+);
 ```
 
-### Colección: document_contents *(nueva)*
-```json
-{
-  "id": "string (= document.id)",
-  "chatbot_id": "string",
-  "filename": "string",
-  "content": "texto completo extraído del documento"
-}
+### Tabla: document_contents
+```sql
+create table document_contents (
+  id text primary key,
+  chatbot_id text references chatbots(id) on delete cascade,
+  filename text,
+  content text
+);
 ```
 
-> Almacena el texto plano de cada documento. Partition key: `/chatbot_id`.
-
-### Colección: conversations
-```json
-{
-  "id": "string",
-  "chatbot_id": "string",
-  "student_id": "string | null",
-  "messages": [
-    { "role": "user" | "assistant", "content": "string", "timestamp": "ISO8601" }
-  ],
-  "created_at": "ISO8601"
-}
+### Tabla: conversations
+```sql
+create table conversations (
+  id text primary key,
+  chatbot_id text references chatbots(id) on delete cascade,
+  student_id text,
+  messages jsonb default '[]'::jsonb,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
 ```
+
+---
 
 ## 4. API Endpoints
 
 ### Autenticación
-- `POST /auth/login` — Login con email/password
-- `POST /auth/register` — Registro de estudiantes
+- `POST /auth/login` — Login con email/password (retorna JSON seguro sin hash de clave)
+- `POST /auth/register` — Registro de estudiantes (fuerza rol student y filtra hash de clave)
 - `GET /auth/me` — Usuario actual
 
 ### Chatbots
@@ -124,14 +125,14 @@ EduRAG es una plataforma multi-tenant donde los docentes crean agentes conversac
 - `POST /chatbots/{id}/publish` — Publicar chatbot
 - `GET /chatbots/{id}/embed` — Obtener código embed
 
-### Documentos
-- `POST /documents/upload` — Subir documento (PDF, DOCX, MD, TXT)
-- `GET /documents/{id}` — Estado del documento
-- `GET /documents` — Listar documentos de un chatbot
-- `DELETE /documents/{id}` — Eliminar documento y su contenido
+### Documentos (Parches de seguridad activos)
+- `POST /documents/upload` [JWT] — Subir documento (MD, TXT). Valida propiedad del bot.
+- `GET /documents/{id}` [JWT] — Estado del documento. Valida propiedad del bot.
+- `GET /documents` [JWT] — Listar documentos de un chatbot. Valida propiedad del bot.
+- `DELETE /documents/{id}` [JWT] — Eliminar documento y su contenido. Valida propiedad del bot.
 
 ### Chat
-- `POST /chat/{chatbot_id}` — Enviar mensaje
+- `POST /chat/{chatbot_id}` — Enviar mensaje (Caché local con TTL de 5 min)
 - `GET /chat/{chatbot_id}/history` — Historial de conversación
 
 ### Admin
@@ -140,29 +141,31 @@ EduRAG es una plataforma multi-tenant donde los docentes crean agentes conversac
 
 ### Sistema
 - `GET /health` — Health check
-- `GET /ready` — Readiness check (verifica Cosmos DB)
+- `GET /ready` — Readiness check (verifica conexión a Supabase)
+
+---
 
 ## 5. Estrategia de Documentos
 
 ### Por qué se eliminó ChromaDB
 
-ChromaDB 1.x y sus dependencias (onnxruntime, numpy, tokenizers, pysqlite3) suman ~500 MB al virtualenv. En Azure App Service, el proceso de extracción del venv en cada arranque del contenedor superaba el límite de 230 segundos, causando `ContainerTimeout`. La plataforma no puede arrancar con esa dependencia.
+ChromaDB y sus dependencias (onnxruntime, numpy, tokenizers, pysqlite3) suman ~500 MB al virtualenv. En Azure App Service, el proceso de extracción del venv en cada arranque del contenedor superaba el límite de 230 segundos, causando `ContainerTimeout`. La plataforma no puede arrancar con esa dependencia.
 
 ### Enfoque actual: texto directo a Gemini
 
 **Upload (síncrono):**
 ```
-Docente sube archivo (PDF / DOCX / MD / TXT)
-    → Extracción de texto en memoria (PyMuPDF / python-docx / UTF-8 decode)
-    → Blob Storage: archivo original
-    → Cosmos DB (document_contents): texto extraído
-    → Cosmos DB (documents): metadatos, status: "indexed"
+Docente sube archivo (MD / TXT)
+    → Extracción de texto en memoria (UTF-8 decode)
+    → Supabase Storage: archivo original
+    → Supabase Postgres (document_contents): texto completo
+    → Supabase Postgres (documents): metadatos, status: "indexed"
 ```
 
 **Chat (síncrono):**
 ```
 Estudiante envía mensaje
-    → Recuperar todos los document_contents del chatbot desde Cosmos DB
+    → Recuperar todos los document_contents del chatbot desde Supabase
     → Construir contexto: "--- Documento: {filename} ---\n{content}"
     → Prompt: system_prompt + contexto + pregunta
     → Gemini 2.0 Flash (context window ~1M tokens)
@@ -173,75 +176,16 @@ Estudiante envía mensaje
 
 | Formato | MIME type | Extracción |
 |---|---|---|
-| PDF | application/pdf | PyMuPDF (fitz) |
-| DOCX | application/vnd.openxmlformats-officedocument.wordprocessingml.document | python-docx |
 | Markdown | text/markdown + .md | UTF-8 decode |
 | Texto plano | text/plain + .txt | UTF-8 decode |
 
-### Niveles de Restricción
-| Nivel | Temperature | Comportamiento |
-|-------|-------------|-----------------|
-| strict | 0.2 | Solo del contexto de documentos |
-| guided | 0.5 | Contexto como base principal |
-| open | 0.8 | Puede expandir más allá del contexto |
+---
 
 ## 6. Seguridad
 
 ### Controles Implementados
-1. **Aislamiento multi-tenant**: Filtro obligatorio por `chatbot_id` en todas las queries a Cosmos DB
-2. **Validación de archivos**: Tipo verificado por extensión y content_type; límite 20 MB
-3. **Rate limiting**: slowapi en endpoints de chat (100 req/min por IP)
-4. **CORS**: Política explícita de orígenes en `settings.py`
-5. **Autenticación**: JWT HS256 con bcrypt para contraseñas
-
-## 7. Plan de Ejecución por Fases
-
-### Fase 0 — Setup e Infraestructura
-- [x] Estructura monorepo
-- [x] Aprovisionar Azure resources
-- [x] Configurar GitHub Actions CI/CD
-- [x] Variables de entorno y secretos
-
-### Fase 1 — Autenticación y Gestión de Usuarios
-- [x] JWT propio + bcrypt
-- [x] Endpoints de auth (login, register, me)
-- [x] Admin básico (crear/listar docentes)
-
-### Fase 2 — Pipeline de Documentos y Chat
-- [x] Upload sincrónico con extracción de texto
-- [x] Soporte PDF, DOCX, MD, TXT
-- [x] Almacenamiento en Cosmos DB (document_contents)
-- [x] Endpoint de chat con contexto completo a Gemini
-- [x] Deployment estable en Azure App Service
-
-### Fase 3 — Dashboard del Docente
-- [ ] Formulario de creación multi-paso
-- [ ] Estado de procesamiento en tiempo real
-- [ ] Gestión de documentos subidos
-
-### Fase 4 — Portal del Estudiante y Chatbot Embebible
-- [ ] Marketplace público con búsqueda
-- [ ] Interfaz de chat con SSE streaming
-- [ ] Validación de embed en iframe
-
-### Fase 5 — Hardening, Monitoreo y Lanzamiento
-- [ ] Application Insights
-- [ ] Alertas de presupuesto
-- [ ] Runbook operativo
-
-## 8. Configuración por Defecto
-
-### Temperatures por nivel
-```python
-RESTRICTION_TEMPERATURES = {
-    "strict": 0.2,
-    "guided": 0.5,
-    "open": 0.8
-}
-```
-
-### Límites
-```python
-MAX_FILE_SIZE_MB = 20
-MAX_CACHE_SIZE = 1000  # preguntas frecuentes en caché
-```
+1. **Aislamiento multi-tenant**: Filtro obligatorio por `chatbot_id` y validación de `owner_id` en todas las operaciones del backend.
+2. **Endpoints Protegidos**: Todos los endpoints de carga y visualización de documentos requieren autenticación JWT obligatoria y verifican la propiedad del bot.
+3. **Filtro de Contraseñas**: El backend elimina el campo `password` de todas las respuestas públicas en login y registro.
+4. **Caché Seguro con TTL**: Respuestas cacheadas en memoria poseen un tiempo de vida (TTL) estricto de 5 minutos para evitar persistencias obsoletas y fugas de datos.
+5. **Autenticación sin Fallbacks**: La firma JWT con `JWT_SECRET` es obligatoria y no posee fallbacks en el código para prevenir la falsificación de tokens.

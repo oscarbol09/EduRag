@@ -42,6 +42,7 @@ app.add_middleware(
 )
 
 response_cache: dict = {}
+CACHE_TTL_SECONDS = 300  # Parche de seguridad: caché de 5 minutos de tiempo de vida (TTL)
 
 RESTRICTION_TEMPERATURES = {
     "strict": 0.2,
@@ -350,11 +351,16 @@ async def chat_endpoint(request: Request, chatbot_id: str, body: ChatMessage):
 
     cache_key = f"{chatbot_id}:{body.message[:50]}"
     if cache_key in response_cache:
-        return ChatResponse(
-            response=response_cache[cache_key]["response"],
-            conversation_id=body.conversation_id or str(uuid.uuid4()),
-            sources=response_cache[cache_key]["sources"]
-        )
+        cached = response_cache[cache_key]
+        # Parche de seguridad: Validar que la caché no haya expirado (TTL de 5 minutos)
+        if (datetime.utcnow() - cached["timestamp"]).total_seconds() < CACHE_TTL_SECONDS:
+            return ChatResponse(
+                response=cached["response"],
+                conversation_id=body.conversation_id or str(uuid.uuid4()),
+                sources=cached["sources"]
+            )
+        else:
+            response_cache.pop(cache_key, None)
 
     # Retrieve all document contents for this chatbot from Cosmos DB
     doc_contents = await get_all_contents_for_chatbot(chatbot_id)
@@ -386,7 +392,11 @@ async def chat_endpoint(request: Request, chatbot_id: str, body: ChatMessage):
 
     if len(response_cache) >= settings.MAX_CACHE_SIZE:
         response_cache.pop(next(iter(response_cache)))
-    response_cache[cache_key] = {"response": response_text, "sources": source_names}
+    response_cache[cache_key] = {
+        "response": response_text,
+        "sources": source_names,
+        "timestamp": datetime.utcnow()
+    }
 
     conversation_id = body.conversation_id or str(uuid.uuid4())
     conversation = {

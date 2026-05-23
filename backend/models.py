@@ -115,7 +115,7 @@ class LoginRequest(BaseModel):
 class RegisterRequest(BaseModel):
     email: str
     password: str
-    role: Literal["teacher", "student"] = "student"
+    role: Optional[str] = "student"  # Mantenido por compatibilidad con el frontend, ignorado por seguridad en el endpoint.
 
 
 class ChatMessage(BaseModel):
