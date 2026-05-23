@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     APP_PORT: int = 8000
 
     # CORS
-    CORS_ORIGINS: str = "https://edurag-frontend.azurewebsites.net,http://localhost:3000,https://delightful-sea-04066b61e.7.azurestaticapps.net"
+    CORS_ORIGINS: str = "http://localhost:3000,https://tu-proyecto.vercel.app"
 
     @property
     def cors_origins_list(self) -> List[str]:

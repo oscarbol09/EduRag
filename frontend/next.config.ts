@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  output: "standalone",
+  // "standalone" es para Docker/Railway — en Vercel no se usa
   images: {
     unoptimized: true,
   },
