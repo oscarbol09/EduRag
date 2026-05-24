@@ -1,6 +1,6 @@
 # EduRAG — Plataforma SaaS Educativa
 
-> Plataforma multi-tenant donde los docentes crean agentes conversacionales entrenados con sus propios documentos (MD, TXT), y los estudiantes los consumen a través de un marketplace centralizado o integrados en LMS externos (Moodle) vía `<iframe>`.
+> Plataforma multi-tenant donde los docentes crean agentes conversacionales entrenados con sus propios documentos (MD, TXT, PDF, DOCX), y los estudiantes los consumen a través de un marketplace centralizado o integrados en LMS externos (Moodle) vía `<iframe>`.
 
 ---
 
@@ -94,8 +94,8 @@ EduRAG resuelve un problema concreto en la educación digital: los materiales de
 │   ├── password.py                 # hash_password / verify_password (bcrypt)
 │   ├── supabase_db.py              # CRUD — 5 tablas Postgres en Supabase
 │   ├── vector_store.py             # Almacén de texto de documentos en Supabase
-│   ├── llm_client.py               # Abstracción LLM (Gemini activo / Claude stub)
-│   ├── document_uploader.py        # Supabase Storage bucket upload + extr. texto
+│   ├── llm_client.py               # Abstracción LLM (Integración con OpenRouter y selección de modelos libres)
+│   ├── document_uploader.py        # Supabase Storage bucket upload + extr. texto (MD, TXT, PDF, DOCX)
 │   ├── test_main.py                # Suite de pruebas automatizadas con pytest
 │   ├── manual_test_api.py          # Script manual de pruebas de integración
 │   ├── requirements.txt            # Dependencias actualizadas sin dependencias pesadas
@@ -139,8 +139,13 @@ Todas las entidades persisten en **Supabase (PostgreSQL)**.
 * `password` (text) — Hash bcrypt de la contraseña.
 * `role` (text) — Rol de usuario (`teacher | student | admin`).
 * `auth_method` (text) — Método (`pre_created | email_password`).
-* `institution` (text, opcional) — campo serializado con formato:
-  `"Nombre Apellido | Institución | OpenRouterKey | ModelId"`.
+* `first_name` (text, opcional) — Nombre del docente.
+* `last_name` (text, opcional) — Apellido del docente.
+* `institution_name` (text, opcional) — Nombre de la institución.
+* `openrouter_api_key` (text, opcional) — API Key propia del docente.
+* `openrouter_model` (text, opcional) — Modelo preferido de OpenRouter del docente.
+* `is_test_account` (boolean, default false) — Identifica cuentas de prueba.
+* `institution` (text, opcional) — campo legacy en formato serializado `"Nombre Apellido | Institución | OpenRouterKey | ModelId"` (soportado para retrocompatibilidad).
 * `country` (text, opcional).
 * `is_active` (boolean, default true).
 * `created_at` (timestamptz).
@@ -165,7 +170,7 @@ Todas las entidades persisten en **Supabase (PostgreSQL)**.
 * `id` (text, primary key) — ID único del documento.
 * `chatbot_id` (text, foreign key → `chatbots.id` on delete cascade).
 * `filename` (text) — Nombre del archivo original.
-* `mime_type` (text) — Tipo de archivo (`text/markdown | text/plain`).
+* `mime_type` (text) — Tipo de archivo (`text/markdown | text/plain | application/pdf | application/vnd.openxmlformats-officedocument.wordprocessingml.document`).
 * `blob_url` (text) — URL de referencia en Supabase Storage.
 * `status` (text) — `indexed | queued | error`.
 * `chunk_count` (int, default 1).
@@ -190,14 +195,14 @@ Todas las entidades persisten en **Supabase (PostgreSQL)**.
 
 ### Upload (síncrono)
 ```
-Docente sube archivo (MD / TXT)
+Docente sube archivo (MD / TXT / PDF / DOCX)
         │
         ▼
 POST /documents/upload
         │
         ├── Valida JWT del usuario y propiedad del chatbot (owner_id == sub)
-        ├── Valida tamaño (máx 20 MB) y tipos de archivo (.md, .txt)
-        ├── Extrae texto decodificando UTF-8
+        ├── Valida tamaño (máx 20 MB) y tipos de archivo (.md, .txt, .pdf, .docx)
+        ├── Extrae texto decodificando UTF-8 / decodificación PDF y DOCX en memoria
         ├── Sube archivo original → Supabase Storage (documents bucket)
         ├── Guarda texto extraído → Supabase PostgreSQL (document_contents)
         └── Crea registro de metadatos → Supabase PostgreSQL (documents)
@@ -213,7 +218,7 @@ POST /chat/{chatbot_id}
         ├── Verifica caché local con expiración TTL (5 minutos)
         ├── Recupera todos los document_contents del chatbot desde Supabase Postgres
         ├── Construye contexto: "--- Documento: {filename} ---\n{content}"
-        ├── Verifica si el docente tiene OpenRouter key configurada en `institution`
+        ├── Verifica si el docente tiene OpenRouter key configurada en `openrouter_api_key` (con fallback legacy en `institution`)
         ├── Si no tiene key y no es cuenta @edurag.com → retorna mensaje de error
         ├── Llama a OpenRouter API con el modelo elegido por el docente
         ├── Persiste conversación en la tabla conversations
@@ -228,7 +233,7 @@ POST /chat/{chatbot_id}
 
 | Método | Ruta | Auth | Descripción |
 |---|---|---|---|
-| `POST` | `/documents/upload` | JWT (owner) | Subir MD/TXT. Valida propiedad del bot. |
+| `POST` | `/documents/upload` | JWT (owner) | Subir MD/TXT/PDF/DOCX. Valida propiedad del bot. |
 | `GET` | `/documents` | JWT (owner) | Listar por chatbot. Valida propiedad del bot. |
 | `GET` | `/documents/{id}` | JWT (owner) | Detalle de un documento. Valida propiedad del bot. |
 | `DELETE` | `/documents/{id}` | JWT (owner) | Eliminar documento y contenido. Valida propiedad del bot. |

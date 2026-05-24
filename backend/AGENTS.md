@@ -22,8 +22,8 @@ backend/
 ├── password.py             # hash_password / verify_password — bcrypt
 ├── supabase_db.py          # CRUD utilizando el SDK de Supabase para PostgreSQL
 ├── vector_store.py         # Almacén de texto — store/retrieve en Supabase (document_contents)
-├── llm_client.py           # Abstracción LLMClient — Gemini activo / Claude stub
-├── document_uploader.py    # Upload a Supabase Storage + extracción de texto (MD/TXT)
+├── llm_client.py           # Abstracción LLMClient — Integración OpenRouter con soporte para múltiples modelos gratuitos
+├── document_uploader.py    # Upload a Supabase Storage + extracción de texto (MD/TXT/PDF/DOCX)
 ├── Dockerfile              # Imagen Docker (referencia — no en uso activo)
 ├── test_api.py             # Script manual de pruebas de integración contra la API
 ├── test_main.py            # Suite de pruebas automatizadas con pytest
@@ -167,16 +167,16 @@ await delete_all_contents_for_chatbot(chatbot_id)
 ```
 
 ### `llm_client.py`
-Abstracción LLM con soporte multi-proveedor:
-- `provider="gemini"` → llama a `gemini-2.0-flash` (activo).
-- `provider="claude"` → `_generate_claude()` lanza `NotImplementedError` (stub).
+Abstracción LLM que interactúa directamente con la API de OpenRouter:
+- Soporta modelos libres de OpenRouter como `google/gemini-2.5-flash:free`, `nvidia/llama-3.1-nemotron-70b:free`, `meta-llama/llama-3.1-8b-instruct:free`, etc.
+- Permite la autenticación BYOK por docente y un fallback seguro con la API Key del sistema para cuentas autorizadas.
 
 ### `document_uploader.py`
 ```python
 # Upload del archivo original a Supabase Storage Bucket 'documents'
 blob_url = await upload_file_to_blob(content: bytes, blob_path: str, content_type: str)
 
-# Extracción de texto según tipo de archivo (Soporta .md y .txt)
+# Extracción de texto según tipo de archivo (Soporta .md, .txt, .pdf, .docx)
 text = extract_text_from_file(content: bytes, filename: str, content_type: str | None) -> str
 ```
 
@@ -187,7 +187,7 @@ text = extract_text_from_file(content: bytes, filename: str, content_type: str |
 ### `POST /documents/upload`
 - Acepta `multipart/form-data` con campos `file` (UploadFile) y `chatbot_id` (str).
 - **Parche de seguridad:** Requiere cabecera de autenticación y verifica que el usuario autenticado sea el creador/dueño del `chatbot_id` asociado.
-- Valida tipo de archivo: MD, TXT.
+- Valida tipo de archivo: MD, TXT, PDF, DOCX.
 - Valida tamaño contra `settings.MAX_FILE_SIZE_MB` (20 MB).
 - Extrae texto síncronamente en el mismo request.
 - Sube archivo original a Supabase Storage: `documents/{chatbot_id}/{document_id}/{filename}`.

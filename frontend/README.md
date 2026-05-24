@@ -1,6 +1,6 @@
 # EduRAG Frontend
 
-SPA del proyecto EduRAG — plataforma SaaS educativa con chatbots RAG. Construida con **Next.js 16 (App Router)** y desplegada en **Azure Static Web Apps**.
+SPA del proyecto EduRAG — plataforma SaaS educativa con chatbots RAG. Construida con **Next.js 16 (App Router)** y desplegada en **Vercel**.
 
 ---
 
@@ -33,7 +33,7 @@ Abrir [http://localhost:3000](http://localhost:3000) en el navegador.
 
 | Variable | Descripción | Ejemplo |
 |---|---|---|
-| `NEXT_PUBLIC_API_URL` | URL base del backend FastAPI | `https://edurag-api.azurewebsites.net` |
+| `NEXT_PUBLIC_API_URL` | URL base del backend FastAPI | `https://edurag-production.up.railway.app` |
 
 Para desarrollo local contra backend en localhost:
 ```env
@@ -79,11 +79,11 @@ npm run test     # Tests con Vitest
 
 ## Despliegue
 
-Despliegue automático vía **GitHub Actions** en cada push a `main`.
+Despliegue automático vía integración Git en Vercel en cada push a la rama `master`.
 
-**URL de producción:** `https://delightful-sea-04066b61e.7.azurestaticapps.net`
+**URL de producción:** `https://edu-rag-red.vercel.app`
 
-**Servicio Azure:** Static Web Apps `edurag-frontend` — West US 2 — Free Tier.
+**Servicio:** Next.js App en Vercel (`edu-rag`) — Free Tier.
 
 ---
 

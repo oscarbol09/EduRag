@@ -94,6 +94,12 @@ interface User {
   id: string;
   email: string;
   role: 'teacher' | 'student' | 'admin';
+  first_name?: string;
+  last_name?: string;
+  institution_name?: string;
+  openrouter_api_key?: string;
+  openrouter_model?: string;
+  is_test_account?: boolean;
 }
 
 interface Chatbot {
@@ -106,7 +112,7 @@ interface Chatbot {
   welcome_message: string;
   system_prompt_override?: string;
   restriction_level: 'strict' | 'guided' | 'open';
-  llm_provider: 'gemini' | 'claude';
+  llm_provider: string; // Nombre del modelo de OpenRouter (e.g. google/gemini-2.5-flash:free)
   public_url: string;
   embed_code: string;
   is_published: boolean;
@@ -118,7 +124,7 @@ interface Document {
   id: string;
   chatbot_id: string;
   filename: string;
-  mime_type: string;  // application/pdf | application/vnd...docx | text/markdown | text/plain
+  mime_type: string;  // application/pdf | application/vnd.openxmlformats-officedocument.wordprocessingml.document | text/markdown | text/plain
   blob_url: string;
   status: 'indexed' | 'error';  // siempre llega a 'indexed' de forma síncrona en el upload
   chunk_count: number;

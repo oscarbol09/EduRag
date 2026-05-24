@@ -10,16 +10,14 @@ EduRAG es una plataforma multi-tenant donde los docentes crean agentes conversac
 
 ### Stack Tecnológico
 
-| Componente | Servicio / Proveedor | Tier |
-|------------|----------------|------|
-| Frontend SPA | Azure Static Web Apps | Free |
-| API Backend | Azure App Service Linux (B1) | Basic B1 |
+| Frontend SPA | Vercel | Free |
+| API Backend | Railway | Free / Económico |
 | Base de datos principal | Supabase PostgreSQL | Free Tier permanente |
 | Almacenamiento documentos | Supabase Storage (Bucket: `documents`) | Free (1 GB) |
 | Autenticación | JWT propio (PyJWT + bcrypt) | Free |
-| LLM | Google Gemini 2.0 Flash | Free tier |
+| LLM | OpenRouter (Gemini, Llama, Nemotron) | Free tier |
 
-> **Decisión arquitectural:** ChromaDB fue eliminado para evitar problemas de ContainerTimeout en el App Service (~500 MB venv). El texto plano se pasa de forma directa al context window de Gemini.
+> **Decisión arquitectural:** ChromaDB fue eliminado para evitar problemas de ContainerTimeout en servicios de hosting (~500 MB venv). El texto plano se pasa de forma directa al context window de OpenRouter.
 
 ### Estructura del Proyecto
 
@@ -42,7 +40,13 @@ create table users (
   password text,
   role text not null default 'student' check (role in ('teacher', 'student', 'admin')),
   auth_method text not null default 'email_password',
-  institution text,
+  first_name text,
+  last_name text,
+  institution_name text,
+  openrouter_api_key text,
+  openrouter_model text,
+  is_test_account boolean default false,
+  institution text, -- Retenido para compatibilidad legacy
   country text,
   is_active boolean default true,
   created_at timestamptz default now()
@@ -126,7 +130,7 @@ create table conversations (
 - `GET /chatbots/{id}/embed` — Obtener código embed
 
 ### Documentos (Parches de seguridad activos)
-- `POST /documents/upload` [JWT] — Subir documento (MD, TXT). Valida propiedad del bot.
+- `POST /documents/upload` [JWT] — Subir documento (MD, TXT, PDF, DOCX). Valida propiedad del bot.
 - `GET /documents/{id}` [JWT] — Estado del documento. Valida propiedad del bot.
 - `GET /documents` [JWT] — Listar documentos de un chatbot. Valida propiedad del bot.
 - `DELETE /documents/{id}` [JWT] — Eliminar documento y su contenido. Valida propiedad del bot.
@@ -149,14 +153,14 @@ create table conversations (
 
 ### Por qué se eliminó ChromaDB
 
-ChromaDB y sus dependencias (onnxruntime, numpy, tokenizers, pysqlite3) suman ~500 MB al virtualenv. En Azure App Service, el proceso de extracción del venv en cada arranque del contenedor superaba el límite de 230 segundos, causando `ContainerTimeout`. La plataforma no puede arrancar con esa dependencia.
+ChromaDB y sus dependencias (onnxruntime, numpy, tokenizers, pysqlite3) suman ~500 MB al virtualenv. En entornos de hosting como Railway o Azure, el proceso de extracción del venv en cada arranque del contenedor superaba el límite de 230 segundos, causando `ContainerTimeout`. La plataforma no puede arrancar con esa dependencia.
 
-### Enfoque actual: texto directo a Gemini
+### Enfoque actual: texto directo a OpenRouter LLMs
 
 **Upload (síncrono):**
 ```
-Docente sube archivo (MD / TXT)
-    → Extracción de texto en memoria (UTF-8 decode)
+Docente sube archivo (MD / TXT / PDF / DOCX)
+    → Extracción de texto en memoria (UTF-8 decode, PyMuPDF, python-docx)
     → Supabase Storage: archivo original
     → Supabase Postgres (document_contents): texto completo
     → Supabase Postgres (documents): metadatos, status: "indexed"
@@ -168,7 +172,7 @@ Estudiante envía mensaje
     → Recuperar todos los document_contents del chatbot desde Supabase
     → Construir contexto: "--- Documento: {filename} ---\n{content}"
     → Prompt: system_prompt + contexto + pregunta
-    → Gemini 2.0 Flash (context window ~1M tokens)
+    → OpenRouter LLM (Gemini, Llama, Nemotron - context window hasta ~1M tokens)
     → Respuesta con nombres de documentos como fuentes
 ```
 
@@ -178,6 +182,8 @@ Estudiante envía mensaje
 |---|---|---|
 | Markdown | text/markdown + .md | UTF-8 decode |
 | Texto plano | text/plain + .txt | UTF-8 decode |
+| PDF | application/pdf + .pdf | PyMuPDF (fitz) |
+| Word | application/vnd.openxmlformats-officedocument.wordprocessingml.document + .docx | python-docx |
 
 ---
 

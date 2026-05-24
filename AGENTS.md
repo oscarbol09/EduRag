@@ -6,7 +6,7 @@ Guía de referencia rápida para agentes de IA y colaboradores que trabajen en c
 
 ## Contexto del Proyecto
 
-**EduRAG** es una plataforma SaaS educativa multi-tenant. Los docentes crean chatbots a partir de sus propios documentos (MD, TXT). Los estudiantes los consumen vía marketplace web o iframe embebido en LMS externos (Moodle).
+**EduRAG** es una plataforma SaaS educativa multi-tenant. Los docentes crean chatbots a partir de sus propios documentos (MD, TXT, PDF, DOCX). Los estudiantes los consumen vía marketplace web o iframe embebido en LMS externos (Moodle).
 
 **Tres restricciones de diseño no negociables:**
 1. Costo operativo $0/mes post-primer-mes (Supabase Free Tier + APIs gratuitas).
@@ -28,7 +28,7 @@ ChromaDB fue eliminado porque sus dependencias (~500 MB de venv) causaban `Conta
 | Almacenamiento | Supabase Storage (Bucket: `documents`) | Cloud |
 | Autenticación | JWT propio HS256 (PyJWT + bcrypt) | `backend/jwt_token.py`, `auth.py` |
 | LLM activo | OpenRouter (modelos gratuitos vía API HTTP) | `backend/llm_client.py` |
-| LLM BYOK | API key de OpenRouter por docente (almacenada en `institution`) | `backend/main.py` |
+| LLM BYOK | API key de OpenRouter por docente (almacenada en `users.openrouter_api_key` con fallback en `institution`) | `backend/main.py` |
 | Texto de docs | Supabase — tabla `document_contents` | `backend/vector_store.py` |
 
 ---
@@ -37,9 +37,9 @@ ChromaDB fue eliminado porque sus dependencias (~500 MB de venv) causaban `Conta
 
 | Recurso | Tipo | Proveedor | Estado |
 |---|---|---|---|
-| `ndiipkvryycogiabymiu` | PostgreSQL + Storage | Supabase | ✅ Activo |
-| `edurag` | Backend API | Railway | ✅ Activo |
-| `edu-rag` | Frontend App (Next.js) | Vercel | ✅ Activo |
+| `ndiipkvryycogiabymiu` | PostgreSQL + Storage | Supabase | Activo |
+| `edurag` | Backend API | Railway | Activo |
+| `edu-rag` | Frontend App (Next.js) | Vercel | Activo |
 
 **URLs de producción:**
 - API: `https://edurag-production.up.railway.app`
@@ -51,7 +51,7 @@ ChromaDB fue eliminado porque sus dependencias (~500 MB de venv) causaban `Conta
 
 | Tabla | Clave Primaria | Descripción |
 |---|---|---|
-| `users` | `id` | Docentes, estudiantes y admins |
+| `users` | `id` | Docentes, estudiantes y admins (columnas nativas: first_name, last_name, institution_name, openrouter_api_key, openrouter_model, is_test_account) |
 | `chatbots` | `id` | Configuración de cada chatbot (relación con `users`) |
 | `documents` | `id` | Metadatos de documentos subidos (relación con `chatbots`) |
 | `document_contents` | `id` | Texto extraído de cada documento (relación con `chatbots`) |
@@ -76,7 +76,7 @@ El sistema usa **JWT propio** (HS256) firmado por `JWT_SECRET`.
 
 ```
 Upload (síncrono):
-  Archivo (MD/TXT) → extracción texto en memoria
+  Archivo (MD/TXT/PDF/DOCX) → extracción texto en memoria
     → Supabase Storage (original) + Supabase document_contents (texto)
     → documents: status "indexed" (inmediato)
 
@@ -130,7 +130,7 @@ POST /chatbots/{id}/publish         → publicar [JWT owner]
 GET  /chatbots/{id}/embed           → embed_code + public_url
 
 # Documentos [JWT Protegido]
-POST /documents/upload              → subir MD/TXT (multipart)
+POST /documents/upload              → subir MD/TXT/PDF/DOCX (multipart)
 GET  /documents?chatbot_id=         → listar
 GET  /documents/{id}                → detalle
 DELETE /documents/{id}?chatbot_id=  → eliminar metadatos + contenido
