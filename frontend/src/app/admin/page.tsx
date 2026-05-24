@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/lib/api";
 import { useApp } from "@/lib/context";
+import { Navbar } from "@/components/Navbar";
 import type { User } from "@/lib/types";
 
 export default function AdminPage() {
@@ -56,7 +57,7 @@ export default function AdminPage() {
   if (auth.isLoading || (auth.token && !auth.user) || !auth.user || auth.user.role !== "admin") {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-600"></div>
       </div>
     );
   }
@@ -160,24 +161,29 @@ export default function AdminPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16 items-center">
-            <Link href="/" className="text-2xl font-bold text-blue-600">
-              EduRAG
+    <div className="min-h-screen bg-gray-50 bg-dot-grid flex flex-col font-sans selection:bg-brand-500 selection:text-white">
+      <Navbar
+        variant="admin"
+        actions={
+          <div className="flex items-center gap-3.5">
+            <Link
+              href="/teacher"
+              className="px-4 py-2 bg-brand-50 text-brand-700 border border-brand-100/50 rounded-xl font-bold text-sm shadow-sm transition-all hover:bg-brand-100"
+            >
+              Panel docente
             </Link>
-            <div className="flex items-center gap-4">
-              <Link href="/teacher" className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg">
-                Panel docente
-              </Link>
-              <button onClick={() => { logout(); router.push("/"); }} className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg">
-                Cerrar sesión
-              </button>
-            </div>
+            <button
+              onClick={() => {
+                logout();
+                router.push("/");
+              }}
+              className="px-4 py-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-xl font-bold text-sm transition-all"
+            >
+              Cerrar sesión
+            </button>
           </div>
-        </div>
-      </nav>
+        }
+      />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
@@ -213,7 +219,7 @@ export default function AdminPage() {
                     type="text"
                     value={formData.firstName}
                     onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none text-sm transition-all"
                     placeholder="Ej: Juan"
                     required
                   />
@@ -228,7 +234,7 @@ export default function AdminPage() {
                     type="text"
                     value={formData.lastName}
                     onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none text-sm transition-all"
                     placeholder="Ej: Pérez"
                     required
                   />
@@ -245,7 +251,7 @@ export default function AdminPage() {
                   type="email"
                   value={formData.email}
                   onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none text-sm transition-all"
                   placeholder="docente@universidad.edu"
                   required
                 />
@@ -261,7 +267,7 @@ export default function AdminPage() {
                   type="password"
                   value={formData.password}
                   onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none text-sm transition-all"
                   placeholder={editingTeacher ? "Nueva contraseña opcional" : "Defina una contraseña"}
                   required={!editingTeacher}
                 />
@@ -277,7 +283,7 @@ export default function AdminPage() {
                   type="text"
                   value={formData.institution}
                   onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none text-sm transition-all"
                   placeholder="Ej: Universidad de Córdoba"
                   required
                 />
@@ -293,13 +299,13 @@ export default function AdminPage() {
                   type="text"
                   value={formData.country}
                   onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none text-sm transition-all"
                   placeholder="Ej: Argentina"
                 />
               </div>
 
               {message && (
-                <div className={`text-sm p-3 rounded-lg ${message.includes("Error") || message.includes("obligatoria") ? "text-red-600 bg-red-50" : "text-green-600 bg-green-50"}`}>
+                <div className={`text-sm p-3 rounded-xl ${message.includes("Error") || message.includes("obligatoria") ? "text-red-600 bg-red-50 border border-red-100" : "text-green-600 bg-green-50 border border-green-100"}`}>
                   {message}
                 </div>
               )}
@@ -307,7 +313,7 @@ export default function AdminPage() {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 font-semibold"
+                className="w-full py-2.5 bg-brand-600 text-white rounded-xl hover:bg-brand-700 disabled:opacity-50 font-bold text-sm transition-all shadow-sm"
               >
                 {isSubmitting ? "Guardando..." : (editingTeacher ? "Actualizar docente" : "Crear docente")}
               </button>
@@ -318,7 +324,7 @@ export default function AdminPage() {
             <h2 className="text-lg font-semibold mb-4">Docentes Registrados</h2>
             {isLoading ? (
               <div className="flex justify-center py-12">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-600"></div>
               </div>
             ) : teachers.length === 0 ? (
               <div className="text-center py-12 text-gray-500">
@@ -329,18 +335,25 @@ export default function AdminPage() {
                 {teachers.map((teacher) => {
                   let fullName = "";
                   let displayInst = "Sin institución";
-                  if (teacher.institution && teacher.institution.includes(" | ")) {
-                    const parts = teacher.institution.split(" | ");
-                    fullName = parts[0];
-                    displayInst = parts[1] || "Sin institución";
-                  } else {
-                    displayInst = teacher.institution || "Sin institución";
+                  if (teacher.firstName || teacher.lastName) {
+                    fullName = `${teacher.firstName || ""} ${teacher.lastName || ""}`.strip();
+                  }
+                  if (teacher.institutionName) {
+                    displayInst = teacher.institutionName;
+                  } else if (teacher.institution) {
+                    if (teacher.institution.includes(" | ")) {
+                      const parts = teacher.institution.split(" | ");
+                      fullName = fullName || parts[0];
+                      displayInst = parts[1] || "Sin institución";
+                    } else {
+                      displayInst = teacher.institution;
+                    }
                   }
 
                   return (
-                    <div key={teacher.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-gray-50 rounded-lg shadow-sm border border-gray-100 gap-3">
+                    <div key={teacher.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-gray-50 rounded-2xl shadow-sm border border-gray-100 gap-3">
                       <div>
-                        <p className="font-semibold text-gray-900">
+                        <p className="font-bold text-gray-900">
                           {fullName || teacher.email}
                         </p>
                         {fullName && (
@@ -351,19 +364,19 @@ export default function AdminPage() {
                         </p>
                       </div>
                       <div className="flex items-center gap-2 self-end sm:self-auto">
-                        <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${teacher.is_active ? "bg-green-100 text-green-700 border border-green-200" : "bg-red-100 text-red-700 border border-red-200"}`}>
+                        <span className={`px-2.5 py-1 text-xs font-semibold rounded-full ${teacher.is_active ? "bg-green-100 text-green-700 border border-green-200" : "bg-red-100 text-red-700 border border-red-200"}`}>
                           {teacher.is_active ? "Activo" : "Inactivo"}
                         </span>
                         <button
                           onClick={() => handleEditClick(teacher)}
-                          className="px-2.5 py-1 text-xs font-medium text-blue-700 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 rounded-md border border-blue-200 transition-colors"
+                          className="px-3 py-1.5 text-xs font-bold text-brand-700 hover:text-brand-800 bg-brand-50 hover:bg-brand-100 rounded-xl border border-brand-100/50 transition-colors shadow-sm"
                           title="Editar Docente"
                         >
                           Editar
                         </button>
                         <button
                           onClick={() => handleDeleteClick(teacher.id)}
-                          className="px-2.5 py-1 text-xs font-medium text-red-700 hover:text-red-800 bg-red-50 hover:bg-red-100 rounded-md border border-red-200 transition-colors"
+                          className="px-3 py-1.5 text-xs font-bold text-red-700 hover:text-red-800 bg-red-50 hover:bg-red-100 rounded-xl border border-red-100/50 transition-colors shadow-sm"
                           title="Eliminar Docente"
                         >
                           Eliminar

@@ -4,6 +4,8 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/lib/api";
+import { Navbar } from "@/components/Navbar";
+import { HelpTooltip } from "@/components/HelpTooltip";
 import type { Chatbot, Document, CreateChatbotData } from "@/lib/types";
 
 export default function EditChatbotClient() {
@@ -161,104 +163,238 @@ export default function EditChatbotClient() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white shadow-sm">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16 items-center">
-            <div className="flex items-center gap-4">
-              <Link href="/teacher" className="text-gray-600 hover:text-gray-900">← Volver</Link>
-              <span className="text-xl font-semibold">Editar: {chatbot.name}</span>
-              <span className={`px-2 py-1 text-xs rounded ${chatbot.is_published ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"}`}>
-                {chatbot.is_published ? "Publicado" : "Borrador"}
-              </span>
-            </div>
-            <div className="flex items-center gap-3">
-              <Link href={`/chat/${chatbot.id}`} className="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200">Probar</Link>
-              {chatbot.is_published ? (
-                <button onClick={handleUnpublish} disabled={isPublishing} className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50">
-                  {isPublishing ? "..." : "Despublicar"}
-                </button>
-              ) : (
-                <button onClick={handlePublish} disabled={isPublishing} className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50">
-                  {isPublishing ? "..." : "Publicar"}
-                </button>
-              )}
-            </div>
+    <div className="min-h-screen bg-gray-50 bg-dot-grid flex flex-col font-sans selection:bg-brand-500 selection:text-white">
+      <Navbar
+        variant="teacher"
+        backTo="/teacher"
+        backLabel="Volver al panel"
+        title={`Editar: ${chatbot.name}`}
+        actions={
+          <div className="flex items-center gap-3.5">
+            <Link
+              href={`/chat/${chatbot.id}`}
+              className="px-4 py-2 bg-brand-50 text-brand-700 border border-brand-100/50 rounded-xl font-bold text-sm shadow-sm transition-all hover:bg-brand-100"
+            >
+              Probar Tutor
+            </Link>
+            {chatbot.is_published ? (
+              <button
+                onClick={handleUnpublish}
+                disabled={isPublishing}
+                className="px-4 py-2 bg-orange-600 text-white rounded-xl hover:bg-orange-700 font-bold text-sm shadow transition-all disabled:opacity-50"
+              >
+                {isPublishing ? "..." : "Despublicar"}
+              </button>
+            ) : (
+              <button
+                onClick={handlePublish}
+                disabled={isPublishing}
+                className="px-4 py-2 bg-green-600 text-white rounded-xl hover:bg-green-700 font-bold text-sm shadow transition-all disabled:opacity-50"
+              >
+                {isPublishing ? "..." : "Publicar"}
+              </button>
+            )}
           </div>
-        </div>
-      </nav>
+        }
+      />
 
       <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid lg:grid-cols-2 gap-8">
-          <div className="bg-white rounded-xl shadow p-6">
-            <h2 className="text-lg font-semibold mb-4">Configuración</h2>
+          <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
+            <h2 className="text-lg font-bold text-gray-900 mb-4 font-display">Configuración del Tutor</h2>
             <form onSubmit={handleSave} className="space-y-4">
               <div>
-                <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">Nombre *</label>
-                <input id="name" name="name" type="text" value={formData.name} onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" required />
+                <label htmlFor="name" className="block text-xs font-semibold text-gray-700 mb-1 flex items-center">
+                  Nombre *
+                  <HelpTooltip text="Ej: Tutor de Matemáticas." />
+                </label>
+                <input
+                  id="name"
+                  name="name"
+                  type="text"
+                  value={formData.name}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none text-xs transition-all"
+                  required
+                />
               </div>
               <div>
-                <label htmlFor="subject_area" className="block text-sm font-medium text-gray-700 mb-1">Área temática *</label>
-                <input id="subject_area" name="subject_area" type="text" value={formData.subject_area} onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" required />
+                <label htmlFor="subject_area" className="block text-xs font-semibold text-gray-700 mb-1 flex items-center">
+                  Área temática *
+                  <HelpTooltip text="Ej: Álgebra Lineal." />
+                </label>
+                <input
+                  id="subject_area"
+                  name="subject_area"
+                  type="text"
+                  value={formData.subject_area}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none text-xs transition-all"
+                  required
+                />
               </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label htmlFor="education_level" className="block text-sm font-medium text-gray-700 mb-1">Nivel</label>
-                  <select id="education_level" name="education_level" value={formData.education_level} onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                    <option value="secondary">Secundaria</option>
-                    <option value="university">Universidad</option>
-                  </select>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1.5 flex items-center">
+                    Nivel educativo
+                    <HelpTooltip text="Complejidad de explicaciones." />
+                  </label>
+                  <div className="flex gap-1 bg-gray-50 p-1 rounded-xl border border-gray-100">
+                    <button
+                      type="button"
+                      onClick={() => setFormData(prev => ({ ...prev, education_level: "secondary" }))}
+                      className={`flex-1 py-1.5 px-2 text-[11px] font-bold rounded-lg text-center cursor-pointer transition-all ${
+                        formData.education_level === "secondary"
+                          ? "bg-white text-brand-700 shadow-sm border border-brand-100/50"
+                          : "text-gray-500 hover:text-gray-800"
+                      }`}
+                    >
+                      🏫 Sec.
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFormData(prev => ({ ...prev, education_level: "university" }))}
+                      className={`flex-1 py-1.5 px-2 text-[11px] font-bold rounded-lg text-center cursor-pointer transition-all ${
+                        formData.education_level === "university"
+                          ? "bg-white text-brand-700 shadow-sm border border-brand-100/50"
+                          : "text-gray-500 hover:text-gray-800"
+                      }`}
+                    >
+                      🎓 Univ.
+                    </button>
+                  </div>
                 </div>
+
                 <div>
-                  <label htmlFor="tone" className="block text-sm font-medium text-gray-700 mb-1">Tono</label>
-                  <select id="tone" name="tone" value={formData.tone} onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                    <option value="formal">Formal</option>
-                    <option value="friendly">Amigable</option>
-                    <option value="technical">Técnico</option>
-                  </select>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1.5 flex items-center">
+                    Tono de comunicación
+                    <HelpTooltip text="Estilo del lenguaje con el alumno." />
+                  </label>
+                  <div className="flex gap-1 bg-gray-50 p-1 rounded-xl border border-gray-100">
+                    {[
+                      { value: "friendly", label: "😊 Amig." },
+                      { value: "formal", label: "👔 Form." },
+                      { value: "technical", label: "🔬 Téc." }
+                    ].map(t => (
+                      <button
+                        key={t.value}
+                        type="button"
+                        onClick={() => setFormData(prev => ({ ...prev, tone: t.value as any }))}
+                        className={`flex-1 py-1.5 px-1 text-[11px] font-bold rounded-lg text-center cursor-pointer transition-all ${
+                          formData.tone === t.value
+                            ? "bg-white text-brand-700 shadow-sm border border-brand-100/50"
+                            : "text-gray-500 hover:text-gray-800"
+                        }`}
+                      >
+                        {t.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label htmlFor="restriction_level" className="block text-sm font-medium text-gray-700 mb-1">Restricción</label>
-                  <select id="restriction_level" name="restriction_level" value={formData.restriction_level} onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                    <option value="strict">Estricto</option>
-                    <option value="guided">Guiado</option>
-                    <option value="open">Abierto</option>
-                  </select>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1.5 flex items-center">
+                    Nivel de restricción
+                    <HelpTooltip text="Rigidez del tutor frente al contexto." />
+                  </label>
+                  <div className="flex gap-1 bg-gray-50 p-1 rounded-xl border border-gray-100">
+                    {[
+                      { value: "strict", label: "🔒 Estr." },
+                      { value: "guided", label: "🧭 Guia." },
+                      { value: "open", label: "🌐 Abie." }
+                    ].map(r => (
+                      <button
+                        key={r.value}
+                        type="button"
+                        onClick={() => setFormData(prev => ({ ...prev, restriction_level: r.value as any }))}
+                        className={`flex-1 py-1.5 px-1 text-[11px] font-bold rounded-lg text-center cursor-pointer transition-all ${
+                          formData.restriction_level === r.value
+                            ? "bg-white text-brand-700 shadow-sm border border-brand-100/50"
+                            : "text-gray-500 hover:text-gray-800"
+                        }`}
+                      >
+                        {r.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
+
                 <div>
-                  <label htmlFor="llm_provider" className="block text-sm font-medium text-gray-700 mb-1">LLM</label>
-                  <select id="llm_provider" name="llm_provider" value={formData.llm_provider} onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                    <option value="gemini">Gemini</option>
-                    <option value="claude">Claude</option>
-                  </select>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1.5 flex items-center">
+                    Proveedor LLM
+                    <HelpTooltip text="Motor inteligente activo." />
+                  </label>
+                  <div className="flex gap-1.5 bg-gray-50 p-1 rounded-xl border border-gray-100">
+                    <button
+                      type="button"
+                      onClick={() => setFormData(prev => ({ ...prev, llm_provider: "gemini" }))}
+                      className={`flex-1 py-1.5 px-2 text-[11px] font-bold rounded-lg text-center cursor-pointer transition-all ${
+                        formData.llm_provider === "gemini"
+                          ? "bg-white text-brand-700 shadow-sm border border-brand-100/50"
+                          : "text-gray-500 hover:text-gray-800"
+                      }`}
+                    >
+                      ✨ Gemini
+                    </button>
+                    <button
+                      type="button"
+                      disabled
+                      className="flex-1 py-1.5 px-2 text-[11px] font-bold rounded-lg text-center opacity-40 cursor-not-allowed text-gray-400"
+                    >
+                      🔒 Claude
+                    </button>
+                  </div>
                 </div>
               </div>
+
               <div>
-                <label htmlFor="welcome_message" className="block text-sm font-medium text-gray-700 mb-1">Mensaje de bienvenida</label>
-                <textarea id="welcome_message" name="welcome_message" value={formData.welcome_message || ""} onChange={handleChange}
-                  rows={2} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" />
+                <label htmlFor="welcome_message" className="block text-xs font-semibold text-gray-700 mb-1 flex items-center">
+                  Mensaje de bienvenida
+                  <HelpTooltip text="Mensaje que saluda al alumno al abrir el chat." />
+                </label>
+                <textarea
+                  id="welcome_message"
+                  name="welcome_message"
+                  value={formData.welcome_message || ""}
+                  onChange={handleChange}
+                  rows={2}
+                  className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none text-xs transition-all"
+                />
               </div>
               <div>
-                <label htmlFor="system_prompt_override" className="block text-sm font-medium text-gray-700 mb-1">Instrucciones personalizadas</label>
-                <textarea id="system_prompt_override" name="system_prompt_override" value={formData.system_prompt_override || ""} onChange={handleChange}
-                  rows={3} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" />
+                <label htmlFor="system_prompt_override" className="block text-xs font-semibold text-gray-700 mb-1 flex items-center">
+                  Instrucciones personalizadas
+                  <HelpTooltip text="Pautas obligatorias que debe seguir el LLM." />
+                </label>
+                <textarea
+                  id="system_prompt_override"
+                  name="system_prompt_override"
+                  value={formData.system_prompt_override || ""}
+                  onChange={handleChange}
+                  rows={3}
+                  className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none text-xs transition-all"
+                />
               </div>
-              <button type="submit" className="w-full py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Guardar cambios</button>
+              <button
+                type="submit"
+                className="w-full py-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl font-bold text-sm shadow transition-all"
+              >
+                Guardar cambios
+              </button>
             </form>
             {chatbot.embed_code && (
-              <div className="mt-6 pt-6 border-t border-gray-200">
-                <h3 className="text-sm font-medium text-gray-700 mb-2">Código de Embed</h3>
-                <textarea readOnly value={chatbot.embed_code} rows={2}
+              <div className="mt-6 pt-6 border-t border-gray-100">
+                <h3 className="text-xs font-semibold text-gray-700 mb-2">Código de Embed (Iframe Moodle)</h3>
+                <textarea
+                  readOnly
+                  value={chatbot.embed_code}
+                  rows={2}
                   onClick={(e) => (e.target as HTMLTextAreaElement).select()}
-                  className="w-full px-3 py-2 text-xs bg-gray-50 border border-gray-200 rounded-lg font-mono" />
+                  className="w-full px-3 py-2 text-[10px] bg-gray-50 border border-gray-100 rounded-xl font-mono text-gray-500"
+                />
               </div>
             )}
           </div>

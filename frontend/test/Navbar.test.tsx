@@ -6,12 +6,12 @@ describe("Navbar", () => {
   it("renders home link when no backTo", () => {
     render(<Navbar />);
     expect(screen.getByText("EduRAG")).toBeInTheDocument();
-    expect(screen.getByText("EduRAG")).toHaveAttribute("href", "/");
+    expect(screen.getByText("EduRAG").closest("a")).toHaveAttribute("href", "/");
   });
 
   it("renders back link when backTo is provided", () => {
     render(<Navbar backTo="/teacher" backLabel="Volver al panel" />);
-    expect(screen.getByText("← Volver al panel")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Volver al panel/i })).toBeInTheDocument();
   });
 
   it("renders title when provided", () => {

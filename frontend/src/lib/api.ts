@@ -146,6 +146,16 @@ export const api = {
       }),
   },
 
+  teacher: {
+    getMetrics: () => fetchApi<{
+      totalChatbots: number;
+      publishedChatbots: number;
+      totalDocuments: number;
+      weeklyConversations: number;
+      channelStatus: string;
+    }>("/teacher/metrics"),
+  },
+
   system: {
     health: () => fetchApi<{ status: string }>("/health"),
     ready: () => fetchApi<{ status: string }>("/ready"),

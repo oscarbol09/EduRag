@@ -13,6 +13,13 @@ import type { Chatbot } from "@/lib/types";
 
 export default function TeacherDashboard() {
   const [chatbots, setChatbots] = useState<Chatbot[]>([]);
+  const [metrics, setMetrics] = useState<{
+    totalChatbots: number;
+    publishedChatbots: number;
+    totalDocuments: number;
+    weeklyConversations: number;
+    channelStatus: string;
+  } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
   const { auth, logout } = useApp();
@@ -39,6 +46,12 @@ export default function TeacherDashboard() {
     try {
       const list = await api.chatbots.list(auth.user?.id || undefined);
       setChatbots(list);
+      try {
+        const met = await api.teacher.getMetrics();
+        setMetrics(met);
+      } catch (err) {
+        console.error("Error loading metrics:", err);
+      }
     } catch (error) {
       console.error("Error loading chatbots:", error);
     } finally {
@@ -111,26 +124,33 @@ export default function TeacherDashboard() {
 
         {/* Fila de Estadísticas */}
         {!isLoading && chatbots.length > 0 && (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-6">
             <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm flex items-center gap-4 glow-card select-none">
               <div className="w-12 h-12 bg-brand-50 border border-brand-100 rounded-xl flex items-center justify-center text-xl">🤖</div>
               <div>
                 <span className="text-xs text-gray-400 font-semibold uppercase tracking-wider block">Total de Chatbots</span>
-                <strong className="text-2xl font-black text-gray-900">{chatbots.length}</strong>
+                <strong className="text-2xl font-black text-gray-900">{metrics?.totalChatbots ?? chatbots.length}</strong>
               </div>
             </div>
             <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm flex items-center gap-4 glow-card select-none">
               <div className="w-12 h-12 bg-green-50 border border-green-100 rounded-xl flex items-center justify-center text-xl">✅</div>
               <div>
                 <span className="text-xs text-gray-400 font-semibold uppercase tracking-wider block">Bots Publicados</span>
-                <strong className="text-2xl font-black text-gray-900">{chatbots.filter(cb => cb.is_published).length}</strong>
+                <strong className="text-2xl font-black text-gray-900">{metrics?.publishedChatbots ?? chatbots.filter(cb => cb.is_published).length}</strong>
               </div>
             </div>
             <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm flex items-center gap-4 glow-card select-none">
-              <div className="w-12 h-12 bg-accent-50 border border-accent-100 rounded-xl flex items-center justify-center text-xl">🛡️</div>
+              <div className="w-12 h-12 bg-indigo-50 border border-indigo-100 rounded-xl flex items-center justify-center text-xl">📄</div>
               <div>
-                <span className="text-xs text-gray-400 font-semibold uppercase tracking-wider block">Estado de Canal</span>
-                <strong className="text-lg font-bold text-accent-600 block leading-tight">100% Activo</strong>
+                <span className="text-xs text-gray-400 font-semibold uppercase tracking-wider block">Docs Indexados</span>
+                <strong className="text-2xl font-black text-gray-900">{metrics?.totalDocuments ?? 0}</strong>
+              </div>
+            </div>
+            <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm flex items-center gap-4 glow-card select-none">
+              <div className="w-12 h-12 bg-accent-50 border border-accent-100 rounded-xl flex items-center justify-center text-xl">💬</div>
+              <div>
+                <span className="text-xs text-gray-400 font-semibold uppercase tracking-wider block">Conversaciones (Semana)</span>
+                <strong className="text-2xl font-black text-gray-900">{metrics?.weeklyConversations ?? 0}</strong>
               </div>
             </div>
           </div>

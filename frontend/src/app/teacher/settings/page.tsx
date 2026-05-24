@@ -64,16 +64,16 @@ export default function TeacherSettingsPage() {
             router.push("/marketplace");
           }
         } else {
-          // Parsear los datos del usuario actual
-          // Formato: "Nombre Apellido | Institución | OpenRouterKey | ModelId"
-          let firstName = "";
-          let lastName = "";
-          let institution = auth.user.institution || "";
-          let openrouterApiKey = "";
-          let openrouterModel = OPENROUTER_MODELS[0].id;
+          // Parsear los datos del usuario actual, priorizando las columnas nativas devueltas por el backend
+          let firstName = auth.user.firstName || "";
+          let lastName = auth.user.lastName || "";
+          let institution = auth.user.institutionName || "";
+          let openrouterApiKey = auth.user.openrouterApiKey || "";
+          let openrouterModel = auth.user.openrouterModel || OPENROUTER_MODELS[0].id;
 
-          if (institution.includes(" | ")) {
-            const parts = institution.split(" | ");
+          // Fallback heredado si las columnas nativas no se han cargado pero sí la cadena serializada
+          if (!firstName && !lastName && !institution && auth.user.institution && auth.user.institution.includes(" | ")) {
+            const parts = auth.user.institution.split(" | ");
             const fullName = parts[0] || "";
             institution = parts[1] || "";
             openrouterApiKey = parts[2] || "";

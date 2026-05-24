@@ -94,7 +94,10 @@ async def list_chatbots(owner_id: Optional[str] = None, published_only: bool = F
     q = get_client().table("chatbots").select("*")
     if owner_id:
         q = q.eq("owner_id", owner_id)
-    if published_only:
+        if published_only:
+            q = q.eq("is_published", True)
+    else:
+        # Parche de seguridad: Si no hay owner_id, forzar estrictamente que solo retorne publicados
         q = q.eq("is_published", True)
     return q.execute().data
 

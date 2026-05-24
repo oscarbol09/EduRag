@@ -74,6 +74,57 @@ def get_default_system_prompt(tone: str, restriction_level: str) -> str:
 3. Fomenta el autoaprendizaje: utiliza analogías sencillas del día a día, ejemplos claros y, opcionalmente, plantéale pequeñas preguntas de reflexión al final de tus respuestas para estimular su curiosidad.
 4. Cita siempre el nombre de los documentos fuente (por ejemplo, "[nombre_archivo.txt]") al utilizar la información de los mismos, integrándolos de manera fluida y elegante en tu explicación."""
 
+def map_user_response(user: dict) -> dict:
+    if not user:
+        return {}
+    
+    # Valores por defecto
+    first_name = user.get("first_name")
+    last_name = user.get("last_name")
+    institution_name = user.get("institution_name")
+    openrouter_api_key = user.get("openrouter_api_key")
+    openrouter_model = user.get("openrouter_model")
+    is_test_account = user.get("is_test_account") or False
+
+    # Si los nuevos campos son nulos/vacíos pero existe el campo legacy, parsearlo como fallback
+    inst_field = user.get("institution") or ""
+    if " | " in inst_field and not (first_name or last_name or institution_name or openrouter_api_key or openrouter_model):
+        parts = inst_field.split(" | ")
+        if len(parts) >= 1:
+            full_name = parts[0].strip()
+            name_parts = full_name.split(" ", 1)
+            first_name = name_parts[0] if name_parts else ""
+            last_name = name_parts[1] if len(name_parts) > 1 else ""
+        if len(parts) >= 2:
+            institution_name = parts[1].strip()
+        if len(parts) >= 3:
+            openrouter_api_key = parts[2].strip()
+        if len(parts) >= 4:
+            openrouter_model = parts[3].strip()
+
+    # Si los nuevos campos tienen valor pero el campo legacy está vacío, construirlo
+    if not inst_field and (first_name or last_name or institution_name):
+        full_name = f"{first_name or ''} {last_name or ''}".strip()
+        inst_field = f"{full_name} | {institution_name or ''} | {openrouter_api_key or ''} | {openrouter_model or ''}"
+
+    res = dict(user)
+    res["first_name"] = first_name
+    res["last_name"] = last_name
+    res["institution_name"] = institution_name
+    res["openrouter_api_key"] = openrouter_api_key
+    res["openrouter_model"] = openrouter_model
+    res["is_test_account"] = is_test_account
+    
+    # Compatibilidad con frontend camelCase
+    res["firstName"] = first_name
+    res["lastName"] = last_name
+    res["institutionName"] = institution_name
+    res["openrouterApiKey"] = openrouter_api_key
+    res["openrouterModel"] = openrouter_model
+    res["institution"] = inst_field
+    
+    return res
+
 
 @app.get("/")
 async def root():
@@ -107,7 +158,7 @@ async def get_current_user_endpoint(request: Request):
         return {"role": "anonymous"}
         
     safe_user = {k: v for k, v in user.items() if k != "password"}
-    return safe_user
+    return map_user_response(safe_user)
 
 
 @app.put("/auth/me/profile")
@@ -117,13 +168,9 @@ async def update_my_profile(body: ProfileUpdateRequest, current_user: dict = Dep
     if not user:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
         
-    # Serializar la institución con los campos de perfil y API keys
-    # Formato: FirstName LastName | Institution | OpenRouterKey | ModelId
     combined_inst = f"{body.firstName.strip()} {body.lastName.strip()} | {body.institution.strip()}"
-    
     openrouter_key = body.openrouterApiKey.strip() if body.openrouterApiKey else ""
     openrouter_model = body.openrouterModel.strip() if body.openrouterModel else ""
-    
     combined_inst = f"{combined_inst} | {openrouter_key} | {openrouter_model}"
     
     updates = {
@@ -131,13 +178,26 @@ async def update_my_profile(body: ProfileUpdateRequest, current_user: dict = Dep
         "country": body.country.strip() if body.country else None
     }
     
+    updates_native = {
+        **updates,
+        "first_name": body.firstName.strip(),
+        "last_name": body.lastName.strip(),
+        "institution_name": body.institution.strip(),
+        "openrouter_api_key": openrouter_key,
+        "openrouter_model": openrouter_model
+    }
+    
     from supabase_db import update_user
-    await update_user(user_id, updates)
+    try:
+        await update_user(user_id, updates_native)
+    except Exception:
+        # Fallback si no se han creado las columnas en Supabase
+        await update_user(user_id, updates)
     
     # Obtener el usuario actualizado
     updated_user = await get_user(user_id)
     safe_user = {k: v for k, v in updated_user.items() if k != "password"}
-    return safe_user
+    return map_user_response(safe_user)
 
 
 @app.post("/auth/login")
@@ -157,7 +217,7 @@ async def login(body: LoginRequest):
     )
     # Parche de seguridad: Eliminar hash del password de la respuesta
     safe_user = {k: v for k, v in user.items() if k != "password"}
-    return {"token": token, "user": safe_user}
+    return {"token": token, "user": map_user_response(safe_user)}
 
 
 @app.post("/auth/register")
@@ -183,7 +243,7 @@ async def register(body: RegisterRequest):
                 role=updated_user["role"]
             )
             safe_user = {k: v for k, v in updated_user.items() if k != "password"}
-            return {"token": token, "user": safe_user}
+            return {"token": token, "user": map_user_response(safe_user)}
         else:
             raise HTTPException(status_code=400, detail="El email ya está registrado")
             
@@ -208,7 +268,7 @@ async def register(body: RegisterRequest):
     )
     # Parche de seguridad: Eliminar hash del password de la respuesta
     safe_user = {k: v for k, v in user.items() if k != "password"}
-    return {"token": token, "user": safe_user}
+    return {"token": token, "user": map_user_response(safe_user)}
 
 
 @app.get("/chatbots")
@@ -328,14 +388,14 @@ async def upload_document(
     if file.size and file.size > settings.MAX_FILE_SIZE_MB * 1024 * 1024:
         raise HTTPException(status_code=400, detail=f"Archivo demasiado grande (máx {settings.MAX_FILE_SIZE_MB}MB)")
 
-    # Only accept .md and .txt — browsers may send these as application/octet-stream,
-    # so we validate by extension rather than content-type alone.
     filename = file.filename or ""
     is_md = filename.lower().endswith(".md")
     is_txt = filename.lower().endswith(".txt")
+    is_pdf = filename.lower().endswith(".pdf")
+    is_docx = filename.lower().endswith(".docx")
 
-    if not is_md and not is_txt:
-        raise HTTPException(status_code=400, detail="Tipo de archivo no permitido. Solo se aceptan archivos .md y .txt.")
+    if not (is_md or is_txt or is_pdf or is_docx):
+        raise HTTPException(status_code=400, detail="Tipo de archivo no permitido. Solo se aceptan archivos .md, .txt, .pdf y .docx.")
 
     document_id = str(uuid.uuid4())
     now = datetime.utcnow().isoformat()
@@ -463,20 +523,32 @@ async def chat_endpoint(request: Request, chatbot_id: str, body: ChatMessage):
     if owner_id:
         owner = await get_user(owner_id)
         if owner:
-            inst_field = owner.get("institution", "")
-            if inst_field and " | " in inst_field:
-                parts = inst_field.split(" | ")
-                # Formato: "Nombre Apellido | Institución | OpenRouterKey | ModelId"
-                if len(parts) >= 3:
-                    custom_api_key = parts[2].strip() or None
-                if len(parts) >= 4:
-                    custom_model = parts[3].strip() or None
+            # Primero intentar obtener de las nuevas columnas nativas
+            custom_api_key = owner.get("openrouter_api_key") or None
+            custom_model = owner.get("openrouter_model") or None
+            
+            # Fallback si están vacíos al campo legacy
+            if not custom_api_key or not custom_model:
+                inst_field = owner.get("institution", "")
+                if inst_field and " | " in inst_field:
+                    parts = inst_field.split(" | ")
+                    if len(parts) >= 3 and not custom_api_key:
+                        custom_api_key = parts[2].strip() or None
+                    if len(parts) >= 4 and not custom_model:
+                        custom_model = parts[3].strip() or None
             
             # Si no hay API Key configurada, validar si es una cuenta de testeo autorizada
             if not custom_api_key:
                 owner_email = owner.get("email", "")
-                is_test_account = owner_email.endswith("@edurag.com")
-                if not is_test_account:
+                is_test_account = owner.get("is_test_account") or False
+                
+                # Cuentas de testeo autorizadas por whitelist en .env como variable
+                import os
+                whitelist_env = os.environ.get("TEST_ACCOUNTS_WHITELIST", "")
+                whitelist = [e.strip() for e in whitelist_env.split(",") if e.strip()]
+                is_in_whitelist = owner_email in whitelist or owner_email.endswith("@edurag.com")
+                
+                if not (is_test_account or is_in_whitelist):
                     return ChatResponse(
                         response="Lo siento, este chatbot está inactivo temporalmente. El docente propietario debe configurar su propia API Key de OpenRouter en su panel de Configuración para activar las respuestas.",
                         conversation_id=body.conversation_id or str(uuid.uuid4()),
@@ -558,8 +630,6 @@ async def create_teacher(data: TeacherCreate, current_user: dict = Depends(get_c
     teacher_id = str(uuid.uuid4())
     password_hash = hash_password(data.password)
     
-    # Serializar nombre, apellido e institución en el mismo campo
-    # Formato: "Nombre Apellido | Institución | OpenRouterKey | ModelId"
     first = (data.firstName or "").strip()
     last = (data.lastName or "").strip()
     full_name = f"{first} {last}".strip()
@@ -577,10 +647,26 @@ async def create_teacher(data: TeacherCreate, current_user: dict = Depends(get_c
         "is_active": True,
         "created_at": datetime.utcnow().isoformat()
     }
-    await create_user(teacher)
+    
+    teacher_native = {
+        **teacher,
+        "first_name": first,
+        "last_name": last,
+        "institution_name": inst,
+        "openrouter_api_key": "",
+        "openrouter_model": "",
+        "is_test_account": False
+    }
+    
+    from supabase_db import create_user
+    try:
+        await create_user(teacher_native)
+    except Exception:
+        # Fallback si las nuevas columnas no existen todavía
+        await create_user(teacher)
     
     safe_user = {k: v for k, v in teacher.items() if k != "password"}
-    return safe_user
+    return map_user_response(safe_user)
 
 
 @app.get("/admin/teachers")
@@ -588,7 +674,7 @@ async def list_teachers(current_user: dict = Depends(get_current_user)):
     if current_user.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Solo admins pueden listar docentes")
     teachers = await list_users(role="teacher")
-    return teachers
+    return [map_user_response({k: v for k, v in t.items() if k != "password"}) for t in teachers]
 
 
 @app.put("/admin/teachers/{teacher_id}")
@@ -612,12 +698,19 @@ async def update_teacher(teacher_id: str, data: TeacherUpdate, current_user: dic
         updates["password"] = hash_password(data.password)
         updates["auth_method"] = "email_password"
     
-    # Si se actualiza el nombre/apellido o institución, re-serializar el campo institution
     has_name_update = data.firstName is not None or data.lastName is not None or data.institution is not None
+    updates_native = dict(updates)
+    
     if has_name_update:
         # Parsear el campo actual para preservar los campos no actualizados
         current_inst = teacher.get("institution", "") or ""
-        if " | " in current_inst:
+        current_first = teacher.get("first_name") or ""
+        current_last = teacher.get("last_name") or ""
+        current_institution = teacher.get("institution_name") or ""
+        current_or_key = teacher.get("openrouter_api_key") or ""
+        current_or_model = teacher.get("openrouter_model") or ""
+
+        if not (current_first or current_last or current_institution or current_or_key or current_or_model) and " | " in current_inst:
             parts = current_inst.split(" | ")
             current_full_name = parts[0].strip()
             current_name_parts = current_full_name.split(" ", 1)
@@ -626,29 +719,36 @@ async def update_teacher(teacher_id: str, data: TeacherUpdate, current_user: dic
             current_institution = parts[1].strip() if len(parts) > 1 else ""
             current_or_key = parts[2].strip() if len(parts) > 2 else ""
             current_or_model = parts[3].strip() if len(parts) > 3 else ""
-        else:
-            current_first = ""
-            current_last = ""
-            current_institution = current_inst
-            current_or_key = ""
-            current_or_model = ""
         
         new_first = data.firstName.strip() if data.firstName is not None else current_first
         new_last = data.lastName.strip() if data.lastName is not None else current_last
         new_inst = data.institution.strip() if data.institution is not None else current_institution
         full_name = f"{new_first} {new_last}".strip()
+        
         updates["institution"] = f"{full_name} | {new_inst} | {current_or_key} | {current_or_model}"
+        
+        updates_native = {
+            **updates_native,
+            "institution": updates["institution"],
+            "first_name": new_first,
+            "last_name": new_last,
+            "institution_name": new_inst
+        }
         
     if data.country is not None:
         updates["country"] = data.country
+        updates_native["country"] = data.country
         
     if updates:
         from supabase_db import update_user
-        await update_user(teacher_id, updates)
+        try:
+            await update_user(teacher_id, updates_native)
+        except Exception:
+            await update_user(teacher_id, updates)
         
     updated_teacher = await get_user(teacher_id)
     safe_user = {k: v for k, v in updated_teacher.items() if k != "password"}
-    return safe_user
+    return map_user_response(safe_user)
 
 
 @app.delete("/admin/teachers/{teacher_id}")
@@ -663,6 +763,55 @@ async def delete_teacher(teacher_id: str, current_user: dict = Depends(get_curre
     from supabase_db import get_client
     get_client().table("users").delete().eq("id", teacher_id).execute()
     return {"detail": "Docente eliminado exitosamente"}
+
+
+@app.get("/teacher/metrics")
+async def get_teacher_metrics(current_user: dict = Depends(get_current_user)):
+    if current_user.get("role") != "teacher":
+        raise HTTPException(status_code=403, detail="Solo docentes pueden ver sus métricas")
+    
+    owner_id = current_user.get("sub")
+    
+    # 1. Obtener chatbots de este docente
+    chatbots = await list_chatbots(owner_id=owner_id)
+    total_chatbots = len(chatbots)
+    published_chatbots = len([cb for cb in chatbots if cb.get("is_published")])
+    
+    # 2. Obtener total de documentos indexados de todos sus chatbots
+    total_documents = 0
+    for cb in chatbots:
+        docs = await list_documents(cb.get("id"))
+        total_documents += len([d for d in docs if d.get("status") == "indexed"])
+        
+    # 3. Obtener conversaciones semanales
+    from datetime import datetime, timedelta
+    one_week_ago = datetime.utcnow() - timedelta(days=7)
+    
+    weekly_conversations_count = 0
+    for cb in chatbots:
+        conversations = await list_conversations(cb.get("id"))
+        for conv in conversations:
+            updated_at_str = conv.get("updated_at") or conv.get("created_at")
+            if updated_at_str:
+                try:
+                    # Permitir parsear tanto formatos con Z como con +00:00
+                    updated_at_str_clean = updated_at_str.replace("Z", "+00:00")
+                    updated_at = datetime.fromisoformat(updated_at_str_clean)
+                    updated_at_naive = updated_at.replace(tzinfo=None)
+                    if updated_at_naive >= one_week_ago:
+                        weekly_conversations_count += 1
+                except Exception:
+                    weekly_conversations_count += 1
+            else:
+                weekly_conversations_count += 1
+                
+    return {
+        "totalChatbots": total_chatbots,
+        "publishedChatbots": published_chatbots,
+        "totalDocuments": total_documents,
+        "weeklyConversations": weekly_conversations_count,
+        "channelStatus": "100% Activo"
+    }
 
 
 if __name__ == "__main__":

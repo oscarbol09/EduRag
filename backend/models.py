@@ -9,6 +9,12 @@ class UserBase(BaseModel):
     auth_method: Literal["pre_created", "email_password", "google", "microsoft"]
     institution: Optional[str] = None
     country: Optional[str] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    institution_name: Optional[str] = None
+    openrouter_api_key: Optional[str] = None
+    openrouter_model: Optional[str] = None
+    is_test_account: Optional[bool] = False
 
 
 class UserCreate(UserBase):

@@ -40,11 +40,37 @@ def download_from_blob(blob_path: str) -> bytes:
 def extract_text_from_file(content: bytes, filename: str, content_type: str | None) -> str:
     """
     Extract plain text from uploaded files.
-    Supports: Markdown (.md) and plain text (.txt).
+    Supports: Markdown (.md), plain text (.txt), PDF (.pdf), and Word (.docx).
     """
     lower_name = filename.lower()
 
-    if lower_name.endswith((".md", ".txt")) or content_type in ("text/markdown", "text/plain"):
+    if lower_name.endswith(".pdf"):
+        try:
+            import fitz
+            doc = fitz.open(stream=content, filetype="pdf")
+            text = []
+            for page in doc:
+                t = page.get_text()
+                if t:
+                    text.append(t)
+            return "\n".join(text)
+        except Exception as e:
+            raise ValueError(f"Error al extraer texto del PDF: {str(e)}")
+
+    elif lower_name.endswith(".docx"):
+        try:
+            import docx
+            import io
+            doc = docx.Document(io.BytesIO(content))
+            text = []
+            for p in doc.paragraphs:
+                if p.text:
+                    text.append(p.text)
+            return "\n".join(text)
+        except Exception as e:
+            raise ValueError(f"Error al extraer texto del archivo DOCX: {str(e)}")
+
+    elif lower_name.endswith((".md", ".txt")) or (content_type and content_type in ("text/markdown", "text/plain")):
         return content.decode("utf-8", errors="replace")
 
     # Fallback: try as UTF-8 text anyway
