@@ -4,10 +4,10 @@ gunicorn==23.0.0
 python-dotenv==1.2.2
 pydantic==2.13.2
 pydantic-settings==2.14.0
-python-multipart==0.0.26
+python-multipart==0.0.29
 slowapi==0.1.9
 pymupdf==1.27.2
 python-docx==1.2.0
 google-generativeai==0.8.6
-PyJWT==2.10.1
+PyJWT==2.11.0
 bcrypt==4.2.0

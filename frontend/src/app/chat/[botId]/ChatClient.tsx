@@ -7,25 +7,45 @@ import type { ChatMessage, ChatResponse, Message, Chatbot } from "@/lib/types";
 
 function renderMessageContent(content: string, isUser: boolean) {
   if (!content) return null;
-  
-  // Escapar HTML básico para XSS
-  let html = content
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-  
-  // Bold: **text** -> <strong>text</strong>
+
   const boldClass = isUser ? "font-extrabold text-white" : "font-extrabold text-gray-900";
-  html = html.replace(/\*\*(.*?)\*\*/g, `<strong class="${boldClass}">$1</strong>`);
-  
-  // Italics: *text* -> <em>text</em>
-  html = html.replace(/\*(.*?)\*/g, '<em class="italic">$1</em>');
-  
-  // Code: `code` -> <code>code</code>
   const codeClass = isUser ? "bg-brand-700 px-1 py-0.5 rounded font-mono text-xs text-white" : "bg-gray-100 px-1 py-0.5 rounded font-mono text-xs text-brand-700";
-  html = html.replace(/`(.*?)`/g, `<code class="${codeClass}">$1</code>`);
-  
-  return <span className="whitespace-pre-wrap text-sm leading-relaxed font-sans" dangerouslySetInnerHTML={{ __html: html }} />;
+
+  // Expresion regular para dividir el texto preservando bloques de codigo inline, negrita y cursiva
+  const regex = /(`[^`\n]+`|\*\*[^*]+\*\*|\*[^*]+\*)/g;
+  const parts = content.split(regex);
+
+  const elements = parts.map((part, index) => {
+    if (part.startsWith("`") && part.endsWith("`")) {
+      return (
+        <code key={index} className={codeClass}>
+          {part.slice(1, -1)}
+        </code>
+      );
+    }
+    if (part.startsWith("**") && part.endsWith("**")) {
+      return (
+        <strong key={index} className={boldClass}>
+          {part.slice(2, -2)}
+        </strong>
+      );
+    }
+    if (part.startsWith("*") && part.endsWith("*")) {
+      return (
+        <em key={index} className="italic">
+          {part.slice(1, -1)}
+        </em>
+      );
+    }
+    // Texto plano normal (JSX se encarga de escapar esto implicitamente)
+    return part;
+  });
+
+  return (
+    <span className="whitespace-pre-wrap text-sm leading-relaxed font-sans">
+      {elements}
+    </span>
+  );
 }
 
 export default function ChatClient() {
