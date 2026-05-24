@@ -90,3 +90,12 @@ export interface UpdateTeacherData {
   institution?: string;
   country?: string;
 }
+
+export interface UpdateProfileData {
+  firstName: string;
+  lastName: string;
+  institution: string;
+  country?: string;
+  geminiApiKey?: string;
+  claudeApiKey?: string;
+}

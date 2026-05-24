@@ -79,6 +79,9 @@ export default function TeacherDashboard() {
             <Link href="/teacher/chatbots/new" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium">
               + Nuevo Chatbot
             </Link>
+            <Link href="/teacher/settings" className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg font-medium">
+              ⚙️ Configuración
+            </Link>
             <button onClick={() => { logout(); router.push("/"); }} className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg font-medium">
               Cerrar sesión
             </button>

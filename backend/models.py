@@ -135,3 +135,12 @@ class ChatResponse(BaseModel):
     response: str
     conversation_id: str
     sources: list[str] = []
+
+
+class ProfileUpdateRequest(BaseModel):
+    firstName: str
+    lastName: str
+    institution: str
+    country: Optional[str] = None
+    geminiApiKey: Optional[str] = None
+    claudeApiKey: Optional[str] = None

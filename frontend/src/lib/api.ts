@@ -7,7 +7,8 @@ import type {
   ChatResponse,
   CreateChatbotData,
   CreateTeacherData,
-  UpdateTeacherData
+  UpdateTeacherData,
+  UpdateProfileData
 } from "./types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -52,6 +53,11 @@ export const api = {
       fetchApi<{ token: string; user: User }>("/auth/register", {
         method: "POST",
         body: JSON.stringify({ email, password, role: "student" }),
+      }),
+    updateProfile: (data: UpdateProfileData) =>
+      fetchApi<User>("/auth/me/profile", {
+        method: "PUT",
+        body: JSON.stringify(data),
       }),
   },
 

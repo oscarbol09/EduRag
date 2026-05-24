@@ -90,8 +90,47 @@ async def readiness_check():
 
 @app.get("/auth/me")
 async def get_current_user_endpoint(request: Request):
-    user = await get_current_user_optional(request)
-    return {"id": user.get("sub"), "email": user.get("email"), "role": user.get("role", "anonymous")}
+    user_token = await get_current_user_optional(request)
+    if not user_token or user_token.get("role") == "anonymous":
+        return {"role": "anonymous"}
+    
+    # Cargar el registro de usuario completo desde la base de datos
+    user = await get_user(user_token.get("sub"))
+    if not user:
+        return {"role": "anonymous"}
+        
+    safe_user = {k: v for k, v in user.items() if k != "password"}
+    return safe_user
+
+
+@app.put("/auth/me/profile")
+async def update_my_profile(body: ProfileUpdateRequest, current_user: dict = Depends(get_current_user)):
+    user_id = current_user.get("sub")
+    user = await get_user(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+        
+    # Serializar la institución con los campos de perfil y API keys
+    # Formato: FirstName LastName | Institution | GeminiKey | ClaudeKey
+    combined_inst = f"{body.firstName.strip()} {body.lastName.strip()} | {body.institution.strip()}"
+    
+    gemini_key = body.geminiApiKey.strip() if body.geminiApiKey else ""
+    claude_key = body.claudeApiKey.strip() if body.claudeApiKey else ""
+    
+    combined_inst = f"{combined_inst} | {gemini_key} | {claude_key}"
+    
+    updates = {
+        "institution": combined_inst,
+        "country": body.country.strip() if body.country else None
+    }
+    
+    from supabase_db import update_user
+    await update_user(user_id, updates)
+    
+    # Obtener el usuario actualizado
+    updated_user = await get_user(user_id)
+    safe_user = {k: v for k, v in updated_user.items() if k != "password"}
+    return safe_user
 
 
 @app.post("/auth/login")
@@ -382,11 +421,37 @@ async def chat_endpoint(request: Request, chatbot_id: str, body: ChatMessage):
         chatbot.get("restriction_level", "guided")
     )
 
+    # Extraer la API Key personalizada del docente (propietario) si existe
+    owner_id = chatbot.get("owner_id")
+    custom_api_key = None
+    if owner_id:
+        owner = await get_user(owner_id)
+        if owner:
+            inst_field = owner.get("institution", "")
+            if inst_field and " | " in inst_field:
+                parts = inst_field.split(" | ")
+                provider = chatbot.get("llm_provider", "gemini")
+                if provider == "gemini" and len(parts) >= 3:
+                    custom_api_key = parts[2].strip() or None
+                elif provider == "claude" and len(parts) >= 4:
+                    custom_api_key = parts[3].strip() or None
+            
+            # Si no hay API Key configurada, validar si es una cuenta de testeo autorizada
+            if not custom_api_key:
+                owner_email = owner.get("email", "")
+                is_test_account = owner_email.endswith("@edurag.com")
+                if not is_test_account:
+                    return ChatResponse(
+                        response="Lo siento, este chatbot está inactivo temporalmente. El docente propietario debe configurar su propia API Key de Gemini en su panel de Configuración para poder activar las respuestas.",
+                        conversation_id=body.conversation_id or str(uuid.uuid4()),
+                        sources=source_names
+                    )
+
     llm = get_llm_client(chatbot.get("llm_provider", "gemini"))
     temperature = RESTRICTION_TEMPERATURES.get(chatbot.get("restriction_level", "guided"), 0.5)
 
     try:
-        response_text = llm.generate(system_prompt, context, body.message, temperature)
+        response_text = llm.generate(system_prompt, context, body.message, temperature, api_key=custom_api_key)
     except Exception as e:
         response_text = f"Lo siento, no pude procesar tu pregunta. Error: {str(e)}"
 
