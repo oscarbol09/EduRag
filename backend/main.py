@@ -78,11 +78,12 @@ def map_user_response(user: dict) -> dict:
     if not user:
         return {}
     
+    from security_utils import decrypt_api_key
     # Valores por defecto
     first_name = user.get("first_name")
     last_name = user.get("last_name")
     institution_name = user.get("institution_name")
-    openrouter_api_key = user.get("openrouter_api_key")
+    openrouter_api_key = decrypt_api_key(user.get("openrouter_api_key"))
     openrouter_model = user.get("openrouter_model")
     is_test_account = user.get("is_test_account") or False
 
@@ -98,7 +99,7 @@ def map_user_response(user: dict) -> dict:
         if len(parts) >= 2:
             institution_name = parts[1].strip()
         if len(parts) >= 3:
-            openrouter_api_key = parts[2].strip()
+            openrouter_api_key = decrypt_api_key(parts[2].strip())
         if len(parts) >= 4:
             openrouter_model = parts[3].strip()
 
@@ -168,10 +169,12 @@ async def update_my_profile(body: ProfileUpdateRequest, current_user: dict = Dep
     if not user:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
         
-    combined_inst = f"{body.firstName.strip()} {body.lastName.strip()} | {body.institution.strip()}"
+    from security_utils import encrypt_api_key
     openrouter_key = body.openrouterApiKey.strip() if body.openrouterApiKey else ""
+    encrypted_key = encrypt_api_key(openrouter_key)
     openrouter_model = body.openrouterModel.strip() if body.openrouterModel else ""
-    combined_inst = f"{combined_inst} | {openrouter_key} | {openrouter_model}"
+    
+    combined_inst = f"{body.firstName.strip()} {body.lastName.strip()} | {body.institution.strip()} | {encrypted_key} | {openrouter_model}"
     
     updates = {
         "institution": combined_inst,
@@ -183,7 +186,7 @@ async def update_my_profile(body: ProfileUpdateRequest, current_user: dict = Dep
         "first_name": body.firstName.strip(),
         "last_name": body.lastName.strip(),
         "institution_name": body.institution.strip(),
-        "openrouter_api_key": openrouter_key,
+        "openrouter_api_key": encrypted_key,
         "openrouter_model": openrouter_model
     }
     
@@ -486,7 +489,9 @@ async def chat_endpoint(request: Request, chatbot_id: str, body: ChatMessage):
     if not chatbot:
         raise HTTPException(status_code=404, detail="Chatbot no encontrado")
 
-    cache_key = f"{chatbot_id}:{body.message[:50]}"
+    import hashlib
+    msg_hash = hashlib.sha256(body.message.encode("utf-8")).hexdigest()
+    cache_key = f"{chatbot_id}:{msg_hash}"
     if cache_key in response_cache:
         cached = response_cache[cache_key]
         # Parche de seguridad: Validar que la caché no haya expirado (TTL de 5 minutos)
@@ -526,8 +531,9 @@ async def chat_endpoint(request: Request, chatbot_id: str, body: ChatMessage):
     if owner_id:
         owner = await get_user(owner_id)
         if owner:
-            # Primero intentar obtener de las nuevas columnas nativas
-            custom_api_key = owner.get("openrouter_api_key") or None
+            from security_utils import decrypt_api_key
+            encrypted_key = owner.get("openrouter_api_key")
+            custom_api_key = decrypt_api_key(encrypted_key) or None
             custom_model = owner.get("openrouter_model") or None
             
             # Fallback si están vacíos al campo legacy
@@ -536,20 +542,20 @@ async def chat_endpoint(request: Request, chatbot_id: str, body: ChatMessage):
                 if inst_field and " | " in inst_field:
                     parts = inst_field.split(" | ")
                     if len(parts) >= 3 and not custom_api_key:
-                        custom_api_key = parts[2].strip() or None
+                        custom_api_key = decrypt_api_key(parts[2].strip()) or None
                     if len(parts) >= 4 and not custom_model:
                         custom_model = parts[3].strip() or None
             
             # Si no hay API Key configurada, validar si es una cuenta de testeo autorizada
             if not custom_api_key:
-                owner_email = owner.get("email", "")
+                owner_email = owner.get("email", "") or ""
                 is_test_account = owner.get("is_test_account") or False
                 
                 # Cuentas de testeo autorizadas por whitelist en .env como variable
                 import os
                 whitelist_env = os.environ.get("TEST_ACCOUNTS_WHITELIST", "")
                 whitelist = [e.strip() for e in whitelist_env.split(",") if e.strip()]
-                is_in_whitelist = owner_email in whitelist or owner_email.endswith("@edurag.com")
+                is_in_whitelist = owner_email in whitelist
                 
                 if not (is_test_account or is_in_whitelist):
                     return ChatResponse(
@@ -728,14 +734,20 @@ async def update_teacher(teacher_id: str, data: TeacherUpdate, current_user: dic
         new_inst = data.institution.strip() if data.institution is not None else current_institution
         full_name = f"{new_first} {new_last}".strip()
         
-        updates["institution"] = f"{full_name} | {new_inst} | {current_or_key} | {current_or_model}"
+        from security_utils import encrypt_api_key, decrypt_api_key
+        current_or_key_decrypted = decrypt_api_key(current_or_key)
+        current_or_key_encrypted = encrypt_api_key(current_or_key_decrypted)
+        
+        updates["institution"] = f"{full_name} | {new_inst} | {current_or_key_encrypted} | {current_or_model}"
         
         updates_native = {
             **updates_native,
             "institution": updates["institution"],
             "first_name": new_first,
             "last_name": new_last,
-            "institution_name": new_inst
+            "institution_name": new_inst,
+            "openrouter_api_key": current_or_key_encrypted,
+            "openrouter_model": current_or_model
         }
         
     if data.country is not None:
