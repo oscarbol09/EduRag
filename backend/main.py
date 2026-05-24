@@ -275,7 +275,10 @@ async def register(body: RegisterRequest):
 async def get_chatbots(request: Request, owner_id: Optional[str] = None, published_only: bool = False):
     if not owner_id:
         user = await get_current_user_optional(request)
-        owner_id = user.get("sub") if user.get("sub") else None
+        if user and user.get("role") == "teacher" and not published_only:
+            owner_id = user.get("sub")
+        else:
+            owner_id = None
     chatbots = await list_chatbots(owner_id=owner_id, published_only=published_only)
     return chatbots
 
