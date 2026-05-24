@@ -57,7 +57,12 @@ export default function ChatClient() {
 
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: response.response, timestamp: new Date().toISOString() },
+        {
+          role: "assistant",
+          content: response.response,
+          timestamp: new Date().toISOString(),
+          sources: response.sources,
+        },
       ]);
     } catch (error) {
       console.error("Error sending message:", error);
@@ -77,7 +82,7 @@ export default function ChatClient() {
   const chatbotName = chatbot?.name || "Chatbot Educativo";
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col">
+    <div className="min-h-screen bg-gray-50 bg-dot-grid flex flex-col">
       {/* Header con navegación */}
       <header className="bg-white shadow-sm py-3 px-6 sticky top-0 z-10">
         <div className="max-w-4xl mx-auto flex items-center justify-between gap-4">
@@ -114,11 +119,11 @@ export default function ChatClient() {
                 api.chatbots.publish(botId as string).then(() => router.back());
               }}
               className={`flex items-center gap-1.5 text-sm font-medium px-4 py-1.5 rounded-lg transition-colors ${
-                chatbot.is_published
-                  ? "bg-green-50 text-green-700 border border-green-200 cursor-default"
-                  : "bg-blue-600 text-white hover:bg-blue-700"
-              }`}
-              disabled={chatbot.is_published}
+                  chatbot.is_published
+                    ? "bg-green-50 text-green-700 border border-green-200 cursor-default"
+                    : "bg-brand-600 text-white hover:bg-brand-700"
+                }`}
+                disabled={chatbot.is_published}
             >
               {chatbot.is_published ? (
                 <>
@@ -162,8 +167,8 @@ export default function ChatClient() {
             {messages.length === 0 ? (
               <div className="text-center text-gray-400 py-16">
                 <div className="text-5xl mb-4">💬</div>
-                <p className="text-base font-medium text-gray-500">Envía un mensaje para comenzar</p>
-                <p className="text-sm text-gray-400 mt-1">El asistente responderá basándose en los documentos del curso</p>
+                <p className="text-base font-semibold text-gray-600">Envía un mensaje para comenzar</p>
+                <p className="text-sm text-gray-400 mt-1.5">El asistente responderá basándose en los documentos cargados por tu docente</p>
               </div>
             ) : (
               messages.map((msg, index) => (
@@ -172,16 +177,28 @@ export default function ChatClient() {
                   className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
                 >
                   <div
-                    className={`max-w-[80%] rounded-2xl px-4 py-3 ${
+                    className={`max-w-[80%] rounded-2xl px-4 py-3 shadow-sm ${
                       msg.role === "user"
-                        ? "bg-blue-600 text-white rounded-br-sm"
-                        : "bg-gray-100 text-gray-800 rounded-bl-sm"
+                        ? "bg-brand-600 text-white rounded-br-sm"
+                        : "bg-gray-100 text-gray-800 rounded-bl-sm border border-gray-200/40"
                     }`}
                   >
-                    <p className="whitespace-pre-wrap text-sm leading-relaxed">{msg.content}</p>
+                    <p className="whitespace-pre-wrap text-sm leading-relaxed font-sans">{msg.content}</p>
+                    {msg.role === "assistant" && msg.sources && msg.sources.length > 0 && (
+                      <div className="mt-2.5 flex flex-wrap gap-1.5 border-t border-gray-200/50 pt-2">
+                        {msg.sources.map((src, idx) => (
+                          <span
+                            key={idx}
+                            className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-brand-50 text-brand-700 border border-brand-100/50 select-none shadow-sm hover:shadow transition-shadow"
+                          >
+                            📄 {src}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                     <p
-                      className={`text-xs mt-1.5 ${
-                        msg.role === "user" ? "text-blue-200" : "text-gray-400"
+                      className={`text-[10px] mt-1.5 ${
+                        msg.role === "user" ? "text-brand-200" : "text-gray-400"
                       }`}
                     >
                       {new Date(msg.timestamp).toLocaleTimeString()}
@@ -210,13 +227,13 @@ export default function ChatClient() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="Escribe tu mensaje..."
-              className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm transition-all"
+              className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none text-sm transition-all"
               disabled={isLoading}
             />
             <button
               type="submit"
               disabled={isLoading || !input.trim()}
-              className="px-5 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed font-medium text-sm transition-colors"
+              className="px-5 py-2.5 bg-brand-600 text-white rounded-xl hover:bg-brand-700 disabled:opacity-40 disabled:cursor-not-allowed font-semibold text-sm transition-colors shadow-sm"
             >
               Enviar
             </button>

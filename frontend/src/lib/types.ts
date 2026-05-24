@@ -44,6 +44,7 @@ export interface Message {
   role: "user" | "assistant";
   content: string;
   timestamp: string;
+  sources?: string[];
 }
 
 export interface Conversation {
