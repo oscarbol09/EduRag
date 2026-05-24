@@ -24,6 +24,7 @@ interface AppContextType extends AppState {
   loadChatbots: () => Promise<void>;
   setCurrentChatbot: (chatbot: Chatbot | null) => void;
   refreshChatbot: (id: string) => Promise<void>;
+  updateUser: (user: User) => void;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -117,6 +118,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [currentChatbot]
   );
 
+  const updateUser = useCallback((user: User) => {
+    setAuth((prev) => ({ ...prev, user }));
+  }, []);
+
   return (
     <AppContext.Provider
       value={{
@@ -130,6 +135,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         loadChatbots,
         setCurrentChatbot,
         refreshChatbot,
+        updateUser,
       }}
     >
       {children}

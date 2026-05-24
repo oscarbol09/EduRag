@@ -37,7 +37,7 @@ const OPENROUTER_MODELS = [
 ];
 
 export default function TeacherSettingsPage() {
-  const { auth, logout } = useApp();
+  const { auth, logout, updateUser } = useApp();
   const router = useRouter();
   const [formData, setFormData] = useState({
     firstName: "",
@@ -116,7 +116,7 @@ export default function TeacherSettingsPage() {
     setIsError(false);
 
     try {
-      await api.auth.updateProfile({
+      const updatedUser = await api.auth.updateProfile({
         firstName: formData.firstName.trim(),
         lastName: formData.lastName.trim(),
         institution: formData.institution.trim(),
@@ -124,6 +124,8 @@ export default function TeacherSettingsPage() {
         openrouterApiKey: formData.openrouterApiKey.trim() || undefined,
         openrouterModel: formData.openrouterModel || undefined,
       });
+      
+      updateUser(updatedUser);
       setMessage("Configuración guardada exitosamente");
 
       // Auto-ocultar mensaje después de 3 segundos

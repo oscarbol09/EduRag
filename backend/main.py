@@ -479,18 +479,21 @@ async def chat_endpoint(request: Request, chatbot_id: str, body: ChatMessage):
     llm = get_llm_client()
     temperature = RESTRICTION_TEMPERATURES.get(chatbot.get("restriction_level", "guided"), 0.5)
 
+    is_error = False
     try:
         response_text = llm.generate(system_prompt, context, body.message, temperature, api_key=custom_api_key, model_id=custom_model)
     except Exception as e:
         response_text = f"Lo siento, no pude procesar tu pregunta. Error: {str(e)}"
+        is_error = True
 
-    if len(response_cache) >= settings.MAX_CACHE_SIZE:
-        response_cache.pop(next(iter(response_cache)))
-    response_cache[cache_key] = {
-        "response": response_text,
-        "sources": source_names,
-        "timestamp": datetime.utcnow()
-    }
+    if not is_error:
+        if len(response_cache) >= settings.MAX_CACHE_SIZE:
+            response_cache.pop(next(iter(response_cache)))
+        response_cache[cache_key] = {
+            "response": response_text,
+            "sources": source_names,
+            "timestamp": datetime.utcnow()
+        }
 
     conversation_id = body.conversation_id or str(uuid.uuid4())
     conversation = {
