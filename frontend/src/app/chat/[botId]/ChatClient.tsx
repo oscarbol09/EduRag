@@ -5,6 +5,29 @@ import { useParams, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import type { ChatMessage, ChatResponse, Message, Chatbot } from "@/lib/types";
 
+function renderMessageContent(content: string, isUser: boolean) {
+  if (!content) return null;
+  
+  // Escapar HTML básico para XSS
+  let html = content
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+  
+  // Bold: **text** -> <strong>text</strong>
+  const boldClass = isUser ? "font-extrabold text-white" : "font-extrabold text-gray-900";
+  html = html.replace(/\*\*(.*?)\*\*/g, `<strong class="${boldClass}">$1</strong>`);
+  
+  // Italics: *text* -> <em>text</em>
+  html = html.replace(/\*(.*?)\*/g, '<em class="italic">$1</em>');
+  
+  // Code: `code` -> <code>code</code>
+  const codeClass = isUser ? "bg-brand-700 px-1 py-0.5 rounded font-mono text-xs text-white" : "bg-gray-100 px-1 py-0.5 rounded font-mono text-xs text-brand-700";
+  html = html.replace(/`(.*?)`/g, `<code class="${codeClass}">$1</code>`);
+  
+  return <span className="whitespace-pre-wrap text-sm leading-relaxed font-sans" dangerouslySetInnerHTML={{ __html: html }} />;
+}
+
 export default function ChatClient() {
   const { botId } = useParams();
   const router = useRouter();
@@ -183,7 +206,7 @@ export default function ChatClient() {
                         : "bg-gray-100 text-gray-800 rounded-bl-sm border border-gray-200/40"
                     }`}
                   >
-                    <p className="whitespace-pre-wrap text-sm leading-relaxed font-sans">{msg.content}</p>
+                    {renderMessageContent(msg.content, msg.role === "user")}
                     {msg.role === "assistant" && msg.sources && msg.sources.length > 0 && (
                       <div className="mt-2.5 flex flex-wrap gap-1.5 border-t border-gray-200/50 pt-2">
                         {msg.sources.map((src, idx) => (
