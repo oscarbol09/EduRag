@@ -39,6 +39,11 @@ async def list_users(role: Optional[str] = None) -> List[dict]:
     return q.execute().data
 
 
+async def update_user(user_id: str, updates: dict) -> dict:
+    get_client().table("users").update(updates).eq("id", user_id).execute()
+    return updates
+
+
 # ── Chatbots ─────────────────────────────────────────────────────────
 
 async def create_chatbot(chatbot_data: dict) -> dict:

@@ -79,6 +79,14 @@ export interface CreateChatbotData {
 
 export interface CreateTeacherData {
   email: string;
+  password?: string;
+  institution?: string;
+  country?: string;
+}
+
+export interface UpdateTeacherData {
+  email?: string;
+  password?: string;
   institution?: string;
   country?: string;
 }

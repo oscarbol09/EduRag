@@ -431,19 +431,28 @@ async def get_chat_history(chatbot_id: str, conversation_id: str):
 async def create_teacher(data: TeacherCreate, current_user: dict = Depends(get_current_user)):
     if current_user.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Solo admins pueden crear docentes")
+    
+    existing = await get_user_by_email(data.email)
+    if existing:
+        raise HTTPException(status_code=400, detail="El correo electrónico ya está registrado")
+
     teacher_id = str(uuid.uuid4())
+    password_hash = hash_password(data.password)
     teacher = {
         "id": teacher_id,
         "email": data.email,
+        "password": password_hash,
         "role": "teacher",
-        "auth_method": "pre_created",
+        "auth_method": "email_password",
         "institution": data.institution,
         "country": data.country,
         "is_active": True,
         "created_at": datetime.utcnow().isoformat()
     }
     await create_user(teacher)
-    return teacher
+    
+    safe_user = {k: v for k, v in teacher.items() if k != "password"}
+    return safe_user
 
 
 @app.get("/admin/teachers")
@@ -452,6 +461,56 @@ async def list_teachers(current_user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=403, detail="Solo admins pueden listar docentes")
     teachers = await list_users(role="teacher")
     return teachers
+
+
+@app.put("/admin/teachers/{teacher_id}")
+async def update_teacher(teacher_id: str, data: TeacherUpdate, current_user: dict = Depends(get_current_user)):
+    if current_user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Solo admins pueden actualizar docentes")
+    
+    teacher = await get_user(teacher_id)
+    if not teacher or teacher.get("role") != "teacher":
+        raise HTTPException(status_code=404, detail="Docente no encontrado")
+        
+    updates = {}
+    if data.email is not None:
+        if data.email != teacher.get("email"):
+            existing = await get_user_by_email(data.email)
+            if existing:
+                raise HTTPException(status_code=400, detail="El correo electrónico ya está registrado")
+        updates["email"] = data.email
+        
+    if data.password is not None and data.password.strip() != "":
+        updates["password"] = hash_password(data.password)
+        updates["auth_method"] = "email_password"
+        
+    if data.institution is not None:
+        updates["institution"] = data.institution
+        
+    if data.country is not None:
+        updates["country"] = data.country
+        
+    if updates:
+        from supabase_db import update_user
+        await update_user(teacher_id, updates)
+        
+    updated_teacher = await get_user(teacher_id)
+    safe_user = {k: v for k, v in updated_teacher.items() if k != "password"}
+    return safe_user
+
+
+@app.delete("/admin/teachers/{teacher_id}")
+async def delete_teacher(teacher_id: str, current_user: dict = Depends(get_current_user)):
+    if current_user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Solo admins pueden eliminar docentes")
+        
+    teacher = await get_user(teacher_id)
+    if not teacher or teacher.get("role") != "teacher":
+        raise HTTPException(status_code=404, detail="Docente no encontrado")
+        
+    from supabase_db import get_client
+    get_client().table("users").delete().eq("id", teacher_id).execute()
+    return {"detail": "Docente eliminado exitosamente"}
 
 
 if __name__ == "__main__":

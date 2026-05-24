@@ -26,6 +26,14 @@ class User(UserBase):
 
 class TeacherCreate(BaseModel):
     email: str
+    password: str
+    institution: Optional[str] = None
+    country: Optional[str] = None
+
+
+class TeacherUpdate(BaseModel):
+    email: Optional[str] = None
+    password: Optional[str] = None
     institution: Optional[str] = None
     country: Optional[str] = None
 

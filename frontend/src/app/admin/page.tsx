@@ -14,9 +14,11 @@ export default function AdminPage() {
     firstName: "",
     lastName: "",
     email: "",
+    password: "",
     institution: "",
     country: "",
   });
+  const [editingTeacher, setEditingTeacher] = useState<User | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState("");
   const router = useRouter();
@@ -51,7 +53,7 @@ export default function AdminPage() {
     }
   };
 
-  if (auth.isLoading || (auth.token && !auth.user)) {
+  if (auth.isLoading || (auth.token && !auth.user) || !auth.user || auth.user.role !== "admin") {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
@@ -59,12 +61,62 @@ export default function AdminPage() {
     );
   }
 
-  if (!auth.user || auth.user.role !== "admin") {
-    return null;
-  }
-
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+
+  const handleEditClick = (teacher: User) => {
+    let firstName = "";
+    let lastName = "";
+    let institution = teacher.institution || "";
+    
+    if (institution.includes(" | ")) {
+      const parts = institution.split(" | ");
+      const fullName = parts[0] || "";
+      institution = parts[1] || "";
+      
+      const nameParts = fullName.trim().split(" ");
+      firstName = nameParts[0] || "";
+      lastName = nameParts.slice(1).join(" ") || "";
+    }
+    
+    setEditingTeacher(teacher);
+    setFormData({
+      firstName,
+      lastName,
+      email: teacher.email,
+      password: "",
+      institution,
+      country: teacher.country || "",
+    });
+    setMessage("");
+  };
+
+  const handleCancelEdit = () => {
+    setEditingTeacher(null);
+    setFormData({
+      firstName: "",
+      lastName: "",
+      email: "",
+      password: "",
+      institution: "",
+      country: "",
+    });
+    setMessage("");
+  };
+
+  const handleDeleteClick = async (teacherId: string) => {
+    if (!confirm("¿Está seguro de que desea eliminar este docente? Se borrarán permanentemente sus accesos.")) return;
+    try {
+      await api.admin.deleteTeacher(teacherId);
+      setMessage("Docente eliminado exitosamente");
+      if (editingTeacher?.id === teacherId) {
+        handleCancelEdit();
+      }
+      await loadTeachers();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Error al eliminar docente");
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -74,16 +126,32 @@ export default function AdminPage() {
 
     try {
       const combinedInstitution = `${formData.firstName.trim()} ${formData.lastName.trim()} | ${formData.institution.trim()}`;
-      await api.admin.createTeacher({
-        email: formData.email,
-        institution: combinedInstitution,
-        country: formData.country || undefined,
-      });
-      setMessage("Docente creado exitosamente");
-      setFormData({ firstName: "", lastName: "", email: "", institution: "", country: "" });
+      
+      if (editingTeacher) {
+        await api.admin.updateTeacher(editingTeacher.id, {
+          email: formData.email,
+          password: formData.password || undefined,
+          institution: combinedInstitution,
+          country: formData.country || undefined,
+        });
+        setMessage("Docente actualizado exitosamente");
+        setEditingTeacher(null);
+      } else {
+        if (!formData.password) {
+          throw new Error("La contraseña es obligatoria para crear un nuevo docente");
+        }
+        await api.admin.createTeacher({
+          email: formData.email,
+          password: formData.password,
+          institution: combinedInstitution,
+          country: formData.country || undefined,
+        });
+        setMessage("Docente creado exitosamente");
+      }
+      setFormData({ firstName: "", lastName: "", email: "", password: "", institution: "", country: "" });
       await loadTeachers();
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Error al crear docente");
+      setMessage(error instanceof Error ? error.message : "Error al procesar docente");
     } finally {
       setIsSubmitting(false);
     }
@@ -117,7 +185,20 @@ export default function AdminPage() {
 
         <div className="grid lg:grid-cols-2 gap-8">
           <div className="bg-white rounded-xl shadow p-6">
-            <h2 className="text-lg font-semibold mb-4">Crear Docente</h2>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-semibold text-gray-900">
+                {editingTeacher ? "Editar Docente" : "Crear Docente"}
+              </h2>
+              {editingTeacher && (
+                <button
+                  type="button"
+                  onClick={handleCancelEdit}
+                  className="text-sm text-gray-500 hover:text-gray-700 bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded-lg"
+                >
+                  Cancelar
+                </button>
+              )}
+            </div>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -169,6 +250,22 @@ export default function AdminPage() {
               </div>
 
               <div>
+                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+                  Contraseña {editingTeacher ? "(dejar en blanco para mantener actual)" : "*"}
+                </label>
+                <input
+                  id="password"
+                  name="password"
+                  type="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder={editingTeacher ? "Nueva contraseña opcional" : "Defina una contraseña"}
+                  required={!editingTeacher}
+                />
+              </div>
+
+              <div>
                 <label htmlFor="institution" className="block text-sm font-medium text-gray-700 mb-1">
                   Institución *
                 </label>
@@ -200,7 +297,7 @@ export default function AdminPage() {
               </div>
 
               {message && (
-                <div className={`text-sm p-3 rounded-lg ${message.includes("Error") ? "text-red-600 bg-red-50" : "text-green-600 bg-green-50"}`}>
+                <div className={`text-sm p-3 rounded-lg ${message.includes("Error") || message.includes("obligatoria") ? "text-red-600 bg-red-50" : "text-green-600 bg-green-50"}`}>
                   {message}
                 </div>
               )}
@@ -208,9 +305,9 @@ export default function AdminPage() {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                className="w-full py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 font-semibold"
               >
-                {isSubmitting ? "Guardando..." : "Crear docente"}
+                {isSubmitting ? "Guardando..." : (editingTeacher ? "Actualizar docente" : "Crear docente")}
               </button>
             </form>
           </div>
@@ -239,7 +336,7 @@ export default function AdminPage() {
                   }
 
                   return (
-                    <div key={teacher.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg shadow-sm border border-gray-100">
+                    <div key={teacher.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-gray-50 rounded-lg shadow-sm border border-gray-100 gap-3">
                       <div>
                         <p className="font-semibold text-gray-900">
                           {fullName || teacher.email}
@@ -251,9 +348,25 @@ export default function AdminPage() {
                           🏫 {displayInst} {teacher.country ? `· 📍 ${teacher.country}` : ""}
                         </p>
                       </div>
-                      <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${teacher.is_active ? "bg-green-100 text-green-700 border border-green-200" : "bg-red-100 text-red-700 border border-red-200"}`}>
-                        {teacher.is_active ? "Activo" : "Inactivo"}
-                      </span>
+                      <div className="flex items-center gap-2 self-end sm:self-auto">
+                        <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${teacher.is_active ? "bg-green-100 text-green-700 border border-green-200" : "bg-red-100 text-red-700 border border-red-200"}`}>
+                          {teacher.is_active ? "Activo" : "Inactivo"}
+                        </span>
+                        <button
+                          onClick={() => handleEditClick(teacher)}
+                          className="px-2.5 py-1 text-xs font-medium text-blue-700 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 rounded-md border border-blue-200 transition-colors"
+                          title="Editar Docente"
+                        >
+                          Editar
+                        </button>
+                        <button
+                          onClick={() => handleDeleteClick(teacher.id)}
+                          className="px-2.5 py-1 text-xs font-medium text-red-700 hover:text-red-800 bg-red-50 hover:bg-red-100 rounded-md border border-red-200 transition-colors"
+                          title="Eliminar Docente"
+                        >
+                          Eliminar
+                        </button>
+                      </div>
                     </div>
                   );
                 })}

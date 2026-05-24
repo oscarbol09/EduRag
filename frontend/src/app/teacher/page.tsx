@@ -46,16 +46,12 @@ export default function TeacherDashboard() {
     }
   };
 
-  if (auth.isLoading || (auth.token && !auth.user)) {
+  if (auth.isLoading || (auth.token && !auth.user) || !auth.user || auth.user.role !== "teacher") {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <Spinner />
       </div>
     );
-  }
-
-  if (!auth.user || auth.user.role !== "teacher") {
-    return null;
   }
 
   const handleDeleteChatbot = async (id: string) => {

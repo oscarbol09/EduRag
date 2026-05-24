@@ -6,7 +6,8 @@ import type {
   ChatMessage,
   ChatResponse,
   CreateChatbotData,
-  CreateTeacherData
+  CreateTeacherData,
+  UpdateTeacherData
 } from "./types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -128,6 +129,15 @@ export const api = {
         body: JSON.stringify(data),
       }),
     listTeachers: () => fetchApi<User[]>("/admin/teachers"),
+    updateTeacher: (id: string, data: UpdateTeacherData) =>
+      fetchApi<User>(`/admin/teachers/${id}`, {
+        method: "PUT",
+        body: JSON.stringify(data),
+      }),
+    deleteTeacher: (id: string) =>
+      fetchApi<{ detail: string }>(`/admin/teachers/${id}`, {
+        method: "DELETE",
+      }),
   },
 
   system: {
