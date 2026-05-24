@@ -29,7 +29,7 @@ ChromaDB fue eliminado porque sus dependencias (~500 MB de venv) causaban `Conta
 | Autenticación | JWT propio HS256 (PyJWT + bcrypt) | `backend/jwt_token.py`, `auth.py` |
 | LLM activo | OpenRouter (modelos gratuitos vía API HTTP) | `backend/llm_client.py` |
 | LLM BYOK | API key de OpenRouter por docente (almacenada en `users.openrouter_api_key` con fallback en `institution`) | `backend/main.py` |
-| Texto de docs | Supabase — tabla `document_contents` | `backend/vector_store.py` |
+| Texto de docs | Supabase — tabla `document_contents` | `backend/document_content_store.py` |
 
 ---
 

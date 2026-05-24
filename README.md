@@ -93,7 +93,7 @@ EduRAG resuelve un problema concreto en la educación digital: los materiales de
 │   ├── jwt_token.py                # create_jwt_token / verify_jwt_token (PyJWT seguro)
 │   ├── password.py                 # hash_password / verify_password (bcrypt)
 │   ├── supabase_db.py              # CRUD — 5 tablas Postgres en Supabase
-│   ├── vector_store.py             # Almacén de texto de documentos en Supabase
+│   ├── document_content_store.py   # Almacén de texto de documentos en Supabase
 │   ├── llm_client.py               # Abstracción LLM (Integración con OpenRouter y selección de modelos libres)
 │   ├── document_uploader.py        # Supabase Storage bucket upload + extr. texto (MD, TXT, PDF, DOCX)
 │   ├── test_main.py                # Suite de pruebas automatizadas con pytest

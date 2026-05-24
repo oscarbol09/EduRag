@@ -15,7 +15,7 @@ from supabase_db import (
     create_document, get_document, update_document, list_documents, delete_document,
     create_conversation, get_conversation, save_conversation, list_conversations
 )
-from vector_store import (
+from document_content_store import (
     store_document_content,
     get_all_contents_for_chatbot,
     delete_all_contents_for_chatbot,
@@ -825,33 +825,39 @@ async def get_teacher_metrics(current_user: dict = Depends(get_current_user)):
     total_chatbots = len(chatbots)
     published_chatbots = len([cb for cb in chatbots if cb.get("is_published")])
     
-    # 2. Obtener total de documentos indexados de todos sus chatbots
+    # 2. Obtener total de documentos indexados de todos sus chatbots en una sola query
     total_documents = 0
-    for cb in chatbots:
-        docs = await list_documents(cb.get("id"))
-        total_documents += len([d for d in docs if d.get("status") == "indexed"])
-        
-    # 3. Obtener conversaciones semanales
-    from datetime import datetime, timedelta
-    one_week_ago = datetime.utcnow() - timedelta(days=7)
-    
     weekly_conversations_count = 0
-    for cb in chatbots:
-        conversations = await list_conversations(cb.get("id"))
-        for conv in conversations:
-            updated_at_str = conv.get("updated_at") or conv.get("created_at")
-            if updated_at_str:
-                try:
-                    # Permitir parsear tanto formatos con Z como con +00:00
-                    updated_at_str_clean = updated_at_str.replace("Z", "+00:00")
-                    updated_at = datetime.fromisoformat(updated_at_str_clean)
-                    updated_at_naive = updated_at.replace(tzinfo=None)
-                    if updated_at_naive >= one_week_ago:
+    
+    chatbot_ids = [cb.get("id") for cb in chatbots]
+    if chatbot_ids:
+        from supabase_db import get_client
+        db = get_client()
+        
+        # Consultar todos los documentos asociados a la vez
+        docs_res = db.table("documents").select("status").in_("chatbot_id", chatbot_ids).execute()
+        if docs_res and docs_res.data:
+            total_documents = len([d for d in docs_res.data if d.get("status") == "indexed"])
+            
+        # 3. Obtener conversaciones semanales a la vez
+        from datetime import datetime, timedelta
+        one_week_ago = datetime.utcnow() - timedelta(days=7)
+        
+        convs_res = db.table("conversations").select("updated_at", "created_at").in_("chatbot_id", chatbot_ids).execute()
+        if convs_res and convs_res.data:
+            for conv in convs_res.data:
+                updated_at_str = conv.get("updated_at") or conv.get("created_at")
+                if updated_at_str:
+                    try:
+                        updated_at_str_clean = updated_at_str.replace("Z", "+00:00")
+                        updated_at = datetime.fromisoformat(updated_at_str_clean)
+                        updated_at_naive = updated_at.replace(tzinfo=None)
+                        if updated_at_naive >= one_week_ago:
+                            weekly_conversations_count += 1
+                    except Exception:
                         weekly_conversations_count += 1
-                except Exception:
+                else:
                     weekly_conversations_count += 1
-            else:
-                weekly_conversations_count += 1
                 
     return {
         "totalChatbots": total_chatbots,

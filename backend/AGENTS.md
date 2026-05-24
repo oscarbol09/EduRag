@@ -21,7 +21,7 @@ backend/
 ├── jwt_token.py            # create_jwt_token / verify_jwt_token — PyJWT HS256 (JWT_SECRET seguro)
 ├── password.py             # hash_password / verify_password — bcrypt
 ├── supabase_db.py          # CRUD utilizando el SDK de Supabase para PostgreSQL
-├── vector_store.py         # Almacén de texto — store/retrieve en Supabase (document_contents)
+├── document_content_store.py # Almacén de texto — store/retrieve en Supabase (document_contents)
 ├── llm_client.py           # Abstracción LLMClient — Integración OpenRouter con soporte para múltiples modelos gratuitos
 ├── document_uploader.py    # Upload a Supabase Storage + extracción de texto (MD/TXT/PDF/DOCX)
 ├── Dockerfile              # Imagen Docker (referencia — no en uso activo)
@@ -145,7 +145,7 @@ await save_conversation(doc: dict)
 await list_conversations(chatbot_id: str)
 ```
 
-### `vector_store.py`
+### `document_content_store.py`
 Almacén de texto de documentos en Supabase. **No usa ChromaDB ni embeddings.**
 
 ```python
