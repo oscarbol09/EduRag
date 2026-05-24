@@ -1,13 +1,16 @@
-import google.generativeai as genai
+import requests
 from typing import Optional
 from settings import settings
 
-genai.configure(api_key=settings.GOOGLE_API_KEY)
+OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
+DEFAULT_MODEL = "deepseek/deepseek-chat-v3-0324:free"
 
 
 class LLMClient:
-    def __init__(self, provider: str = "gemini"):
-        self.provider = provider
+    """
+    Cliente unificado para OpenRouter.
+    Todos los modelos se acceden vía la API compatible con OpenAI de OpenRouter.
+    """
 
     def generate(
         self,
@@ -15,112 +18,93 @@ class LLMClient:
         context: str,
         user_message: str,
         temperature: float = 0.5,
-        api_key: Optional[str] = None
+        api_key: Optional[str] = None,
+        model_id: Optional[str] = None,
     ) -> str:
-        if self.provider == "gemini":
-            if api_key and api_key.strip() != "":
-                return self._generate_gemini_rest(system_prompt, context, user_message, temperature, api_key)
-            return self._generate_gemini(system_prompt, context, user_message, temperature)
-        elif self.provider == "claude":
-            return self._generate_claude(system_prompt, context, user_message, temperature, api_key)
-        else:
-            raise ValueError(f"Unknown provider: {self.provider}")
-
-    def _generate_gemini_rest(
-        self,
-        system_prompt: str,
-        context: str,
-        user_message: str,
-        temperature: float,
-        api_key: str
-    ) -> str:
-        import requests
+        """
+        Genera una respuesta usando OpenRouter.
         
-        full_prompt = f"""{system_prompt}
+        Args:
+            system_prompt: Instrucción de sistema para el LLM.
+            context: Texto de los documentos del chatbot.
+            user_message: Mensaje del estudiante.
+            temperature: Temperatura de generación (0.0–1.0).
+            api_key: API key de OpenRouter del docente (BYOK).
+                     Si None, se usa la key del admin desde las variables de entorno.
+            model_id: ID del modelo de OpenRouter (ej. "deepseek/deepseek-chat-v3-0324:free").
+                      Si None, se usa el modelo por defecto.
+        
+        Returns:
+            Texto de la respuesta generada.
+        
+        Raises:
+            RuntimeError: Si la API devuelve un error o la respuesta está vacía.
+        """
+        effective_key = (api_key or "").strip() or settings.OPENROUTER_API_KEY
+        effective_model = (model_id or "").strip() or DEFAULT_MODEL
 
-Contexto del documento:
-{context}
+        if not effective_key:
+            raise RuntimeError(
+                "No hay API Key de OpenRouter configurada. "
+                "El docente debe agregar su propia key en Configuración."
+            )
 
---- 
+        messages = [
+            {
+                "role": "system",
+                "content": f"{system_prompt}\n\nContexto del documento:\n{context}",
+            },
+            {
+                "role": "user",
+                "content": user_message,
+            },
+        ]
 
-Pregunta del usuario: {user_message}
-
-Respuesta:"""
-
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}"
-        headers = {"Content-Type": "application/json"}
-        payload = {
-            "contents": [{
-                "parts": [{"text": full_prompt}]
-            }],
-            "generationConfig": {
-                "temperature": temperature,
-                "maxOutputTokens": 2048
-            }
+        headers = {
+            "Authorization": f"Bearer {effective_key}",
+            "Content-Type": "application/json",
+            "HTTP-Referer": "https://edu-rag-red.vercel.app",
+            "X-Title": "EduRAG Platform",
         }
-        
+
+        payload = {
+            "model": effective_model,
+            "messages": messages,
+            "temperature": temperature,
+            "max_tokens": 2048,
+        }
+
         try:
-            response = requests.post(url, json=payload, headers=headers, timeout=30)
+            response = requests.post(
+                OPENROUTER_API_URL,
+                json=payload,
+                headers=headers,
+                timeout=60,
+            )
+
             if response.status_code != 200:
                 try:
                     error_detail = response.json().get("error", {}).get("message", "Error desconocido")
                 except Exception:
-                    error_detail = response.text
-                raise RuntimeError(f"Error de API Gemini (BYOK): {error_detail}")
-                
+                    error_detail = response.text[:500]
+                raise RuntimeError(f"Error de OpenRouter [{response.status_code}]: {error_detail}")
+
             result = response.json()
-            candidates = result.get("candidates", [])
-            if not candidates:
-                raise RuntimeError("La API de Gemini no devolvió candidatos de respuesta.")
-                
-            content = candidates[0].get("content", {})
-            parts = content.get("parts", [])
-            if not parts:
-                raise RuntimeError("La respuesta de Gemini no contiene partes de texto.")
-                
-            return parts[0].get("text", "")
-            
+            choices = result.get("choices", [])
+            if not choices:
+                raise RuntimeError("OpenRouter no devolvió ninguna respuesta.")
+
+            content = choices[0].get("message", {}).get("content", "")
+            if not content:
+                raise RuntimeError("La respuesta de OpenRouter está vacía.")
+
+            return content
+
+        except requests.exceptions.Timeout:
+            raise RuntimeError("Tiempo de espera agotado al conectar con OpenRouter. Intenta de nuevo.")
         except requests.exceptions.RequestException as e:
-            raise RuntimeError(f"Error de red al conectar con Gemini: {str(e)}")
-
-    def _generate_gemini(
-        self,
-        system_prompt: str,
-        context: str,
-        user_message: str,
-        temperature: float
-    ) -> str:
-        full_prompt = f"""{system_prompt}
-
-Contexto del documento:
-{context}
-
---- 
-
-Pregunta del usuario: {user_message}
-
-Respuesta:"""
-
-        model = genai.GenerativeModel("gemini-2.0-flash")
-        response = model.generate_content(
-            full_prompt,
-            generation_config={
-                "temperature": temperature,
-                "max_output_tokens": 2048
-            }
-        )
-        return response.text
-
-    def _generate_claude(
-        self,
-        system_prompt: str,
-        context: str,
-        user_message: str,
-        temperature: float,
-        api_key: Optional[str] = None
-    ) -> str:
-        raise NotImplementedError("Claude client not yet implemented")
+            raise RuntimeError(f"Error de red al conectar con OpenRouter: {str(e)}")
 
 
-def get_llm_client(provider: str = "gemini") -> LLMClient:
-    return LLMClient(provider=provider)
+def get_llm_client() -> LLMClient:
+    return LLMClient()

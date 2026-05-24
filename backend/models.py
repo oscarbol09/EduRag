@@ -27,6 +27,8 @@ class User(UserBase):
 class TeacherCreate(BaseModel):
     email: str
     password: str
+    firstName: Optional[str] = None
+    lastName: Optional[str] = None
     institution: Optional[str] = None
     country: Optional[str] = None
 
@@ -34,6 +36,8 @@ class TeacherCreate(BaseModel):
 class TeacherUpdate(BaseModel):
     email: Optional[str] = None
     password: Optional[str] = None
+    firstName: Optional[str] = None
+    lastName: Optional[str] = None
     institution: Optional[str] = None
     country: Optional[str] = None
 
@@ -46,7 +50,7 @@ class ChatbotBase(BaseModel):
     welcome_message: Optional[str] = None
     system_prompt_override: Optional[str] = None
     restriction_level: Literal["strict", "guided", "open"] = "guided"
-    llm_provider: Literal["gemini", "claude"] = "gemini"
+    llm_provider: str = "openrouter"
 
 
 class ChatbotCreate(ChatbotBase):
@@ -142,5 +146,5 @@ class ProfileUpdateRequest(BaseModel):
     lastName: str
     institution: str
     country: Optional[str] = None
-    geminiApiKey: Optional[str] = None
-    claudeApiKey: Optional[str] = None
+    openrouterApiKey: Optional[str] = None
+    openrouterModel: Optional[str] = None

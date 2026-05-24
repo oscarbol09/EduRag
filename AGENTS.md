@@ -27,8 +27,8 @@ ChromaDB fue eliminado porque sus dependencias (~500 MB de venv) causaban `Conta
 | Base de datos | Supabase PostgreSQL | Cloud |
 | Almacenamiento | Supabase Storage (Bucket: `documents`) | Cloud |
 | Autenticación | JWT propio HS256 (PyJWT + bcrypt) | `backend/jwt_token.py`, `auth.py` |
-| LLM activo | Google Gemini 2.0 Flash | `backend/llm_client.py` |
-| LLM stub | Anthropic Claude (no implementado aún) | `backend/llm_client.py` |
+| LLM activo | OpenRouter (modelos gratuitos vía API HTTP) | `backend/llm_client.py` |
+| LLM BYOK | API key de OpenRouter por docente (almacenada en `institution`) | `backend/main.py` |
 | Texto de docs | Supabase — tabla `document_contents` | `backend/vector_store.py` |
 
 ---
@@ -84,7 +84,8 @@ Chat (síncrono):
   Mensaje → Supabase: recuperar todos los document_contents del chatbot
     → construir contexto con todos los documentos
     → prompt: system_prompt + contexto + pregunta
-    → Gemini 2.0 Flash → respuesta con fuentes (filenames)
+    → OpenRouter API (modelo seleccionado por el docente) → respuesta con fuentes (filenames)
+    → Cuentas @edurag.com usan OPENROUTER_API_KEY del sistema como fallback
 ```
 
 **Temperatures por restriction_level:**
@@ -141,6 +142,11 @@ GET  /chat/{chatbot_id}/history     → historial
 # Admin
 POST /admin/teachers                → crear docente [JWT admin]
 GET  /admin/teachers                → listar docentes [JWT admin]
+PUT  /admin/teachers/{id}           → editar docente [JWT admin]
+DELETE /admin/teachers/{id}         → eliminar docente [JWT admin]
+
+# Perfil de Docente
+PUT  /auth/me/profile               → actualizar perfil + OpenRouter key + modelo [JWT docente]
 ```
 
 ---
@@ -192,7 +198,7 @@ npm run build
 |---|---|---|
 | `SUPABASE_URL` | backend | URL de la API de Supabase |
 | `SUPABASE_KEY` | backend | service_role API key de Supabase |
-| `GOOGLE_API_KEY` | backend | API key de Google AI (Gemini) |
+| `OPENROUTER_API_KEY` | backend | API key de OpenRouter (fallback para cuentas `@edurag.com`) |
 | `JWT_SECRET` | backend | Secret para firmar tokens JWT (≥32 chars) |
 | `NEXT_PUBLIC_API_URL` | frontend | URL base de la API backend |
 

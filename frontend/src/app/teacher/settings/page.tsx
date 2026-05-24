@@ -8,6 +8,34 @@ import { api } from "@/lib/api";
 import { Navbar } from "@/components/Navbar";
 import { Spinner } from "@/components/Spinner";
 
+const OPENROUTER_MODELS = [
+  {
+    id: "deepseek/deepseek-chat-v3-0324:free",
+    label: "DeepSeek V3 Free",
+    description: "Excelente para razonamiento, análisis de texto y respuestas largas.",
+  },
+  {
+    id: "deepseek/deepseek-r1:free",
+    label: "DeepSeek R1 Free",
+    description: "Modelo de razonamiento avanzado. Ideal para preguntas complejas.",
+  },
+  {
+    id: "meta-llama/llama-4-maverick:free",
+    label: "Llama 4 Maverick Free",
+    description: "Modelo multimodal de Meta, muy capaz con textos académicos.",
+  },
+  {
+    id: "google/gemini-2.0-flash-exp:free",
+    label: "Gemini 2.0 Flash Exp Free",
+    description: "Versión experimental gratuita de Gemini Flash de Google.",
+  },
+  {
+    id: "microsoft/phi-4-reasoning:free",
+    label: "Phi-4 Reasoning Free",
+    description: "Modelo de razonamiento compacto y eficiente de Microsoft.",
+  },
+];
+
 export default function TeacherSettingsPage() {
   const { auth, logout } = useApp();
   const router = useRouter();
@@ -16,11 +44,10 @@ export default function TeacherSettingsPage() {
     lastName: "",
     institution: "",
     country: "",
-    geminiApiKey: "",
-    claudeApiKey: "",
+    openrouterApiKey: "",
+    openrouterModel: OPENROUTER_MODELS[0].id,
   });
-  const [showGeminiKey, setShowGeminiKey] = useState(false);
-  const [showClaudeKey, setShowClaudeKey] = useState(false);
+  const [showApiKey, setShowApiKey] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState("");
   const [isError, setIsError] = useState(false);
@@ -38,18 +65,19 @@ export default function TeacherSettingsPage() {
           }
         } else {
           // Parsear los datos del usuario actual
+          // Formato: "Nombre Apellido | Institución | OpenRouterKey | ModelId"
           let firstName = "";
           let lastName = "";
           let institution = auth.user.institution || "";
-          let geminiApiKey = "";
-          let claudeApiKey = "";
+          let openrouterApiKey = "";
+          let openrouterModel = OPENROUTER_MODELS[0].id;
 
           if (institution.includes(" | ")) {
             const parts = institution.split(" | ");
             const fullName = parts[0] || "";
             institution = parts[1] || "";
-            geminiApiKey = parts[2] || "";
-            claudeApiKey = parts[3] || "";
+            openrouterApiKey = parts[2] || "";
+            openrouterModel = parts[3] || OPENROUTER_MODELS[0].id;
 
             const nameParts = fullName.trim().split(" ");
             firstName = nameParts[0] || "";
@@ -61,8 +89,8 @@ export default function TeacherSettingsPage() {
             lastName,
             institution,
             country: auth.user.country || "",
-            geminiApiKey,
-            claudeApiKey,
+            openrouterApiKey,
+            openrouterModel: openrouterModel || OPENROUTER_MODELS[0].id,
           });
         }
       }
@@ -77,7 +105,7 @@ export default function TeacherSettingsPage() {
     );
   }
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
@@ -93,14 +121,11 @@ export default function TeacherSettingsPage() {
         lastName: formData.lastName.trim(),
         institution: formData.institution.trim(),
         country: formData.country.trim() || undefined,
-        geminiApiKey: formData.geminiApiKey.trim() || undefined,
-        claudeApiKey: formData.claudeApiKey.trim() || undefined,
+        openrouterApiKey: formData.openrouterApiKey.trim() || undefined,
+        openrouterModel: formData.openrouterModel || undefined,
       });
       setMessage("Configuración guardada exitosamente");
-      // Forzar la recarga de los datos de usuario en el contexto
-      const user = await api.auth.me();
-      auth.user = user; // Sincronización rápida
-      
+
       // Auto-ocultar mensaje después de 3 segundos
       setTimeout(() => setMessage(""), 3000);
     } catch (error) {
@@ -112,6 +137,7 @@ export default function TeacherSettingsPage() {
   };
 
   const isTestUser = auth.user.email.endsWith("@edurag.com");
+  const selectedModelInfo = OPENROUTER_MODELS.find((m) => m.id === formData.openrouterModel);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -137,11 +163,13 @@ export default function TeacherSettingsPage() {
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Configuración de Perfil</h1>
-          <p className="text-gray-600 mt-1">Gestiona tus datos personales y tus credenciales de modelos de lenguaje (API Keys)</p>
+          <p className="text-gray-600 mt-1">
+            Gestiona tus datos personales y tu clave de modelo de lenguaje (OpenRouter BYOK)
+          </p>
         </div>
 
         <div className="grid md:grid-cols-3 gap-8">
-          {/* Columna Izquierda: Información de la Cuenta y Fallback */}
+          {/* Columna Izquierda: Información de la Cuenta */}
           <div className="md:col-span-1 space-y-6">
             <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
               <h2 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
@@ -163,9 +191,17 @@ export default function TeacherSettingsPage() {
               </div>
             </div>
 
-            {/* Aviso de API Keys */}
-            <div className={`rounded-2xl border p-6 shadow-sm ${isTestUser ? "bg-blue-50/50 border-blue-100" : "bg-amber-50/50 border-amber-100"}`}>
-              <h3 className={`font-semibold mb-2 flex items-center gap-2 ${isTestUser ? "text-blue-900" : "text-amber-900"}`}>
+            {/* Aviso de API Key */}
+            <div
+              className={`rounded-2xl border p-6 shadow-sm ${
+                isTestUser ? "bg-blue-50/50 border-blue-100" : "bg-amber-50/50 border-amber-100"
+              }`}
+            >
+              <h3
+                className={`font-semibold mb-2 flex items-center gap-2 ${
+                  isTestUser ? "text-blue-900" : "text-amber-900"
+                }`}
+              >
                 {isTestUser ? (
                   <>
                     <span>ℹ️</span> Modo Demostración
@@ -178,15 +214,36 @@ export default function TeacherSettingsPage() {
               </h3>
               <p className={`text-xs leading-relaxed ${isTestUser ? "text-blue-700" : "text-amber-700"}`}>
                 {isTestUser ? (
-                  "Estás usando una cuenta de testeo interna (@edurag.com). Tus chatbots pueden operar con la API Key del sistema por defecto. Aun así, puedes configurar tu propia API Key si deseas hacer pruebas de consumo aisladas."
+                  "Estás usando una cuenta de testeo interna (@edurag.com). Tus chatbots pueden operar con la API Key del sistema. Aun así, puedes configurar tu propia key de OpenRouter para pruebas de consumo aisladas."
                 ) : (
-                  "Para garantizar la viabilidad y operatividad de la plataforma, cada docente debe proveer su propia API Key de Gemini. Si no configuras tu clave, tus chatbots no podrán procesar mensajes de estudiantes."
+                  "Para operar la plataforma, cada docente debe proveer su propia API Key de OpenRouter. Sin ella, tus chatbots no podrán responder a los estudiantes."
                 )}
               </p>
+              <a
+                href="https://openrouter.ai/keys"
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`mt-3 inline-flex items-center gap-1 text-xs font-semibold underline underline-offset-2 ${
+                  isTestUser ? "text-blue-700" : "text-amber-800"
+                }`}
+              >
+                Obtén tu API Key gratis en OpenRouter ↗
+              </a>
             </div>
+
+            {/* Info del modelo seleccionado */}
+            {selectedModelInfo && (
+              <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
+                <h3 className="font-semibold text-gray-900 mb-1 flex items-center gap-2 text-sm">
+                  <span>🤖</span> Modelo Activo
+                </h3>
+                <p className="text-sm font-medium text-indigo-700">{selectedModelInfo.label}</p>
+                <p className="text-xs text-gray-500 mt-1">{selectedModelInfo.description}</p>
+              </div>
+            )}
           </div>
 
-          {/* Columna Derecha: Formulario de Perfil y API Keys */}
+          {/* Columna Derecha: Formulario */}
           <div className="md:col-span-2">
             <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-gray-100 p-8 shadow-sm space-y-6">
               <h2 className="text-lg font-semibold text-gray-900 border-b border-gray-100 pb-3 flex items-center gap-2">
@@ -255,78 +312,73 @@ export default function TeacherSettingsPage() {
                 </div>
               </div>
 
-              {/* API Keys */}
+              {/* Sección OpenRouter */}
               <h2 className="text-lg font-semibold text-gray-900 border-b border-gray-100 pb-3 pt-4 flex items-center gap-2">
-                <span>🔑</span> Llaves de Modelos (BYOK)
+                <span>🔑</span> OpenRouter — BYOK (Bring Your Own Key)
               </h2>
 
-              <div className="space-y-4">
+              <div className="space-y-5">
+                {/* API Key */}
                 <div>
                   <div className="flex justify-between items-center mb-1">
-                    <label htmlFor="geminiApiKey" className="block text-sm font-medium text-gray-700">
-                      Google Gemini API Key (Recomendado)
+                    <label htmlFor="openrouterApiKey" className="block text-sm font-medium text-gray-700">
+                      OpenRouter API Key
                     </label>
                     <a
-                      href="https://aistudio.google.com/"
+                      href="https://openrouter.ai/keys"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-xs text-blue-600 hover:underline flex items-center gap-1 font-medium"
                     >
-                      Obtén tu API Key gratis en AI Studio ↗
+                      Obtener key gratis ↗
                     </a>
                   </div>
                   <div className="relative">
                     <input
-                      id="geminiApiKey"
-                      name="geminiApiKey"
-                      type={showGeminiKey ? "text" : "password"}
-                      value={formData.geminiApiKey}
+                      id="openrouterApiKey"
+                      name="openrouterApiKey"
+                      type={showApiKey ? "text" : "password"}
+                      value={formData.openrouterApiKey}
                       onChange={handleChange}
-                      className="w-full pl-4 pr-12 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-gray-800 font-mono text-sm transition-all"
-                      placeholder="AIzaSy..."
+                      className="w-full pl-4 pr-20 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none text-gray-800 font-mono text-sm transition-all"
+                      placeholder="sk-or-v1-..."
                     />
                     <button
                       type="button"
-                      onClick={() => setShowGeminiKey(!showGeminiKey)}
+                      onClick={() => setShowApiKey(!showApiKey)}
                       className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
                     >
-                      {showGeminiKey ? (
-                        <span className="text-xs font-semibold select-none">Ocultar</span>
-                      ) : (
-                        <span className="text-xs font-semibold select-none">Mostrar</span>
-                      )}
+                      <span className="text-xs font-semibold select-none">
+                        {showApiKey ? "Ocultar" : "Mostrar"}
+                      </span>
                     </button>
                   </div>
+                  <p className="text-xs text-gray-400 mt-1">
+                    Tu key siempre se almacena de forma cifrada y nunca se comparte.
+                  </p>
                 </div>
 
+                {/* Modelo */}
                 <div>
-                  <div className="flex justify-between items-center mb-1">
-                    <label htmlFor="claudeApiKey" className="block text-sm font-medium text-gray-700">
-                      Anthropic Claude API Key (Opcional)
-                    </label>
-                  </div>
-                  <div className="relative">
-                    <input
-                      id="claudeApiKey"
-                      name="claudeApiKey"
-                      type={showClaudeKey ? "text" : "password"}
-                      value={formData.claudeApiKey}
-                      onChange={handleChange}
-                      className="w-full pl-4 pr-12 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-gray-800 font-mono text-sm transition-all"
-                      placeholder="sk-ant-..."
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowClaudeKey(!showClaudeKey)}
-                      className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
-                    >
-                      {showClaudeKey ? (
-                        <span className="text-xs font-semibold select-none">Ocultar</span>
-                      ) : (
-                        <span className="text-xs font-semibold select-none">Mostrar</span>
-                      )}
-                    </button>
-                  </div>
+                  <label htmlFor="openrouterModel" className="block text-sm font-medium text-gray-700 mb-1">
+                    Modelo de IA para tus Chatbots
+                  </label>
+                  <select
+                    id="openrouterModel"
+                    name="openrouterModel"
+                    value={formData.openrouterModel}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none text-gray-800 text-sm transition-all bg-white"
+                  >
+                    {OPENROUTER_MODELS.map((model) => (
+                      <option key={model.id} value={model.id}>
+                        {model.label}
+                      </option>
+                    ))}
+                  </select>
+                  {selectedModelInfo && (
+                    <p className="text-xs text-gray-400 mt-1">{selectedModelInfo.description}</p>
+                  )}
                 </div>
               </div>
 
@@ -345,7 +397,7 @@ export default function TeacherSettingsPage() {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow disabled:opacity-50 font-semibold transition-all hover:shadow-lg text-sm"
+                className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow disabled:opacity-50 font-semibold transition-all hover:shadow-lg text-sm"
               >
                 {isSubmitting ? "Guardando..." : "Guardar Configuración"}
               </button>

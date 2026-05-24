@@ -32,8 +32,9 @@ EduRAG resuelve un problema concreto en la educación digital: los materiales de
 
 * **Costo cero post-primer mes** — toda la infraestructura opera sobre Supabase Free Tier y APIs gratuitas.
 * **Aislamiento multi-tenant estricto** — los datos de cada docente están completamente separados por `owner_id` / `chatbot_id`.
-* **Extensibilidad LLM** — el proveedor de IA (Gemini hoy, Claude mañana) se intercambia sin cambios en la lógica de negocio.
-* **Arquitectura sin vector store** — el contenido de los documentos se almacena como texto en Supabase PostgreSQL y se pasa directamente al context window de Gemini, eliminando dependencias pesadas (~500 MB venv de ChromaDB) y asegurando despliegues rápidos.
+* **Extensibilidad LLM** — el proveedor de IA se intercambia en `llm_client.py` sin cambios en la lógica de negocio. Actualmente usa **OpenRouter** (acceso unificado a múltiples modelos gratuitos).
+* **Arquitectura sin vector store** — el contenido de los documentos se almacena como texto en Supabase PostgreSQL y se pasa directamente al context window del modelo, eliminando dependencias pesadas (~500 MB venv de ChromaDB) y asegurando despliegues rápidos.
+* **BYOK (Bring Your Own Key)** — cada docente configura su propia API Key de OpenRouter. Las cuentas `@edurag.com` usan la key del admin como fallback.
 
 ---
 
@@ -57,13 +58,13 @@ EduRAG resuelve un problema concreto en la educación digital: los materiales de
 │  └──────────────────────────┘     └──────────────────┘ │
 └────────────────────────────────────────────────────────┘
                                │
-                  ┌────────────▼───────────┐
-                  │   Google Gemini API     │
-                  │   gemini-2.0-flash      │
-                  └────────────────────────┘
+                   ┌────────────▼───────────┐
+                   │   OpenRouter API        │
+                   │   (modelos gratuitos)   │
+                   └────────────────────────┘
 ```
 
-> **Nota arquitectural:** El texto completo de cada documento se extrae al momento del upload y se almacena en Supabase Postgres (`document_contents`). Al chatear, todos los textos del chatbot se recuperan y pasan directamente al prompt de Gemini (context window ~1M tokens).
+> **Nota arquitectural:** El texto completo de cada documento se extrae al momento del upload y se almacena en Supabase Postgres (`document_contents`). Al chatear, todos los textos del chatbot se recuperan y pasan al prompt del modelo vía OpenRouter (context window hasta ~1M tokens según el modelo).
 
 ---
 
@@ -76,7 +77,7 @@ EduRAG resuelve un problema concreto en la educación digital: los materiales de
 | Base de datos | Supabase PostgreSQL | Supabase | Free Tier permanente |
 | Almacenamiento | Supabase Storage | Supabase (`documents` bucket) | Free (1 GB) |
 | Autenticación | JWT propio (PyJWT + bcrypt) | — | Free |
-| LLM | Google Gemini 2.0 Flash | Google AI API | Free tier (15 RPM) |
+| LLM | OpenRouter (múltiples modelos free tier) | OpenRouter API | Free tier (BYOK) |
 
 ---
 
@@ -138,7 +139,8 @@ Todas las entidades persisten en **Supabase (PostgreSQL)**.
 * `password` (text) — Hash bcrypt de la contraseña.
 * `role` (text) — Rol de usuario (`teacher | student | admin`).
 * `auth_method` (text) — Método (`pre_created | email_password`).
-* `institution` (text, opcional).
+* `institution` (text, opcional) — campo serializado con formato:
+  `"Nombre Apellido | Institución | OpenRouterKey | ModelId"`.
 * `country` (text, opcional).
 * `is_active` (boolean, default true).
 * `created_at` (timestamptz).
@@ -153,7 +155,7 @@ Todas las entidades persisten en **Supabase (PostgreSQL)**.
 * `welcome_message` (text).
 * `system_prompt_override` (text, opcional).
 * `restriction_level` (text) — `strict | guided | open`.
-* `llm_provider` (text) — `gemini | claude`.
+* `llm_provider` (text) — siempre `openrouter`.
 * `public_url` (text) — URL pública del chat.
 * `embed_code` (text) — Tag iframe para LMS.
 * `is_published` (boolean, default false).
@@ -211,7 +213,9 @@ POST /chat/{chatbot_id}
         ├── Verifica caché local con expiración TTL (5 minutos)
         ├── Recupera todos los document_contents del chatbot desde Supabase Postgres
         ├── Construye contexto: "--- Documento: {filename} ---\n{content}"
-        ├── Llama a Gemini 2.0 Flash con prompt base + contexto + pregunta
+        ├── Verifica si el docente tiene OpenRouter key configurada en `institution`
+        ├── Si no tiene key y no es cuenta @edurag.com → retorna mensaje de error
+        ├── Llama a OpenRouter API con el modelo elegido por el docente
         ├── Persiste conversación en la tabla conversations
         └── Retorna ChatResponse { response, conversation_id, sources }
 ```
@@ -251,8 +255,8 @@ SUPABASE_KEY=eyJ...  # service_role key (Settings > API > service_role)
 # JWT Secret (Requerido)
 JWT_SECRET=your-jwt-secret-min-32-chars
 
-# Google Gemini API Key
-GOOGLE_API_KEY=your-google-api-key
+# OpenRouter API Key (fallback para cuentas @edurag.com)
+OPENROUTER_API_KEY=sk-or-v1-...
 
 # App Settings
 APP_HOST=0.0.0.0

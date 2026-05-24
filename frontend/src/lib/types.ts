@@ -19,7 +19,7 @@ export interface Chatbot {
   welcome_message?: string;
   system_prompt_override?: string;
   restriction_level: "strict" | "guided" | "open";
-  llm_provider: "gemini" | "claude";
+  llm_provider: string;
   public_url?: string;
   embed_code?: string;
   is_published: boolean;
@@ -74,12 +74,14 @@ export interface CreateChatbotData {
   welcome_message?: string;
   system_prompt_override?: string;
   restriction_level?: "strict" | "guided" | "open";
-  llm_provider?: "gemini" | "claude";
+  llm_provider?: string;
 }
 
 export interface CreateTeacherData {
   email: string;
   password?: string;
+  firstName?: string;
+  lastName?: string;
   institution?: string;
   country?: string;
 }
@@ -87,6 +89,8 @@ export interface CreateTeacherData {
 export interface UpdateTeacherData {
   email?: string;
   password?: string;
+  firstName?: string;
+  lastName?: string;
   institution?: string;
   country?: string;
 }
@@ -96,6 +100,6 @@ export interface UpdateProfileData {
   lastName: string;
   institution: string;
   country?: string;
-  geminiApiKey?: string;
-  claudeApiKey?: string;
+  openrouterApiKey?: string;
+  openrouterModel?: string;
 }

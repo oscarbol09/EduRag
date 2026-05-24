@@ -111,13 +111,13 @@ async def update_my_profile(body: ProfileUpdateRequest, current_user: dict = Dep
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
         
     # Serializar la institución con los campos de perfil y API keys
-    # Formato: FirstName LastName | Institution | GeminiKey | ClaudeKey
+    # Formato: FirstName LastName | Institution | OpenRouterKey | ModelId
     combined_inst = f"{body.firstName.strip()} {body.lastName.strip()} | {body.institution.strip()}"
     
-    gemini_key = body.geminiApiKey.strip() if body.geminiApiKey else ""
-    claude_key = body.claudeApiKey.strip() if body.claudeApiKey else ""
+    openrouter_key = body.openrouterApiKey.strip() if body.openrouterApiKey else ""
+    openrouter_model = body.openrouterModel.strip() if body.openrouterModel else ""
     
-    combined_inst = f"{combined_inst} | {gemini_key} | {claude_key}"
+    combined_inst = f"{combined_inst} | {openrouter_key} | {openrouter_model}"
     
     updates = {
         "institution": combined_inst,
@@ -452,17 +452,18 @@ async def chat_endpoint(request: Request, chatbot_id: str, body: ChatMessage):
     # Extraer la API Key personalizada del docente (propietario) si existe
     owner_id = chatbot.get("owner_id")
     custom_api_key = None
+    custom_model = None
     if owner_id:
         owner = await get_user(owner_id)
         if owner:
             inst_field = owner.get("institution", "")
             if inst_field and " | " in inst_field:
                 parts = inst_field.split(" | ")
-                provider = chatbot.get("llm_provider", "gemini")
-                if provider == "gemini" and len(parts) >= 3:
+                # Formato: "Nombre Apellido | Institución | OpenRouterKey | ModelId"
+                if len(parts) >= 3:
                     custom_api_key = parts[2].strip() or None
-                elif provider == "claude" and len(parts) >= 4:
-                    custom_api_key = parts[3].strip() or None
+                if len(parts) >= 4:
+                    custom_model = parts[3].strip() or None
             
             # Si no hay API Key configurada, validar si es una cuenta de testeo autorizada
             if not custom_api_key:
@@ -470,16 +471,16 @@ async def chat_endpoint(request: Request, chatbot_id: str, body: ChatMessage):
                 is_test_account = owner_email.endswith("@edurag.com")
                 if not is_test_account:
                     return ChatResponse(
-                        response="Lo siento, este chatbot está inactivo temporalmente. El docente propietario debe configurar su propia API Key de Gemini en su panel de Configuración para poder activar las respuestas.",
+                        response="Lo siento, este chatbot está inactivo temporalmente. El docente propietario debe configurar su propia API Key de OpenRouter en su panel de Configuración para activar las respuestas.",
                         conversation_id=body.conversation_id or str(uuid.uuid4()),
                         sources=source_names
                     )
 
-    llm = get_llm_client(chatbot.get("llm_provider", "gemini"))
+    llm = get_llm_client()
     temperature = RESTRICTION_TEMPERATURES.get(chatbot.get("restriction_level", "guided"), 0.5)
 
     try:
-        response_text = llm.generate(system_prompt, context, body.message, temperature, api_key=custom_api_key)
+        response_text = llm.generate(system_prompt, context, body.message, temperature, api_key=custom_api_key, model_id=custom_model)
     except Exception as e:
         response_text = f"Lo siento, no pude procesar tu pregunta. Error: {str(e)}"
 
@@ -531,13 +532,22 @@ async def create_teacher(data: TeacherCreate, current_user: dict = Depends(get_c
 
     teacher_id = str(uuid.uuid4())
     password_hash = hash_password(data.password)
+    
+    # Serializar nombre, apellido e institución en el mismo campo
+    # Formato: "Nombre Apellido | Institución | OpenRouterKey | ModelId"
+    first = (data.firstName or "").strip()
+    last = (data.lastName or "").strip()
+    full_name = f"{first} {last}".strip()
+    inst = (data.institution or "").strip()
+    serialized_inst = f"{full_name} | {inst} |  | " if full_name or inst else None
+    
     teacher = {
         "id": teacher_id,
         "email": data.email,
         "password": password_hash,
         "role": "teacher",
         "auth_method": "email_password",
-        "institution": data.institution,
+        "institution": serialized_inst,
         "country": data.country,
         "is_active": True,
         "created_at": datetime.utcnow().isoformat()
@@ -576,9 +586,33 @@ async def update_teacher(teacher_id: str, data: TeacherUpdate, current_user: dic
     if data.password is not None and data.password.strip() != "":
         updates["password"] = hash_password(data.password)
         updates["auth_method"] = "email_password"
+    
+    # Si se actualiza el nombre/apellido o institución, re-serializar el campo institution
+    has_name_update = data.firstName is not None or data.lastName is not None or data.institution is not None
+    if has_name_update:
+        # Parsear el campo actual para preservar los campos no actualizados
+        current_inst = teacher.get("institution", "") or ""
+        if " | " in current_inst:
+            parts = current_inst.split(" | ")
+            current_full_name = parts[0].strip()
+            current_name_parts = current_full_name.split(" ", 1)
+            current_first = current_name_parts[0] if current_name_parts else ""
+            current_last = current_name_parts[1] if len(current_name_parts) > 1 else ""
+            current_institution = parts[1].strip() if len(parts) > 1 else ""
+            current_or_key = parts[2].strip() if len(parts) > 2 else ""
+            current_or_model = parts[3].strip() if len(parts) > 3 else ""
+        else:
+            current_first = ""
+            current_last = ""
+            current_institution = current_inst
+            current_or_key = ""
+            current_or_model = ""
         
-    if data.institution is not None:
-        updates["institution"] = data.institution
+        new_first = data.firstName.strip() if data.firstName is not None else current_first
+        new_last = data.lastName.strip() if data.lastName is not None else current_last
+        new_inst = data.institution.strip() if data.institution is not None else current_institution
+        full_name = f"{new_first} {new_last}".strip()
+        updates["institution"] = f"{full_name} | {new_inst} | {current_or_key} | {current_or_model}"
         
     if data.country is not None:
         updates["country"] = data.country

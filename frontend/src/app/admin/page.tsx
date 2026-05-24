@@ -125,13 +125,13 @@ export default function AdminPage() {
     setMessage("");
 
     try {
-      const combinedInstitution = `${formData.firstName.trim()} ${formData.lastName.trim()} | ${formData.institution.trim()}`;
-      
       if (editingTeacher) {
         await api.admin.updateTeacher(editingTeacher.id, {
           email: formData.email,
           password: formData.password || undefined,
-          institution: combinedInstitution,
+          firstName: formData.firstName.trim() || undefined,
+          lastName: formData.lastName.trim() || undefined,
+          institution: formData.institution.trim() || undefined,
           country: formData.country || undefined,
         });
         setMessage("Docente actualizado exitosamente");
@@ -143,7 +143,9 @@ export default function AdminPage() {
         await api.admin.createTeacher({
           email: formData.email,
           password: formData.password,
-          institution: combinedInstitution,
+          firstName: formData.firstName.trim() || undefined,
+          lastName: formData.lastName.trim() || undefined,
+          institution: formData.institution.trim() || undefined,
           country: formData.country || undefined,
         });
         setMessage("Docente creado exitosamente");

@@ -11,8 +11,8 @@ class Settings(BaseSettings):
     # JWT Settings (Obligatorio - Lanza error en startup si está vacío)
     JWT_SECRET: str
 
-    # Google Gemini
-    GOOGLE_API_KEY: str = ""
+    # OpenRouter (fallback para cuentas @edurag.com)
+    OPENROUTER_API_KEY: str = ""
 
     # App Settings
     APP_HOST: str = "0.0.0.0"
