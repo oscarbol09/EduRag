@@ -10,7 +10,7 @@ from typing import Optional
 from settings import settings
 from models import *
 from supabase_db import (
-    create_user, get_user, get_user_by_email, list_users,
+    create_user, get_user, get_user_by_email, list_users, update_user,
     create_chatbot, get_chatbot, get_chatbot_by_id_and_owner, update_chatbot, delete_chatbot, list_chatbots,
     create_document, get_document, update_document, list_documents, delete_document,
     create_conversation, get_conversation, save_conversation, list_conversations
@@ -40,6 +40,23 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.on_event("startup")
+async def startup_event():
+    if not settings.JWT_SECRET or len(settings.JWT_SECRET) < 32:
+        import warnings
+        warnings.warn(
+            "JWT_SECRET no esta configurado o tiene menos de 32 caracteres. "
+            "Esto representa un riesgo de seguridad en produccion.",
+            UserWarning
+        )
+
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    return response
 
 response_cache: dict = {}
 CACHE_TTL_SECONDS = 300  # Parche de seguridad: caché de 5 minutos de tiempo de vida (TTL)
@@ -190,7 +207,6 @@ async def update_my_profile(body: ProfileUpdateRequest, current_user: dict = Dep
         "openrouter_model": openrouter_model
     }
     
-    from supabase_db import update_user
     try:
         await update_user(user_id, updates_native)
     except Exception:
@@ -310,10 +326,29 @@ async def create_new_chatbot(data: ChatbotCreate, request: Request):
 
 
 @app.get("/chatbots/{chatbot_id}")
-async def get_chatbot_details(chatbot_id: str):
+async def get_chatbot_details(chatbot_id: str, request: Request):
     chatbot = await get_chatbot(chatbot_id)
     if not chatbot:
         raise HTTPException(status_code=404, detail="Chatbot no encontrado")
+        
+    # Cargar opcionalmente al usuario logueado actual para validar propiedad
+    current_user = None
+    try:
+        current_user = await get_current_user(request)
+    except Exception:
+        pass
+        
+    is_owner = current_user and current_user.get("sub") == chatbot.get("owner_id")
+    
+    if not chatbot.get("is_published", False) and not is_owner:
+        raise HTTPException(status_code=403, detail="No autorizado para acceder a este chatbot no publicado")
+        
+    # Por seguridad y privacidad del docente, ocultar el prompt de sistema personalizado a terceros
+    if not is_owner:
+        res = dict(chatbot)
+        res.pop("system_prompt_override", None)
+        return res
+        
     return chatbot
 
 
@@ -667,7 +702,6 @@ async def create_teacher(data: TeacherCreate, current_user: dict = Depends(get_c
         "is_test_account": False
     }
     
-    from supabase_db import create_user
     try:
         await create_user(teacher_native)
     except Exception:
@@ -755,7 +789,6 @@ async def update_teacher(teacher_id: str, data: TeacherUpdate, current_user: dic
         updates_native["country"] = data.country
         
     if updates:
-        from supabase_db import update_user
         try:
             await update_user(teacher_id, updates_native)
         except Exception:

@@ -3,15 +3,20 @@ from typing import Optional, List
 from datetime import datetime
 from settings import settings
 
+import threading
+
 _client: Optional[Client] = None
+_client_lock = threading.Lock()
 
 
 def get_client() -> Client:
     global _client
     if _client is None:
-        if not settings.SUPABASE_URL or not settings.SUPABASE_KEY:
-            raise RuntimeError("Supabase not configured. Set SUPABASE_URL and SUPABASE_KEY in .env")
-        _client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
+        with _client_lock:
+            if _client is None:
+                if not settings.SUPABASE_URL or not settings.SUPABASE_KEY:
+                    raise RuntimeError("Supabase not configured. Set SUPABASE_URL and SUPABASE_KEY in .env")
+                _client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
     return _client
 
 
