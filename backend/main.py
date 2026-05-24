@@ -282,6 +282,31 @@ async def get_chatbot_embed(chatbot_id: str):
     return {"embed_code": chatbot.get("embed_code"), "public_url": chatbot.get("public_url")}
 
 
+def sanitize_filename(filename: str) -> str:
+    import unicodedata
+    import re
+    # Separate extension
+    name_parts = filename.rsplit(".", 1)
+    name = name_parts[0]
+    ext = name_parts[1] if len(name_parts) > 1 else ""
+    
+    # Normalize unicode to separate characters from their accents (NFKD form)
+    normalized = unicodedata.normalize('NFKD', name)
+    # Filter out diacritics / non-ASCII
+    ascii_name = normalized.encode('ascii', 'ignore').decode('ascii')
+    
+    # Replace spaces and other unsafe characters with underscores
+    safe_name = re.sub(r'[^a-zA-Z0-9_\-]', '_', ascii_name)
+    # Collapse multiple underscores
+    safe_name = re.sub(r'_+', '_', safe_name).strip("_")
+    
+    # If the safe name became completely empty, use a fallback
+    if not safe_name:
+        safe_name = "document"
+        
+    return f"{safe_name}.{ext}" if ext else safe_name
+
+
 @app.post("/documents/upload")
 async def upload_document(
     file: UploadFile = File(...),
@@ -316,8 +341,11 @@ async def upload_document(
     if not text_content or not text_content.strip():
         raise HTTPException(status_code=400, detail="No se pudo extraer texto del archivo.")
 
-    # Upload original file to blob storage
-    blob_path = f"documents/{chatbot_id}/{document_id}/{filename}"
+    # Sanitize filename for safe Supabase Storage key path
+    safe_filename = sanitize_filename(filename)
+
+    # Upload original file to blob storage using the safe filename
+    blob_path = f"documents/{chatbot_id}/{document_id}/{safe_filename}"
     blob_url = await upload_file_to_blob(content_bytes, blob_path, file.content_type or "application/octet-stream")
 
     # Store extracted text in Cosmos DB

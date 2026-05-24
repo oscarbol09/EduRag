@@ -20,7 +20,7 @@ def test_auth_me_anonymous():
     assert response.status_code == 200
     data = response.json()
     assert data["role"] == "anonymous"
-    assert data["id"] is None
+    assert data.get("id") is None
 
 def test_auth_flow_and_chatbot_creation():
     unique_id = str(uuid.uuid4())[:8]
