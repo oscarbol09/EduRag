@@ -336,7 +336,7 @@ export default function AdminPage() {
                   let fullName = "";
                   let displayInst = "Sin institución";
                   if (teacher.firstName || teacher.lastName) {
-                    fullName = `${teacher.firstName || ""} ${teacher.lastName || ""}`.strip();
+                    fullName = `${teacher.firstName || ""} ${teacher.lastName || ""}`.trim();
                   }
                   if (teacher.institutionName) {
                     displayInst = teacher.institutionName;

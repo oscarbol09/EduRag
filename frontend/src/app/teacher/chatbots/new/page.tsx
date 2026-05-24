@@ -5,55 +5,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/lib/api";
 import { Navbar } from "@/components/Navbar";
-import type { Chatbot, CreateChatbotData } from "@/lib/types";
-
-export default function NewChatbotPage() {
-  const [formData, setFormData] = useState<CreateChatbotData>({
-    name: "",
-    subject_area: "",
-    education_level: "secondary",
-    tone: "friendly",
-    restriction_level: "guided",
-    llm_provider: "gemini",
-  });
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const router = useRouter();
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-
-    try {
-      const chatbot = await api.chatbots.create(formData);
-      router.push(`/teacher/chatbots/${chatbot.id}`);
-    } catch (error) {
-      console.error("Error creating chatbot:", error);
-      alert("Error al crear el chatbot");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  return (
-    <div className="min-h-screen bg-gray-50 flex flex-col font-sans selection:bg-brand-500 selection:text-white">
-      <Navbar
-        variant="teacher"
-        backTo="/teacher"
-        backLabel="Volver al panel"
-        title="Nuevo Chatbot"
-      />
-
-"use client";
-
-import { useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import Link from "next/link";
-import { api } from "@/lib/api";
-import { Navbar } from "@/components/Navbar";
 import { HelpTooltip } from "@/components/HelpTooltip";
 import type { Chatbot, CreateChatbotData } from "@/lib/types";
 

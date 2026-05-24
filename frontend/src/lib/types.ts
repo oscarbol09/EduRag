@@ -7,6 +7,12 @@ export interface User {
   country?: string;
   created_at: string;
   is_active: boolean;
+  firstName?: string;
+  lastName?: string;
+  institutionName?: string;
+  openrouterApiKey?: string;
+  openrouterModel?: string;
+  is_test_account?: boolean;
 }
 
 export interface Chatbot {
