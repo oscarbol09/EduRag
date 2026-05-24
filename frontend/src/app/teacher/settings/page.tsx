@@ -10,29 +10,34 @@ import { Spinner } from "@/components/Spinner";
 
 const OPENROUTER_MODELS = [
   {
-    id: "deepseek/deepseek-v4-flash:free",
-    label: "DeepSeek V4 Flash Free (Recomendado)",
-    description: "Modelo MoE altamente optimizado y rápido, ideal para analizar documentos y responder preguntas educativas.",
-  },
-  {
-    id: "google/gemma-4-31b-it:free",
-    label: "Google Gemma 4 31B Free",
-    description: "Modelo denso y multimodal de Google DeepMind. Excelente razonamiento, programación y tareas multilingües.",
-  },
-  {
-    id: "arcee-ai/trinity-large-thinking:free",
-    label: "Arcee AI Trinity Large Thinking Free",
-    description: "Modelo MoE de razonamiento avanzado con 262k de contexto, optimizado para flujos complejos de pensamiento.",
+    id: "google/gemma-4-26b-a4b-it:free",
+    label: "Google Gemma 4 26B Free (Recomendado)",
+    description: "Modelo denso de Google DeepMind. Excelente razonamiento, velocidad de respuesta y tareas multilingües.",
   },
   {
     id: "nvidia/nemotron-3-super-120b-a12b:free",
-    label: "NVIDIA Nemotron 3 Super Free",
-    description: "Modelo MoE híbrido Mamba-Transformer con 1 millón de tokens de contexto, ideal para textos extremadamente largos.",
+    label: "NVIDIA Nemotron 3 Super Free (Alta Capacidad)",
+    description: "Modelo MoE de NVIDIA con 1 millón de tokens de contexto, ideal para procesar grandes volúmenes de documentos.",
   },
   {
-    id: "z-ai/glm-4.5-air:free",
-    label: "Z.ai GLM 4.5 Air Free",
-    description: "Modelo ligero de razonamiento de Zhipu AI, diseñado para un excelente rendimiento en agentes interactivos.",
+    id: "liquid/lfm-2.5-1.2b-instruct:free",
+    label: "Liquid LFM 2.5 1.2B Free (Ultra Veloz)",
+    description: "Modelo ultra veloz y preciso para tareas de respuesta a preguntas rápidas y chat fluido.",
+  },
+  {
+    id: "baidu/cobuddy:free",
+    label: "Baidu Qianfan CoBuddy Free",
+    description: "Modelo optimizado por Baidu para tareas analíticas y agentes inteligentes interactivos.",
+  },
+  {
+    id: "openai/gpt-oss-120b:free",
+    label: "OpenAI gpt-oss-120b Free",
+    description: "Modelo MoE libre y optimizado compatible con flujos de razonamiento y respuestas lógicas estructuradas.",
+  },
+  {
+    id: "nvidia/nemotron-3-nano-30b-a3b:free",
+    label: "NVIDIA Nemotron 3 Nano Free",
+    description: "Modelo ultra optimizado y ligero de NVIDIA, ideal para respuestas rápidas y concisas.",
   },
 ];
 

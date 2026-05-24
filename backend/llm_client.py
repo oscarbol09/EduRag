@@ -3,7 +3,7 @@ from typing import Optional
 from settings import settings
 
 OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
-DEFAULT_MODEL = "deepseek/deepseek-v4-flash:free"
+DEFAULT_MODEL = "google/gemma-4-26b-a4b-it:free"
 
 
 class LLMClient:
