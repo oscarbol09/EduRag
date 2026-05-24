@@ -20,6 +20,10 @@ export function SupportWidget() {
 
   // Intentar cargar datos del chatbot si el estudiante está en la pantalla de chat
   useEffect(() => {
+    if (!pathname) {
+      setChatbot(null);
+      return;
+    }
     const chatMatch = pathname.match(/\/chat\/([a-zA-Z0-9-]+)/);
     if (chatMatch && chatMatch[1]) {
       api.chatbots.get(chatMatch[1])
@@ -41,7 +45,7 @@ export function SupportWidget() {
   const isAdmin = auth.user?.role === "admin";
 
   // No mostrar soporte al mismo administrador en su propio panel
-  if (isAdmin && pathname.startsWith("/admin")) {
+  if (isAdmin && pathname && pathname.startsWith("/admin")) {
     return null;
   }
 
@@ -53,7 +57,7 @@ export function SupportWidget() {
 
   if (isGuest) {
     recipientTitle = "Administración (Soporte / Solicitud)";
-    if (pathname.includes("/login") || pathname.includes("/register")) {
+    if (pathname && (pathname.includes("/login") || pathname.includes("/register"))) {
       defaultPrefilledText = "Hola, soy un docente y me gustaría ponerme en contacto con el administrador para solicitar una cuenta de acceso.";
     }
   } else if (isTeacher) {
@@ -86,7 +90,7 @@ export function SupportWidget() {
         from_email: email || auth.user?.email || "guest@edurag.com",
         to: recipientContactEmail,
         message: messageText,
-        context: pathname
+        context: pathname || ""
       });
       setSubmitStatus("success");
       setMessageText("");
@@ -104,8 +108,10 @@ export function SupportWidget() {
   };
 
   const getEmailLink = () => {
-    const subject = encodeURIComponent(`Soporte EduRAG - Consulta desde ${pathname}`);
-    const body = encodeURIComponent(`${defaultPrefilledText}\n\nEnviado desde la página: ${window.location.href}`);
+    const currentHref = typeof window !== "undefined" ? window.location.href : "";
+    const safePathname = pathname || "";
+    const subject = encodeURIComponent(`Soporte EduRAG - Consulta desde ${safePathname}`);
+    const body = encodeURIComponent(`${defaultPrefilledText}\n\nEnviado desde la página: ${currentHref}`);
     return `mailto:${recipientContactEmail}?subject=${subject}&body=${body}`;
   };
 
