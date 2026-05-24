@@ -10,29 +10,29 @@ import { Spinner } from "@/components/Spinner";
 
 const OPENROUTER_MODELS = [
   {
-    id: "deepseek/deepseek-chat-v3-0324:free",
-    label: "DeepSeek V3 Free",
-    description: "Excelente para razonamiento, análisis de texto y respuestas largas.",
+    id: "deepseek/deepseek-v4-flash:free",
+    label: "DeepSeek V4 Flash Free (Recomendado)",
+    description: "Modelo MoE altamente optimizado y rápido, ideal para analizar documentos y responder preguntas educativas.",
   },
   {
-    id: "deepseek/deepseek-r1:free",
-    label: "DeepSeek R1 Free",
-    description: "Modelo de razonamiento avanzado. Ideal para preguntas complejas.",
+    id: "google/gemma-4-31b-it:free",
+    label: "Google Gemma 4 31B Free",
+    description: "Modelo denso y multimodal de Google DeepMind. Excelente razonamiento, programación y tareas multilingües.",
   },
   {
-    id: "meta-llama/llama-4-maverick:free",
-    label: "Llama 4 Maverick Free",
-    description: "Modelo multimodal de Meta, muy capaz con textos académicos.",
+    id: "arcee-ai/trinity-large-thinking:free",
+    label: "Arcee AI Trinity Large Thinking Free",
+    description: "Modelo MoE de razonamiento avanzado con 262k de contexto, optimizado para flujos complejos de pensamiento.",
   },
   {
-    id: "google/gemini-2.0-flash-exp:free",
-    label: "Gemini 2.0 Flash Exp Free",
-    description: "Versión experimental gratuita de Gemini Flash de Google.",
+    id: "nvidia/nemotron-3-super-120b-a12b:free",
+    label: "NVIDIA Nemotron 3 Super Free",
+    description: "Modelo MoE híbrido Mamba-Transformer con 1 millón de tokens de contexto, ideal para textos extremadamente largos.",
   },
   {
-    id: "microsoft/phi-4-reasoning:free",
-    label: "Phi-4 Reasoning Free",
-    description: "Modelo de razonamiento compacto y eficiente de Microsoft.",
+    id: "z-ai/glm-4.5-air:free",
+    label: "Z.ai GLM 4.5 Air Free",
+    description: "Modelo ligero de razonamiento de Zhipu AI, diseñado para un excelente rendimiento en agentes interactivos.",
   },
 ];
 

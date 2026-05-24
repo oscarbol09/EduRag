@@ -3,7 +3,7 @@ from typing import Optional
 from settings import settings
 
 OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
-DEFAULT_MODEL = "deepseek/deepseek-chat-v3-0324:free"
+DEFAULT_MODEL = "deepseek/deepseek-v4-flash:free"
 
 
 class LLMClient:
@@ -31,7 +31,7 @@ class LLMClient:
             temperature: Temperatura de generación (0.0–1.0).
             api_key: API key de OpenRouter del docente (BYOK).
                      Si None, se usa la key del admin desde las variables de entorno.
-            model_id: ID del modelo de OpenRouter (ej. "deepseek/deepseek-chat-v3-0324:free").
+            model_id: ID del modelo de OpenRouter (ej. "deepseek/deepseek-v4-flash:free").
                       Si None, se usa el modelo por defecto.
         
         Returns:
