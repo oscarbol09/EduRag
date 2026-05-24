@@ -502,17 +502,32 @@ async def chat_endpoint(request: Request, chatbot_id: str, body: ChatMessage):
             "timestamp": datetime.utcnow()
         }
 
-    conversation_id = body.conversation_id or str(uuid.uuid4())
-    conversation = {
-        "id": conversation_id,
-        "chatbot_id": chatbot_id,
-        "student_id": None,
-        "messages": [
-            {"role": "user", "content": body.message, "timestamp": datetime.utcnow().isoformat()},
-            {"role": "assistant", "content": response_text, "timestamp": datetime.utcnow().isoformat()}
-        ]
-    }
-    await create_conversation(conversation)
+    new_messages = [
+        {"role": "user", "content": body.message, "timestamp": datetime.utcnow().isoformat()},
+        {"role": "assistant", "content": response_text, "timestamp": datetime.utcnow().isoformat()}
+    ]
+
+    existing_conv = None
+    if body.conversation_id:
+        existing_conv = await get_conversation(body.conversation_id)
+
+    if existing_conv:
+        messages = existing_conv.get("messages", [])
+        if not isinstance(messages, list):
+            messages = []
+        messages.extend(new_messages)
+        existing_conv["messages"] = messages
+        await save_conversation(existing_conv)
+        conversation_id = existing_conv["id"]
+    else:
+        conversation_id = body.conversation_id or str(uuid.uuid4())
+        conversation = {
+            "id": conversation_id,
+            "chatbot_id": chatbot_id,
+            "student_id": None,
+            "messages": new_messages
+        }
+        await create_conversation(conversation)
 
     return ChatResponse(
         response=response_text,
