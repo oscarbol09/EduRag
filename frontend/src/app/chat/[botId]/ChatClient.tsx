@@ -85,38 +85,97 @@ export default function ChatClient() {
     setInput("");
     setIsLoading(true);
 
-    setMessages((prev) => [
-      ...prev,
-      { role: "user", content: userMessage, timestamp: new Date().toISOString() },
-    ]);
+    const userMsgObj: Message = {
+      role: "user",
+      content: userMessage,
+      timestamp: new Date().toISOString(),
+    };
+    const assistantPlaceholder: Message = {
+      role: "assistant",
+      content: "",
+      timestamp: new Date().toISOString(),
+    };
+
+    // Insertar el mensaje del usuario + placeholder del assistant que se irá llenando.
+    setMessages((prev) => [...prev, userMsgObj, assistantPlaceholder]);
+    const assistantIndex = messages.length + 1;
+
+    const appendToAssistant = (chunk: string) => {
+      setMessages((prev) => {
+        const next = [...prev];
+        const target = next[assistantIndex];
+        if (target && target.role === "assistant") {
+          next[assistantIndex] = { ...target, content: target.content + chunk };
+        }
+        return next;
+      });
+    };
+
+    const replaceAssistant = (content: string, sources?: string[]) => {
+      setMessages((prev) => {
+        const next = [...prev];
+        const target = next[assistantIndex];
+        if (target && target.role === "assistant") {
+          next[assistantIndex] = {
+            ...target,
+            content,
+            sources: sources ?? target.sources,
+            timestamp: new Date().toISOString(),
+          };
+        }
+        return next;
+      });
+    };
 
     try {
-      const response: ChatResponse = await api.chat.send(botId as string, {
-        message: userMessage,
-        conversation_id: conversationId || undefined,
-      });
-
-      setConversationId(response.conversation_id);
-
-      setMessages((prev) => [
-        ...prev,
+      let receivedAny = false;
+      await api.chat.sendStream(
+        botId as string,
+        { message: userMessage, conversation_id: conversationId || undefined },
         {
-          role: "assistant",
-          content: response.response,
-          timestamp: new Date().toISOString(),
-          sources: response.sources,
-        },
-      ]);
+          onToken: (chunk) => {
+            receivedAny = true;
+            appendToAssistant(chunk);
+          },
+          onDone: ({ conversation_id, sources }) => {
+            if (conversation_id) setConversationId(conversation_id);
+            setMessages((prev) => {
+              const next = [...prev];
+              const target = next[assistantIndex];
+              if (target && target.role === "assistant") {
+                next[assistantIndex] = { ...target, sources };
+              }
+              return next;
+            });
+          },
+          onError: (msg) => {
+            replaceAssistant(msg);
+          },
+        }
+      );
+
+      // Fallback: si el stream no entregó tokens, usar el endpoint sin streaming.
+      if (!receivedAny) {
+        const response: ChatResponse = await api.chat.send(botId as string, {
+          message: userMessage,
+          conversation_id: conversationId || undefined,
+        });
+        setConversationId(response.conversation_id);
+        replaceAssistant(response.response, response.sources);
+      }
     } catch (error) {
       console.error("Error sending message:", error);
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "assistant",
-          content: "Lo siento, hubo un error al procesar tu mensaje. Intenta de nuevo.",
-          timestamp: new Date().toISOString(),
-        },
-      ]);
+      // Fallback final: intentar el endpoint sin streaming.
+      try {
+        const response: ChatResponse = await api.chat.send(botId as string, {
+          message: userMessage,
+          conversation_id: conversationId || undefined,
+        });
+        setConversationId(response.conversation_id);
+        replaceAssistant(response.response, response.sources);
+      } catch {
+        replaceAssistant("Lo siento, hubo un error al procesar tu mensaje. Intenta de nuevo.");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -226,7 +285,15 @@ export default function ChatClient() {
                         : "bg-gray-100 text-gray-800 rounded-bl-sm border border-gray-200/40"
                     }`}
                   >
-                    {renderMessageContent(msg.content, msg.role === "user")}
+                    {msg.role === "assistant" && !msg.content ? (
+                      <div className="flex gap-1.5 items-center h-4">
+                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                      </div>
+                    ) : (
+                      renderMessageContent(msg.content, msg.role === "user")
+                    )}
                     {msg.role === "assistant" && msg.sources && msg.sources.length > 0 && (
                       <div className="mt-2.5 flex flex-wrap gap-1.5 border-t border-gray-200/50 pt-2">
                         {msg.sources.map((src, idx) => (
@@ -249,17 +316,6 @@ export default function ChatClient() {
                   </div>
                 </div>
               ))
-            )}
-            {isLoading && (
-              <div className="flex justify-start">
-                <div className="bg-gray-100 rounded-2xl rounded-bl-sm px-4 py-3">
-                  <div className="flex gap-1.5 items-center h-4">
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
-                  </div>
-                </div>
-              </div>
             )}
             <div ref={messagesEndRef} />
           </div>

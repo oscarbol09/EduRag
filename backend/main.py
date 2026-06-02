@@ -1,8 +1,10 @@
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
+import json
 import uvicorn
 import uuid
 from datetime import datetime
@@ -22,6 +24,7 @@ from document_content_store import (
     delete_document_content,
 )
 from llm_client import get_llm_client
+from context_builder import build_context
 from document_uploader import upload_file_to_blob, extract_text_from_file
 from auth import get_current_user, get_current_user_optional
 from password import hash_password, verify_password
@@ -539,72 +542,25 @@ async def chat_endpoint(request: Request, chatbot_id: str, body: ChatMessage):
         else:
             response_cache.pop(cache_key, None)
 
-    # Retrieve all document contents for this chatbot from Cosmos DB
-    doc_contents = await get_all_contents_for_chatbot(chatbot_id)
-    source_names = [d.get("filename", "documento") for d in doc_contents]
-
-    if doc_contents:
-        # Build context from all documents
-        context_parts = []
-        for doc in doc_contents:
-            fname = doc.get("filename", "documento")
-            text = doc.get("content", "")
-            context_parts.append(f"--- Documento: {fname} ---\n{text}")
-        context = "\n\n".join(context_parts)
-    else:
-        context = "No hay documentos cargados para este chatbot."
-
-    system_prompt = chatbot.get("system_prompt_override") or get_default_system_prompt(
-        chatbot.get("tone", "friendly"),
-        chatbot.get("restriction_level", "guided")
-    )
-
-    # Extraer la API Key personalizada del docente (propietario) si existe
-    owner_id = chatbot.get("owner_id")
-    custom_api_key = None
-    custom_model = None
-    if owner_id:
-        owner = await get_user(owner_id)
-        if owner:
-            from security_utils import decrypt_api_key
-            encrypted_key = owner.get("openrouter_api_key")
-            custom_api_key = decrypt_api_key(encrypted_key) or None
-            custom_model = owner.get("openrouter_model") or None
-            
-            # Fallback si están vacíos al campo legacy
-            if not custom_api_key or not custom_model:
-                inst_field = owner.get("institution", "")
-                if inst_field and " | " in inst_field:
-                    parts = inst_field.split(" | ")
-                    if len(parts) >= 3 and not custom_api_key:
-                        custom_api_key = decrypt_api_key(parts[2].strip()) or None
-                    if len(parts) >= 4 and not custom_model:
-                        custom_model = parts[3].strip() or None
-            
-            # Si no hay API Key configurada, validar si es una cuenta de testeo autorizada
-            if not custom_api_key:
-                owner_email = owner.get("email", "") or ""
-                is_test_account = owner.get("is_test_account") or False
-                
-                # Cuentas de testeo autorizadas por whitelist en .env como variable
-                import os
-                whitelist_env = os.environ.get("TEST_ACCOUNTS_WHITELIST", "")
-                whitelist = [e.strip() for e in whitelist_env.split(",") if e.strip()]
-                is_in_whitelist = owner_email in whitelist
-                
-                if not (is_test_account or is_in_whitelist):
-                    return ChatResponse(
-                        response="Lo siento, este chatbot está inactivo temporalmente. El docente propietario debe configurar su propia API Key de OpenRouter en su panel de Configuración para activar las respuestas.",
-                        conversation_id=body.conversation_id or str(uuid.uuid4()),
-                        sources=source_names
-                    )
+    prep = await _prepare_chat_generation(chatbot, chatbot_id, body.message)
+    if prep.get("early_response") is not None:
+        return ChatResponse(
+            response=prep["early_response"],
+            conversation_id=body.conversation_id or str(uuid.uuid4()),
+            sources=prep["source_names"]
+        )
 
     llm = get_llm_client()
-    temperature = RESTRICTION_TEMPERATURES.get(chatbot.get("restriction_level", "guided"), 0.5)
-
     is_error = False
     try:
-        response_text = llm.generate(system_prompt, context, body.message, temperature, api_key=custom_api_key, model_id=custom_model)
+        response_text = await llm.generate(
+            prep["system_prompt"],
+            prep["context"],
+            body.message,
+            prep["temperature"],
+            api_key=prep["custom_api_key"],
+            model_id=prep["custom_model"],
+        )
     except Exception as e:
         response_text = f"Lo siento, no pude procesar tu pregunta. Error: {str(e)}"
         is_error = True
@@ -614,18 +570,220 @@ async def chat_endpoint(request: Request, chatbot_id: str, body: ChatMessage):
             response_cache.pop(next(iter(response_cache)))
         response_cache[cache_key] = {
             "response": response_text,
-            "sources": source_names,
+            "sources": prep["source_names"],
             "timestamp": datetime.utcnow()
         }
 
+    conversation_id = await _persist_chat_turn(
+        chatbot_id, body.conversation_id, body.message, response_text
+    )
+
+    return ChatResponse(
+        response=response_text,
+        conversation_id=conversation_id,
+        sources=prep["source_names"]
+    )
+
+
+@app.post("/chat/{chatbot_id}/stream")
+@limiter.limit("100/minute")
+async def chat_stream_endpoint(request: Request, chatbot_id: str, body: ChatMessage):
+    """
+    Variante streaming del endpoint de chat. Devuelve Server-Sent Events
+    con la respuesta incremental del LLM y un evento final con metadata
+    (conversation_id, sources). Mantiene la conexión activa enviando
+    bytes constantemente para evitar timeouts de proxies intermedios.
+    """
+    chatbot = await get_chatbot(chatbot_id)
+    if not chatbot:
+        raise HTTPException(status_code=404, detail="Chatbot no encontrado")
+
+    import hashlib
+    msg_hash = hashlib.sha256(body.message.encode("utf-8")).hexdigest()
+    cache_key = f"{chatbot_id}:{msg_hash}"
+
+    cached_payload = None
+    if cache_key in response_cache:
+        cached = response_cache[cache_key]
+        if (datetime.utcnow() - cached["timestamp"]).total_seconds() < CACHE_TTL_SECONDS:
+            cached_payload = cached
+        else:
+            response_cache.pop(cache_key, None)
+
+    prep = await _prepare_chat_generation(chatbot, chatbot_id, body.message)
+    source_names = prep["source_names"]
+
+    async def event_stream():
+        # 1. Cache hit: emitir respuesta completa en un solo chunk.
+        if cached_payload is not None:
+            conv_id = await _persist_chat_turn(
+                chatbot_id, body.conversation_id, body.message, cached_payload["response"]
+            )
+            yield _sse("token", {"content": cached_payload["response"]})
+            yield _sse("done", {
+                "conversation_id": conv_id,
+                "sources": cached_payload["sources"],
+                "cached": True,
+            })
+            return
+
+        # 2. Respuesta temprana (sin API key del docente, etc.).
+        if prep.get("early_response") is not None:
+            conv_id = await _persist_chat_turn(
+                chatbot_id, body.conversation_id, body.message, prep["early_response"]
+            )
+            yield _sse("token", {"content": prep["early_response"]})
+            yield _sse("done", {
+                "conversation_id": conv_id,
+                "sources": source_names,
+                "cached": False,
+            })
+            return
+
+        # 3. Streaming real desde OpenRouter.
+        llm = get_llm_client()
+        collected: list[str] = []
+        is_error = False
+        try:
+            async for piece in llm.generate_stream(
+                prep["system_prompt"],
+                prep["context"],
+                body.message,
+                prep["temperature"],
+                api_key=prep["custom_api_key"],
+                model_id=prep["custom_model"],
+            ):
+                collected.append(piece)
+                yield _sse("token", {"content": piece})
+        except Exception as e:
+            is_error = True
+            err_msg = f"Lo siento, no pude procesar tu pregunta. Error: {str(e)}"
+            collected = [err_msg]
+            yield _sse("error", {"message": err_msg})
+
+        full_response = "".join(collected)
+
+        if not is_error and full_response:
+            if len(response_cache) >= settings.MAX_CACHE_SIZE:
+                response_cache.pop(next(iter(response_cache)))
+            response_cache[cache_key] = {
+                "response": full_response,
+                "sources": source_names,
+                "timestamp": datetime.utcnow(),
+            }
+
+        conv_id = await _persist_chat_turn(
+            chatbot_id, body.conversation_id, body.message, full_response
+        )
+        yield _sse("done", {
+            "conversation_id": conv_id,
+            "sources": source_names,
+            "cached": False,
+        })
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache, no-transform",
+            "X-Accel-Buffering": "no",
+            "Connection": "keep-alive",
+        },
+    )
+
+
+def _sse(event: str, data: dict) -> str:
+    return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
+
+
+async def _prepare_chat_generation(chatbot: dict, chatbot_id: str, user_message: str) -> dict:
+    """
+    Prepara todo el material necesario para generar una respuesta:
+    contexto truncado, system prompt, credenciales del docente, temperature.
+
+    Retorna un dict con:
+      - context, system_prompt, temperature, source_names
+      - custom_api_key, custom_model
+      - early_response: si no se debe llamar al LLM (mensaje pre-construido).
+    """
+    doc_contents = await get_all_contents_for_chatbot(chatbot_id)
+    source_names = [d.get("filename", "documento") for d in doc_contents]
+
+    context = build_context(doc_contents, user_message)
+
+    system_prompt = chatbot.get("system_prompt_override") or get_default_system_prompt(
+        chatbot.get("tone", "friendly"),
+        chatbot.get("restriction_level", "guided")
+    )
+
+    owner_id = chatbot.get("owner_id")
+    custom_api_key = None
+    custom_model = None
+    early_response = None
+
+    if owner_id:
+        owner = await get_user(owner_id)
+        if owner:
+            from security_utils import decrypt_api_key
+            encrypted_key = owner.get("openrouter_api_key")
+            custom_api_key = decrypt_api_key(encrypted_key) or None
+            custom_model = owner.get("openrouter_model") or None
+
+            # Fallback si están vacíos al campo legacy
+            if not custom_api_key or not custom_model:
+                inst_field = owner.get("institution", "")
+                if inst_field and " | " in inst_field:
+                    parts = inst_field.split(" | ")
+                    if len(parts) >= 3 and not custom_api_key:
+                        custom_api_key = decrypt_api_key(parts[2].strip()) or None
+                    if len(parts) >= 4 and not custom_model:
+                        custom_model = parts[3].strip() or None
+
+            # Si no hay API Key configurada, validar si es una cuenta de testeo autorizada
+            if not custom_api_key:
+                owner_email = owner.get("email", "") or ""
+                is_test_account = owner.get("is_test_account") or False
+
+                import os
+                whitelist_env = os.environ.get("TEST_ACCOUNTS_WHITELIST", "")
+                whitelist = [e.strip() for e in whitelist_env.split(",") if e.strip()]
+                is_in_whitelist = owner_email in whitelist
+
+                if not (is_test_account or is_in_whitelist):
+                    early_response = (
+                        "Lo siento, este chatbot está inactivo temporalmente. "
+                        "El docente propietario debe configurar su propia API Key de OpenRouter "
+                        "en su panel de Configuración para activar las respuestas."
+                    )
+
+    temperature = RESTRICTION_TEMPERATURES.get(chatbot.get("restriction_level", "guided"), 0.5)
+
+    return {
+        "context": context,
+        "system_prompt": system_prompt,
+        "temperature": temperature,
+        "source_names": source_names,
+        "custom_api_key": custom_api_key,
+        "custom_model": custom_model,
+        "early_response": early_response,
+    }
+
+
+async def _persist_chat_turn(
+    chatbot_id: str,
+    conversation_id_in: Optional[str],
+    user_message: str,
+    assistant_response: str,
+) -> str:
+    """Guarda el turno de chat en Supabase y retorna el conversation_id final."""
     new_messages = [
-        {"role": "user", "content": body.message, "timestamp": datetime.utcnow().isoformat()},
-        {"role": "assistant", "content": response_text, "timestamp": datetime.utcnow().isoformat()}
+        {"role": "user", "content": user_message, "timestamp": datetime.utcnow().isoformat()},
+        {"role": "assistant", "content": assistant_response, "timestamp": datetime.utcnow().isoformat()}
     ]
 
     existing_conv = None
-    if body.conversation_id:
-        existing_conv = await get_conversation(body.conversation_id)
+    if conversation_id_in:
+        existing_conv = await get_conversation(conversation_id_in)
 
     if existing_conv:
         messages = existing_conv.get("messages", [])
@@ -634,22 +792,17 @@ async def chat_endpoint(request: Request, chatbot_id: str, body: ChatMessage):
         messages.extend(new_messages)
         existing_conv["messages"] = messages
         await save_conversation(existing_conv)
-        conversation_id = existing_conv["id"]
-    else:
-        conversation_id = body.conversation_id or str(uuid.uuid4())
-        conversation = {
-            "id": conversation_id,
-            "chatbot_id": chatbot_id,
-            "student_id": None,
-            "messages": new_messages
-        }
-        await create_conversation(conversation)
+        return existing_conv["id"]
 
-    return ChatResponse(
-        response=response_text,
-        conversation_id=conversation_id,
-        sources=source_names
-    )
+    new_conv_id = conversation_id_in or str(uuid.uuid4())
+    conversation = {
+        "id": new_conv_id,
+        "chatbot_id": chatbot_id,
+        "student_id": None,
+        "messages": new_messages
+    }
+    await create_conversation(conversation)
+    return new_conv_id
 
 
 @app.get("/chat/{chatbot_id}/history")

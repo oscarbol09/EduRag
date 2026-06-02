@@ -13,9 +13,15 @@ import type {
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
+// Timeout por defecto para llamadas no streaming (ms).
+const DEFAULT_TIMEOUT_MS = 120_000;
+// Timeout para llamadas livianas (auth, listados, CRUD ligero).
+const LIGHT_TIMEOUT_MS = 30_000;
+
 async function fetchApi<T>(
   endpoint: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
+  timeoutMs: number = LIGHT_TIMEOUT_MS
 ): Promise<T> {
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
@@ -28,17 +34,110 @@ async function fetchApi<T>(
     (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
   }
 
-  const response = await fetch(`${API_URL}${endpoint}`, {
-    ...options,
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(`${API_URL}${endpoint}`, {
+      ...options,
+      headers,
+      signal: options.signal ?? controller.signal,
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: "Unknown error" }));
+      throw new Error(error.detail || `HTTP ${response.status}`);
+    }
+
+    return response.json();
+  } catch (err) {
+    if ((err as Error).name === "AbortError") {
+      throw new Error("La solicitud tardó demasiado y fue cancelada. Intenta de nuevo.");
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+export interface StreamCallbacks {
+  onToken: (chunk: string) => void;
+  onDone: (meta: { conversation_id: string; sources: string[]; cached: boolean }) => void;
+  onError?: (message: string) => void;
+  signal?: AbortSignal;
+}
+
+async function streamChat(
+  chatbotId: string,
+  message: ChatMessage,
+  callbacks: StreamCallbacks
+): Promise<void> {
+  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    "Accept": "text/event-stream",
+  };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
+  const response = await fetch(`${API_URL}/chat/${chatbotId}/stream`, {
+    method: "POST",
     headers,
+    body: JSON.stringify(message),
+    signal: callbacks.signal,
   });
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ detail: "Unknown error" }));
+  if (!response.ok || !response.body) {
+    const error = await response.json().catch(() => ({ detail: `HTTP ${response.status}` }));
     throw new Error(error.detail || `HTTP ${response.status}`);
   }
 
-  return response.json();
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+
+    // Parsear eventos SSE separados por "\n\n".
+    let sepIdx: number;
+    while ((sepIdx = buffer.indexOf("\n\n")) !== -1) {
+      const rawEvent = buffer.slice(0, sepIdx);
+      buffer = buffer.slice(sepIdx + 2);
+
+      let eventName = "message";
+      const dataLines: string[] = [];
+      for (const line of rawEvent.split("\n")) {
+        if (line.startsWith("event:")) {
+          eventName = line.slice(6).trim();
+        } else if (line.startsWith("data:")) {
+          dataLines.push(line.slice(5).trim());
+        }
+      }
+      if (dataLines.length === 0) continue;
+
+      let payload: { content?: string; conversation_id?: string; sources?: string[]; cached?: boolean; message?: string };
+      try {
+        payload = JSON.parse(dataLines.join("\n"));
+      } catch {
+        continue;
+      }
+
+      if (eventName === "token" && typeof payload.content === "string") {
+        callbacks.onToken(payload.content);
+      } else if (eventName === "done") {
+        callbacks.onDone({
+          conversation_id: payload.conversation_id || "",
+          sources: payload.sources || [],
+          cached: Boolean(payload.cached),
+        });
+      } else if (eventName === "error") {
+        callbacks.onError?.(payload.message || "Error desconocido");
+      }
+    }
+  }
 }
 
 export const api = {
@@ -94,20 +193,33 @@ export const api = {
       formData.append("chatbot_id", chatbotId);
 
       const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-      const response = await fetch(`${API_URL}/documents/upload`, {
-        method: "POST",
-        headers: {
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: formData,
-      });
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
 
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ detail: "Error al subir archivo" }));
-        throw new Error(error.detail || `HTTP ${response.status}`);
+      try {
+        const response = await fetch(`${API_URL}/documents/upload`, {
+          method: "POST",
+          headers: {
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: formData,
+          signal: controller.signal,
+        });
+
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({ detail: "Error al subir archivo" }));
+          throw new Error(error.detail || `HTTP ${response.status}`);
+        }
+
+        return response.json();
+      } catch (err) {
+        if ((err as Error).name === "AbortError") {
+          throw new Error("La subida del archivo tardó demasiado y fue cancelada.");
+        }
+        throw err;
+      } finally {
+        clearTimeout(timeoutId);
       }
-
-      return response.json();
     },
     list: (chatbotId: string) =>
       fetchApi<Document[]>(`/documents?chatbot_id=${chatbotId}`),
@@ -118,10 +230,16 @@ export const api = {
 
   chat: {
     send: (chatbotId: string, message: ChatMessage) =>
-      fetchApi<ChatResponse>(`/chat/${chatbotId}`, {
-        method: "POST",
-        body: JSON.stringify(message),
-      }),
+      fetchApi<ChatResponse>(
+        `/chat/${chatbotId}`,
+        {
+          method: "POST",
+          body: JSON.stringify(message),
+        },
+        DEFAULT_TIMEOUT_MS
+      ),
+    sendStream: (chatbotId: string, message: ChatMessage, callbacks: StreamCallbacks) =>
+      streamChat(chatbotId, message, callbacks),
     history: (chatbotId: string, conversationId: string) =>
       fetchApi<Conversation>(
         `/chat/${chatbotId}/history?conversation_id=${conversationId}`
