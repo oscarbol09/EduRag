@@ -66,10 +66,20 @@ import { api } from '@/lib/api';
 const chatbots = await api.chatbots.list();
 const chatbot = await api.chatbots.create(payload);
 const response = await api.chat.send(botId, { message: 'texto', conversation_id: '...' });
+
+// Streaming SSE — recibe tokens uno a uno vía callback
+await api.chat.sendStream(botId, { message: 'texto', conversation_id: '...' }, {
+  onToken: (chunk) => { /* acumular en UI */ },
+  onDone: (meta) => { /* meta.conversation_id, meta.sources */ },
+  onError: (err) => { /* mostrar error */ },
+});
+
 const docs = await api.documents.list(chatbotId);
 ```
 
 **Convención:** nunca usar `fetch` directamente en componentes. Centralizar toda la lógica HTTP en `api.ts`.
+
+**Timeouts:** `fetchApi` usa `AbortController` con timeouts por tipo de operación (30s para CRUD ligero, 120s para chat y upload). Configurables en `api.ts`.
 
 ---
 
@@ -167,6 +177,11 @@ Esta ruta es especial: debe funcionar correctamente dentro de un `<iframe>` en M
 - El embed code generado por el backend es: `<iframe src="/chat/{botId}" width="100%" height="600"></iframe>`.
 - La URL pública de producción base es: `https://edu-rag-red.vercel.app`.
 
+**Streaming SSE en `ChatClient.tsx`:**
+- `handleSend` invoca `api.chat.sendStream(...)` y va acumulando los tokens en un placeholder del assistant insertado en `messages` desde el inicio.
+- Indicador de carga (3 puntitos bouncing) se renderiza **dentro de la burbuja del assistant** mientras `content === ""` (no se duplica con un spinner global).
+- Si `sendStream` falla o no entrega ningún token, hace **fallback automático** a `api.chat.send()` (endpoint no-stream) para evitar regresiones si el stream se rompe.
+
 ---
 
 ## Variables de Entorno
@@ -214,6 +229,8 @@ npm run test      # Vitest (tests unitarios)
 
 ### Fetch y Async
 - Todos los llamados a API via `api.ts` — nunca `fetch` directo en componentes.
+- `fetchApi` internamente usa `AbortController` con timeouts por tipo: 30s para CRUD ligero, 120s para chat (síncrono o stream) y upload de documentos.
+- `api.chat.sendStream(...)` parsea el `text/event-stream` manualmente sobre `ReadableStream` con `TextDecoder` y separación por `\n\n`; acepta callbacks `onToken` / `onDone` / `onError`.
 - Manejar siempre estados `loading` y `error` en componentes que hacen fetch.
 
 ---

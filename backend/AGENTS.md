@@ -22,8 +22,10 @@ backend/
 ├── password.py             # hash_password / verify_password — bcrypt
 ├── supabase_db.py          # CRUD utilizando el SDK de Supabase para PostgreSQL
 ├── document_content_store.py # Almacén de texto — store/retrieve en Supabase (document_contents)
-├── llm_client.py           # Abstracción LLMClient — Integración OpenRouter con soporte para múltiples modelos gratuitos
+├── context_builder.py      # Chunking léxico + ranking por overlap de tokens + presupuesto 60k chars
+├── llm_client.py           # Cliente async httpx → OpenRouter con `generate()` y `generate_stream()`
 ├── document_uploader.py    # Upload a Supabase Storage + extracción de texto (MD/TXT/PDF/DOCX)
+├── railway.toml            # Config de deploy Railway (Uvicorn con --timeout-keep-alive 120)
 ├── Dockerfile              # Imagen Docker (referencia — no en uso activo)
 ├── test_api.py             # Script manual de pruebas de integración contra la API
 ├── test_main.py            # Suite de pruebas automatizadas con pytest
@@ -46,11 +48,13 @@ pydantic-settings==2.14.0
 python-dotenv==1.2.2
 python-multipart==0.0.26       # multipart/form-data (upload)
 slowapi==0.1.9                 # Rate limiting
-google-generativeai==0.8.6     # Gemini API
+google-generativeai==0.8.6     # Gemini API (legacy, sin uso activo)
 PyJWT==2.10.1
 bcrypt==4.2.0
+PyMuPDF==1.24.10               # Extracción de texto PDF
+python-docx==1.1.2             # Extracción de texto DOCX
 pytest==8.2.1                  # Testing automatizado
-httpx==0.27.0                  # Cliente HTTP para tests
+httpx==0.27.0                  # Cliente HTTP async (LLM) + usado en tests
 ```
 
 ---
@@ -62,7 +66,12 @@ Punto de entrada de la aplicación FastAPI. Contiene:
 - Configuración de CORS (orígenes desde `settings.CORS_ORIGINS`).
 - Rate limiter con `slowapi` (100 req/min por IP en `/chat/{id}`).
 - Caché en memoria con TTL (`response_cache: dict` y `CACHE_TTL_SECONDS = 300`) — máx. 1 000 entradas con tiempo de expiración de 5 minutos, LRU simple.
+- Helpers privados reutilizados por los dos endpoints de chat:
+  - `_prepare_chat_generation(chatbot, message, owner)` — recupera documentos, construye contexto con `context_builder`, valida API key.
+  - `_persist_chat_turn(chatbot_id, user_msg, assistant_msg, sources, conversation_id)` — guarda historial y actualiza caché.
+  - `_sse(event, data)` — formatea eventos SSE (`event: <name>\ndata: <json>\n\n`).
 - Todos los endpoints de la API con parches de seguridad (autenticación obligatoria en documentos, ocultado de hashes de contraseñas, asignación segura de roles).
+- Dos endpoints de chat: `/chat/{id}` (síncrono) y `/chat/{id}/stream` (SSE).
 
 **Flujo de upload de documento:**
 ```python
@@ -73,11 +82,26 @@ await store_document_content(document_id, chatbot_id, filename, text)
 await create_document(metadata_dict)
 ```
 
-**Flujo de chat:**
+**Flujo de chat (síncrono):**
 ```python
 doc_contents = await get_all_contents_for_chatbot(chatbot_id)
-context = "\n\n".join(f"--- Documento: {d['filename']} ---\n{d['content']}" for d in doc_contents)
-response = llm.generate(system_prompt, context, user_message, temperature)
+context = context_builder.build_context(doc_contents, user_message, max_chars=60_000)
+response = await llm.generate(system_prompt, context, user_message, temperature)
+# Persiste y retorna ChatResponse
+```
+
+**Flujo de chat (streaming SSE):**
+```python
+doc_contents = await get_all_contents_for_chatbot(chatbot_id)
+context = context_builder.build_context(doc_contents, user_message, max_chars=60_000)
+
+async def event_stream():
+    async for token in llm.generate_stream(system_prompt, context, user_message, temperature):
+        yield _sse("token", {"content": token})
+    yield _sse("done", {"conversation_id": ..., "sources": [...]})
+
+return StreamingResponse(event_stream(), media_type="text/event-stream",
+                         headers={"X-Accel-Buffering": "no", "Cache-Control": "no-cache, no-transform"})
 ```
 
 ### `settings.py`
@@ -87,7 +111,7 @@ Obliga a declarar `JWT_SECRET` en el entorno (sin valores por defecto inseguros)
 ```python
 settings.SUPABASE_URL            # URL de Supabase API
 settings.SUPABASE_KEY            # Key service_role de Supabase (Admin bypass)
-settings.GOOGLE_API_KEY          # Gemini API
+settings.OPENROUTER_API_KEY      # Fallback para cuentas @edurag.com (BYOK)
 settings.JWT_SECRET              # Secret JWT (≥32 chars en producción)
 settings.MAX_CACHE_SIZE          # 1000
 settings.MAX_FILE_SIZE_MB        # 20
@@ -167,9 +191,19 @@ await delete_all_contents_for_chatbot(chatbot_id)
 ```
 
 ### `llm_client.py`
-Abstracción LLM que interactúa directamente con la API de OpenRouter:
+Cliente async de OpenRouter basado en `httpx.AsyncClient` (no bloquea el event loop):
+- `generate(system_prompt, context, user_message, temperature, *, model, api_key) -> str` — respuesta completa.
+- `generate_stream(...) -> AsyncIterator[str]` — itera tokens del stream SSE de OpenRouter (consume `data: {...}\n\n` y emite `delta.content` por chunk).
 - Soporta modelos libres de OpenRouter como `google/gemini-2.5-flash:free`, `nvidia/llama-3.1-nemotron-70b:free`, `meta-llama/llama-3.1-8b-instruct:free`, etc.
-- Permite la autenticación BYOK por docente y un fallback seguro con la API Key del sistema para cuentas autorizadas.
+- Permite la autenticación **BYOK** por docente y un fallback seguro con la API Key del sistema (`OPENROUTER_API_KEY`) para cuentas `@edurag.com` y cuentas de prueba.
+- Interfaz estable: cualquier cambio de proveedor (Gemini directo, Anthropic, local) debe pasar por este módulo.
+
+### `context_builder.py`
+Reconstructor de contexto sin embeddings (sin ChromaDB ni vector store):
+- `chunk_document(text, chunk_size=1500, overlap=200) -> list[str]` — chunking léxico con overlap configurable.
+- `rank_chunks(chunks, query, top_k) -> list[str]` — ranking por overlap de tokens entre la query y cada chunk.
+- `build_context(documents, query, max_chars=60_000) -> str` — orquesta chunking + ranking + truncado a presupuesto máximo, retornando texto formateado con `--- Documento: {filename} ---\n{chunk}`.
+- Se invoca desde `main.py` antes de cada llamada a `llm.generate()` / `llm.generate_stream()`.
 
 ### `document_uploader.py`
 ```python
@@ -201,12 +235,21 @@ Flujo:
 1. Buscar chatbot en Supabase.
 2. Verificar caché con expiración TTL (5 minutos).
 3. `get_all_contents_for_chatbot(chatbot_id)` → lista de documentos con texto.
-4. Construir contexto concatenando todos los documentos.
+4. Construir contexto con `context_builder.build_context(docs, user_message, max_chars=60_000)`.
 5. Construir system_prompt desde configuración del chatbot.
-6. `llm.generate(system_prompt, context, message, temperature)`.
+6. `await llm.generate(system_prompt, context, message, temperature, model=..., api_key=...)`.
 7. Actualizar caché (con timestamp de creación).
 8. Persistir conversación en Supabase Postgres.
 9. Retornar `{ response, conversation_id, sources: [filenames] }`.
+
+### `POST /chat/{chatbot_id}/stream`
+Mismo pipeline que el endpoint síncrono, pero la respuesta se emite vía SSE:
+
+1–5. Idénticos al endpoint síncrono.
+6. Retorna `StreamingResponse(media_type="text/event-stream")` con generador async que itera `llm.generate_stream(...)`.
+7. Emite eventos `event: token` con `{"content": "..."}` por chunk, `event: done` con `{conversation_id, sources}` al final, o `event: error` si algo falla.
+8. Headers: `X-Accel-Buffering: no`, `Cache-Control: no-cache, no-transform` (evita buffering en proxies).
+9. El frontend hace fallback automático a `/chat/{chatbot_id}` si el stream no entrega tokens.
 
 ---
 

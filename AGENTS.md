@@ -14,7 +14,7 @@ Guía de referencia rápida para agentes de IA y colaboradores que trabajen en c
 3. Arquitectura extensible para múltiples LLMs sin cambios de lógica de negocio.
 
 **Decisión arquitectural clave — sin ChromaDB:**
-ChromaDB fue eliminado porque sus dependencias (~500 MB de venv) causaban `ContainerTimeout` en servicios de hosting y ralentizaban los deploys. El texto de los documentos se almacena en Supabase (`document_contents`) y se pasa directamente al context window de Gemini (~1M tokens). No se usan embeddings ni búsqueda vectorial.
+ChromaDB fue eliminado porque sus dependencias (~500 MB de venv) causaban `ContainerTimeout` en servicios de hosting y ralentizaban los deploys. El texto de los documentos se almacena en Supabase (`document_contents`) y se pasa directamente al context window de OpenRouter (los modelos free soportan ~1M tokens). No se usan embeddings ni búsqueda vectorial — el contexto se construye con chunking léxico + ranking por overlap en `context_builder.py`.
 
 ---
 
@@ -30,6 +30,8 @@ ChromaDB fue eliminado porque sus dependencias (~500 MB de venv) causaban `Conta
 | LLM activo | OpenRouter (modelos gratuitos vía API HTTP) | `backend/llm_client.py` |
 | LLM BYOK | API key de OpenRouter por docente (almacenada en `users.openrouter_api_key` con fallback en `institution`) | `backend/main.py` |
 | Texto de docs | Supabase — tabla `document_contents` | `backend/document_content_store.py` |
+| Construcción de contexto | Chunking léxico (1500 chars + overlap 200) + ranking por tokens + presupuesto 60k chars | `backend/context_builder.py` |
+| Streaming chat | SSE (`text/event-stream`) con tokens `event: token` / `event: done` / `event: error` | `backend/main.py` → `POST /chat/{id}/stream` |
 
 ---
 
@@ -80,12 +82,17 @@ Upload (síncrono):
     → Supabase Storage (original) + Supabase document_contents (texto)
     → documents: status "indexed" (inmediato)
 
-Chat (síncrono):
+Chat (síncrono — `/chat/{id}`):
   Mensaje → Supabase: recuperar todos los document_contents del chatbot
-    → construir contexto con todos los documentos
+    → `context_builder.build_context()`: chunking léxico + ranking por overlap de tokens + truncado a 60k chars
     → prompt: system_prompt + contexto + pregunta
-    → OpenRouter API (modelo seleccionado por el docente) → respuesta con fuentes (filenames)
+    → OpenRouter API (modelo seleccionado por el docente) vía `httpx.AsyncClient` (no bloquea event loop)
+    → respuesta con fuentes (filenames) — persistida en `conversations`
     → Cuentas @edurag.com usan OPENROUTER_API_KEY del sistema como fallback
+
+Chat (streaming — `/chat/{id}/stream`):
+  Mismo flujo, pero la respuesta se entrega token a token vía SSE.
+  El frontend renderiza incremental y hace fallback automático a `/chat/{id}` si el stream falla.
 ```
 
 **Temperatures por restriction_level:**
@@ -136,7 +143,8 @@ GET  /documents/{id}                → detalle
 DELETE /documents/{id}?chatbot_id=  → eliminar metadatos + contenido
 
 # Chat
-POST /chat/{chatbot_id}             → enviar mensaje (100 req/min/IP)
+POST /chat/{chatbot_id}             → enviar mensaje (100 req/min/IP) — respuesta completa
+POST /chat/{chatbot_id}/stream      → enviar mensaje con SSE (token-a-token)
 GET  /chat/{chatbot_id}/history     → historial
 
 # Admin

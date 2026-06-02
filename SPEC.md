@@ -65,7 +65,7 @@ create table chatbots (
   welcome_message text,
   system_prompt_override text,
   restriction_level text default 'guided' check (restriction_level in ('strict', 'guided', 'open')),
-  llm_provider text default 'gemini' check (llm_provider in ('gemini', 'claude')),
+  llm_provider text default 'openrouter' check (llm_provider in ('openrouter')),
   public_url text,
   embed_code text,
   is_published boolean default false,
@@ -132,16 +132,26 @@ create table conversations (
 ### Documentos (Parches de seguridad activos)
 - `POST /documents/upload` [JWT] — Subir documento (MD, TXT, PDF, DOCX). Valida propiedad del bot.
 - `GET /documents/{id}` [JWT] — Estado del documento. Valida propiedad del bot.
-- `GET /documents` [JWT] — Listar documentos de un chatbot. Valida propiedad del bot.
-- `DELETE /documents/{id}` [JWT] — Eliminar documento y su contenido. Valida propiedad del bot.
+- `GET /documents?chatbot_id=` [JWT] — Listar documentos de un chatbot. Valida propiedad del bot.
+- `DELETE /documents/{id}?chatbot_id=` [JWT] — Eliminar documento y su contenido. Valida propiedad del bot.
 
 ### Chat
-- `POST /chat/{chatbot_id}` — Enviar mensaje (Caché local con TTL de 5 min)
+- `POST /chat/{chatbot_id}` — Enviar mensaje (Caché local con TTL de 5 min, 100 req/min/IP)
+- `POST /chat/{chatbot_id}/stream` — Enviar mensaje con SSE token-a-token (mismo pipeline, respuesta incremental)
 - `GET /chat/{chatbot_id}/history` — Historial de conversación
 
 ### Admin
-- `POST /admin/teachers` — Crear cuenta de docente
-- `GET /admin/teachers` — Listar docentes
+- `POST /admin/teachers` [JWT admin] — Crear cuenta de docente
+- `GET /admin/teachers` [JWT admin] — Listar docentes
+- `PUT /admin/teachers/{id}` [JWT admin] — Editar docente
+- `DELETE /admin/teachers/{id}` [JWT admin] — Eliminar docente
+
+### Perfil del docente
+- `PUT /auth/me/profile` [JWT docente] — Actualizar perfil + OpenRouter key + modelo
+
+### Sistema
+- `GET /health` — Health check
+- `GET /ready` — Readiness (verifica conexión a Supabase)
 
 ### Sistema
 - `GET /health` — Health check
@@ -166,14 +176,35 @@ Docente sube archivo (MD / TXT / PDF / DOCX)
     → Supabase Postgres (documents): metadatos, status: "indexed"
 ```
 
-**Chat (síncrono):**
+**Construcción de contexto (`backend/context_builder.py`):**
+```
+Recuperar todos los document_contents del chatbot
+    → Chunking léxico: segmentos de 1500 chars con overlap de 200 chars
+    → Ranking por overlap de tokens entre la pregunta y cada chunk
+    → Selección greedy hasta completar presupuesto (60 000 chars)
+    → Contexto final: "--- Documento: {filename} ---\n{chunk}"
+```
+
+**Chat (síncrono — `POST /chat/{chatbot_id}`):**
 ```
 Estudiante envía mensaje
     → Recuperar todos los document_contents del chatbot desde Supabase
-    → Construir contexto: "--- Documento: {filename} ---\n{content}"
+    → `context_builder.build_context()` con la pregunta del usuario
     → Prompt: system_prompt + contexto + pregunta
-    → OpenRouter LLM (Gemini, Llama, Nemotron - context window hasta ~1M tokens)
+    → OpenRouter vía `httpx.AsyncClient` (no bloquea event loop)
     → Respuesta con nombres de documentos como fuentes
+    → Persistida en `conversations`
+```
+
+**Chat (streaming SSE — `POST /chat/{chatbot_id}/stream`):**
+```
+Mismo pipeline, pero la respuesta se emite token-a-token vía
+`StreamingResponse(media_type="text/event-stream")` con eventos:
+    event: token  → { "content": "..." }
+    event: done   → { "conversation_id": "...", "sources": [...] }
+    event: error  → { "message": "..." }
+El frontend parsea el stream y hace fallback automático al endpoint
+síncrono si el stream no entrega tokens.
 ```
 
 ### Formatos soportados

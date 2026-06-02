@@ -64,7 +64,7 @@ EduRAG resuelve un problema concreto en la educación digital: los materiales de
                    └────────────────────────┘
 ```
 
-> **Nota arquitectural:** El texto completo de cada documento se extrae al momento del upload y se almacena en Supabase Postgres (`document_contents`). Al chatear, todos los textos del chatbot se recuperan y pasan al prompt del modelo vía OpenRouter (context window hasta ~1M tokens según el modelo).
+> **Nota arquitectural:** El texto completo de cada documento se extrae al momento del upload y se almacena en Supabase Postgres (`document_contents`). Al chatear, el backend reconstruye el contexto con `context_builder.build_context()` (chunking léxico de 1500 chars con overlap 200, ranking por overlap de tokens y presupuesto máximo de 60 000 chars) y lo envía al modelo vía OpenRouter (context window hasta ~1M tokens según el modelo).
 
 ---
 
@@ -86,7 +86,7 @@ EduRAG resuelve un problema concreto en la educación digital: los materiales de
 ```
 /
 ├── backend/                        # API REST — FastAPI
-│   ├── main.py                     # Aplicación principal + todos los endpoints, caché TTL y CORS
+│   ├── main.py                     # Aplicación principal + todos los endpoints, caché TTL, CORS, rate limit
 │   ├── settings.py                 # Variables de entorno (Pydantic Settings sin fallbacks)
 │   ├── models.py                   # Modelos Pydantic (request/response)
 │   ├── auth.py                     # Middleware de autenticación JWT
@@ -94,8 +94,10 @@ EduRAG resuelve un problema concreto en la educación digital: los materiales de
 │   ├── password.py                 # hash_password / verify_password (bcrypt)
 │   ├── supabase_db.py              # CRUD — 5 tablas Postgres en Supabase
 │   ├── document_content_store.py   # Almacén de texto de documentos en Supabase
-│   ├── llm_client.py               # Abstracción LLM (Integración con OpenRouter y selección de modelos libres)
+│   ├── context_builder.py          # Chunking léxico + ranking por tokens + presupuesto 60k chars
+│   ├── llm_client.py               # Cliente async httpx → OpenRouter con `generate()` y `generate_stream()`
 │   ├── document_uploader.py        # Supabase Storage bucket upload + extr. texto (MD, TXT, PDF, DOCX)
+│   ├── railway.toml                # Config de deploy Railway (Uvicorn con timeouts ajustados)
 │   ├── test_main.py                # Suite de pruebas automatizadas con pytest
 │   ├── manual_test_api.py          # Script manual de pruebas de integración
 │   ├── requirements.txt            # Dependencias actualizadas sin dependencias pesadas
@@ -217,34 +219,84 @@ POST /chat/{chatbot_id}
         │
         ├── Verifica caché local con expiración TTL (5 minutos)
         ├── Recupera todos los document_contents del chatbot desde Supabase Postgres
-        ├── Construye contexto: "--- Documento: {filename} ---\n{content}"
+        ├── Construye contexto con `context_builder.build_context()` (chunking 1500c, ranking por overlap, ≤ 60 000 chars)
         ├── Verifica si el docente tiene OpenRouter key configurada en `openrouter_api_key` (con fallback legacy en `institution`)
         ├── Si no tiene key y no es cuenta @edurag.com → retorna mensaje de error
-        ├── Llama a OpenRouter API con el modelo elegido por el docente
+        ├── Llama a OpenRouter API con `httpx.AsyncClient` (no bloquea event loop)
         ├── Persiste conversación en la tabla conversations
         └── Retorna ChatResponse { response, conversation_id, sources }
+```
+
+### Chat (streaming SSE)
+```
+Estudiante envía mensaje
+        │
+        ▼
+POST /chat/{chatbot_id}/stream    (text/event-stream)
+        │
+        ├── Mismo flujo de preparación que el endpoint síncrono
+        ├── Retorna StreamingResponse con `event: token` / `event: done` / `event: error`
+        ├── Headers: X-Accel-Buffering: no, Cache-Control: no-cache, no-transform
+        └── El frontend hace fallback automático a /chat/{chatbot_id} si el stream falla
 ```
 
 ---
 
 ## API Reference
 
-### Documentos (Parches de seguridad activos)
+### Sistema
 
 | Método | Ruta | Auth | Descripción |
 |---|---|---|---|
-| `POST` | `/documents/upload` | JWT (owner) | Subir MD/TXT/PDF/DOCX. Valida propiedad del bot. |
-| `GET` | `/documents` | JWT (owner) | Listar por chatbot. Valida propiedad del bot. |
-| `GET` | `/documents/{id}` | JWT (owner) | Detalle de un documento. Valida propiedad del bot. |
-| `DELETE` | `/documents/{id}` | JWT (owner) | Eliminar documento y contenido. Valida propiedad del bot. |
+| `GET` | `/health` | — | Health check |
+| `GET` | `/ready` | — | Readiness (verifica Supabase) |
 
-### Autenticación (Exclusión de hashes de contraseñas)
+### Autenticación (exclusión de hashes de contraseñas)
 
 | Método | Ruta | Auth | Descripción |
 |---|---|---|---|
 | `POST` | `/auth/login` | — | Login email + password → emite JWT sin contraseñas |
 | `POST` | `/auth/register` | — | Registro (fuerza rol student, filtra hashes) |
 | `GET` | `/auth/me` | JWT | Datos del usuario del token actual |
+| `PUT` | `/auth/me/profile` | JWT (docente) | Actualizar perfil + OpenRouter key + modelo |
+
+### Chatbots
+
+| Método | Ruta | Auth | Descripción |
+|---|---|---|---|
+| `GET` | `/chatbots` | — / JWT | Lista con filtros `owner_id`, `published_only` |
+| `POST` | `/chatbots` | JWT | Crear chatbot |
+| `GET` | `/chatbots/{id}` | — / JWT | Detalle del chatbot |
+| `PUT` | `/chatbots/{id}` | JWT (owner) | Actualizar chatbot |
+| `DELETE` | `/chatbots/{id}` | JWT (owner) | Eliminar chatbot + `document_contents` asociados |
+| `POST` | `/chatbots/{id}/publish` | JWT (owner) | Publicar chatbot |
+| `GET` | `/chatbots/{id}/embed` | — | `embed_code` + `public_url` |
+
+### Documentos (parches de seguridad activos)
+
+| Método | Ruta | Auth | Descripción |
+|---|---|---|---|
+| `POST` | `/documents/upload` | JWT (owner) | Subir MD/TXT/PDF/DOCX. Valida propiedad del bot. |
+| `GET` | `/documents?chatbot_id=` | JWT (owner) | Listar por chatbot. Valida propiedad del bot. |
+| `GET` | `/documents/{id}` | JWT (owner) | Detalle de un documento. Valida propiedad del bot. |
+| `DELETE` | `/documents/{id}?chatbot_id=` | JWT (owner) | Eliminar metadatos + contenido. Valida propiedad del bot. |
+
+### Chat
+
+| Método | Ruta | Auth | Descripción |
+|---|---|---|---|
+| `POST` | `/chat/{chatbot_id}` | opcional | Enviar mensaje — respuesta completa (100 req/min/IP) |
+| `POST` | `/chat/{chatbot_id}/stream` | opcional | Enviar mensaje con SSE (token a token) |
+| `GET` | `/chat/{chatbot_id}/history` | opcional | Historial de conversación |
+
+### Admin
+
+| Método | Ruta | Auth | Descripción |
+|---|---|---|---|
+| `POST` | `/admin/teachers` | JWT (admin) | Crear cuenta de docente |
+| `GET` | `/admin/teachers` | JWT (admin) | Listar docentes |
+| `PUT` | `/admin/teachers/{id}` | JWT (admin) | Editar docente |
+| `DELETE` | `/admin/teachers/{id}` | JWT (admin) | Eliminar docente |
 
 ---
 
