@@ -4,15 +4,20 @@ from fastapi.responses import StreamingResponse
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
+import hashlib
 import json
+import logging
+import os
+import re
+import unicodedata
 import uvicorn
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional
 from settings import settings
 from models import *
 from supabase_db import (
-    create_user, get_user, get_user_by_email, list_users, update_user,
+    create_user, get_user, get_user_by_email, list_users, update_user, delete_user,
     create_chatbot, get_chatbot, get_chatbot_by_id_and_owner, update_chatbot, delete_chatbot, list_chatbots,
     create_document, get_document, update_document, list_documents, delete_document,
     create_conversation, get_conversation, save_conversation, list_conversations
@@ -29,6 +34,9 @@ from document_uploader import upload_file_to_blob, extract_text_from_file
 from auth import get_current_user, get_current_user_optional
 from password import hash_password, verify_password
 from jwt_token import create_jwt_token
+from security_utils import encrypt_api_key, decrypt_api_key
+
+logger = logging.getLogger(__name__)
 
 app = FastAPI(title="EduRAG API", version="0.2.0")
 
@@ -46,11 +54,24 @@ app.add_middleware(
 
 @app.on_event("startup")
 async def startup_event():
+    import warnings
     if not settings.JWT_SECRET or len(settings.JWT_SECRET) < 32:
-        import warnings
         warnings.warn(
-            "JWT_SECRET no esta configurado o tiene menos de 32 caracteres. "
-            "Esto representa un riesgo de seguridad en produccion.",
+            "JWT_SECRET no está configurado o tiene menos de 32 caracteres. "
+            "Esto representa un riesgo de seguridad en producción.",
+            UserWarning
+        )
+    if not settings.ENCRYPTION_KEY:
+        warnings.warn(
+            "ENCRYPTION_KEY no está configurada. Las API keys de docentes se cifrarán "
+            "derivando la clave de JWT_SECRET. Para mayor seguridad, configure ENCRYPTION_KEY "
+            "con: python -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\"",
+            UserWarning
+        )
+    if not settings.SUPABASE_URL or not settings.SUPABASE_KEY:
+        warnings.warn(
+            "SUPABASE_URL o SUPABASE_KEY no están configurados. "
+            "El servidor arrancará pero las operaciones de base de datos fallarán.",
             UserWarning
         )
 
@@ -97,8 +118,6 @@ def get_default_system_prompt(tone: str, restriction_level: str) -> str:
 def map_user_response(user: dict) -> dict:
     if not user:
         return {}
-    
-    from security_utils import decrypt_api_key
     # Valores por defecto
     first_name = user.get("first_name")
     last_name = user.get("last_name")
@@ -188,8 +207,6 @@ async def update_my_profile(body: ProfileUpdateRequest, current_user: dict = Dep
     user = await get_user(user_id)
     if not user:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
-        
-    from security_utils import encrypt_api_key
     openrouter_key = body.openrouterApiKey.strip() if body.openrouterApiKey else ""
     encrypted_key = encrypt_api_key(openrouter_key)
     openrouter_model = body.openrouterModel.strip() if body.openrouterModel else ""
@@ -223,7 +240,8 @@ async def update_my_profile(body: ProfileUpdateRequest, current_user: dict = Dep
 
 
 @app.post("/auth/login")
-async def login(body: LoginRequest):
+@limiter.limit("10/minute")  # Previene brute-force de contraseñas
+async def login(request: Request, body: LoginRequest):
     user = await get_user_by_email(body.email)
     if not user:
         raise HTTPException(status_code=401, detail="Credenciales inválidas")
@@ -243,7 +261,8 @@ async def login(body: LoginRequest):
 
 
 @app.post("/auth/register")
-async def register(body: RegisterRequest):
+@limiter.limit("5/minute")  # Previene registro masivo automatizado
+async def register(request: Request, body: RegisterRequest):
     existing = await get_user_by_email(body.email)
     if existing:
         # Parche de seguridad / Usabilidad: Permitir a docentes precreados reclamar su cuenta
@@ -724,7 +743,6 @@ async def _prepare_chat_generation(chatbot: dict, chatbot_id: str, user_message:
     if owner_id:
         owner = await get_user(owner_id)
         if owner:
-            from security_utils import decrypt_api_key
             encrypted_key = owner.get("openrouter_api_key")
             custom_api_key = decrypt_api_key(encrypted_key) or None
             custom_model = owner.get("openrouter_model") or None
@@ -744,10 +762,8 @@ async def _prepare_chat_generation(chatbot: dict, chatbot_id: str, user_message:
                 owner_email = owner.get("email", "") or ""
                 is_test_account = owner.get("is_test_account") or False
 
-                import os
-                whitelist_env = os.environ.get("TEST_ACCOUNTS_WHITELIST", "")
-                whitelist = [e.strip() for e in whitelist_env.split(",") if e.strip()]
-                is_in_whitelist = owner_email in whitelist
+                # Usar la lista centralizada de settings (gestionada vía TEST_ACCOUNTS_WHITELIST)
+                is_in_whitelist = owner_email in settings.test_accounts_list
 
                 if not (is_test_account or is_in_whitelist):
                     early_response = (
@@ -806,12 +822,36 @@ async def _persist_chat_turn(
 
 
 @app.get("/chat/{chatbot_id}/history")
-async def get_chat_history(chatbot_id: str, conversation_id: str):
+async def get_chat_history(chatbot_id: str, conversation_id: str, request: Request):
+    """
+    Devuelve el historial de una conversación.
+    Solo el dueño del chatbot o el mismo usuario que inició la conversación puede acceder.
+    Requiere autenticación para proteger la privacidad de los estudiantes.
+    """
+    current_user = await get_current_user_optional(request)
+    if not current_user or current_user.get("role") == "anonymous":
+        raise HTTPException(
+            status_code=401,
+            detail="Se requiere autenticación para acceder al historial de conversaciones."
+        )
+
     conversation = await get_conversation(conversation_id)
     if not conversation:
         raise HTTPException(status_code=404, detail="Conversación no encontrada")
     if conversation.get("chatbot_id") != chatbot_id:
         raise HTTPException(status_code=403, detail="No autorizado")
+
+    # Validar que quien consulta es el dueño del chatbot
+    chatbot = await get_chatbot(chatbot_id)
+    is_owner = chatbot and chatbot.get("owner_id") == current_user.get("sub")
+    is_admin = current_user.get("role") == "admin"
+
+    if not (is_owner or is_admin):
+        raise HTTPException(
+            status_code=403,
+            detail="Solo el docente propietario puede ver el historial de conversaciones."
+        )
+
     return conversation
 
 
@@ -819,7 +859,7 @@ async def get_chat_history(chatbot_id: str, conversation_id: str):
 async def create_teacher(data: TeacherCreate, current_user: dict = Depends(get_current_user)):
     if current_user.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Solo admins pueden crear docentes")
-    
+
     existing = await get_user_by_email(data.email)
     if existing:
         raise HTTPException(status_code=400, detail="El correo electrónico ya está registrado")
@@ -921,7 +961,6 @@ async def update_teacher(teacher_id: str, data: TeacherUpdate, current_user: dic
         new_inst = data.institution.strip() if data.institution is not None else current_institution
         full_name = f"{new_first} {new_last}".strip()
         
-        from security_utils import encrypt_api_key, decrypt_api_key
         current_or_key_decrypted = decrypt_api_key(current_or_key)
         current_or_key_encrypted = encrypt_api_key(current_or_key_decrypted)
         
@@ -956,13 +995,15 @@ async def update_teacher(teacher_id: str, data: TeacherUpdate, current_user: dic
 async def delete_teacher(teacher_id: str, current_user: dict = Depends(get_current_user)):
     if current_user.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Solo admins pueden eliminar docentes")
-        
+
     teacher = await get_user(teacher_id)
     if not teacher or teacher.get("role") != "teacher":
         raise HTTPException(status_code=404, detail="Docente no encontrado")
-        
-    from supabase_db import get_client
-    get_client().table("users").delete().eq("id", teacher_id).execute()
+
+    # Usar la abstracción de supabase_db en lugar de acceder a get_client() directamente
+    deleted = await delete_user(teacher_id)
+    if not deleted:
+        raise HTTPException(status_code=500, detail="Error al eliminar el docente")
     return {"detail": "Docente eliminado exitosamente"}
 
 
