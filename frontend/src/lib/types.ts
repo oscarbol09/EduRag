@@ -47,6 +47,7 @@ export interface Document {
 }
 
 export interface Message {
+  id?: string;       // ID único opcional, usado internamente por ChatClient para identificar mensajes del assistant
   role: "user" | "assistant";
   content: string;
   timestamp: string;

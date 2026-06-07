@@ -9,41 +9,80 @@ function renderMessageContent(content: string, isUser: boolean) {
   if (!content) return null;
 
   const boldClass = isUser ? "font-extrabold text-white" : "font-extrabold text-gray-900";
-  const codeClass = isUser ? "bg-brand-700 px-1 py-0.5 rounded font-mono text-xs text-white" : "bg-gray-100 px-1 py-0.5 rounded font-mono text-xs text-brand-700";
+  const codeInlineClass = isUser
+    ? "bg-brand-700 px-1 py-0.5 rounded font-mono text-xs text-white"
+    : "bg-gray-100 px-1 py-0.5 rounded font-mono text-xs text-brand-700";
 
-  // Expresion regular para dividir el texto preservando bloques de codigo inline, negrita y cursiva
-  const regex = /(`[^`\n]+`|\*\*[^*]+\*\*|\*[^*]+\*)/g;
-  const parts = content.split(regex);
+  // Dividir por bloques de código triple backtick primero
+  const codeBlockRegex = /```[\w]*\n?([\s\S]*?)```/g;
+  const segments: { type: "code_block" | "text"; content: string }[] = [];
+  let lastIndex = 0;
+  let match;
 
-  const elements = parts.map((part, index) => {
-    if (part.startsWith("`") && part.endsWith("`")) {
-      return (
-        <code key={index} className={codeClass}>
-          {part.slice(1, -1)}
-        </code>
-      );
+  while ((match = codeBlockRegex.exec(content)) !== null) {
+    if (match.index > lastIndex) {
+      segments.push({ type: "text", content: content.slice(lastIndex, match.index) });
     }
-    if (part.startsWith("**") && part.endsWith("**")) {
+    segments.push({ type: "code_block", content: match[1].trim() });
+    lastIndex = match.index + match[0].length;
+  }
+  if (lastIndex < content.length) {
+    segments.push({ type: "text", content: content.slice(lastIndex) });
+  }
+
+  const renderTextSegment = (text: string, segKey: number) => {
+    // Dividir por líneas para manejar listas
+    const lines = text.split("\n");
+    return lines.map((line, lineIdx) => {
+      const listMatch = line.match(/^(\s*)([-*]|\d+\.)\s+(.*)$/);
+      if (listMatch) {
+        return (
+          <div key={`${segKey}-line-${lineIdx}`} className="flex gap-2 my-0.5">
+            <span className={isUser ? "text-brand-200" : "text-gray-400"}>{"•"}</span>
+            <span>{renderInline(listMatch[3], `${segKey}-li-${lineIdx}`)}</span>
+          </div>
+        );
+      }
       return (
-        <strong key={index} className={boldClass}>
-          {part.slice(2, -2)}
-        </strong>
+        <span key={`${segKey}-line-${lineIdx}`}>
+          {renderInline(line, `${segKey}-${lineIdx}`)}
+          {lineIdx < lines.length - 1 && "\n"}
+        </span>
       );
-    }
-    if (part.startsWith("*") && part.endsWith("*")) {
-      return (
-        <em key={index} className="italic">
-          {part.slice(1, -1)}
-        </em>
-      );
-    }
-    // Texto plano normal (JSX se encarga de escapar esto implicitamente)
-    return part;
-  });
+    });
+  };
+
+  const renderInline = (text: string, keyPrefix: string) => {
+    const regex = /(`[^`\n]+`|\*\*[^*]+\*\*|\*[^*]+\*)/g;
+    const parts = text.split(regex);
+    return parts.map((part, index) => {
+      if (part.startsWith("`") && part.endsWith("`")) {
+        return <code key={`${keyPrefix}-${index}`} className={codeInlineClass}>{part.slice(1, -1)}</code>;
+      }
+      if (part.startsWith("**") && part.endsWith("**")) {
+        return <strong key={`${keyPrefix}-${index}`} className={boldClass}>{part.slice(2, -2)}</strong>;
+      }
+      if (part.startsWith("*") && part.endsWith("*")) {
+        return <em key={`${keyPrefix}-${index}`} className="italic">{part.slice(1, -1)}</em>;
+      }
+      return part;
+    });
+  };
 
   return (
     <span className="whitespace-pre-wrap text-sm leading-relaxed font-sans">
-      {elements}
+      {segments.map((seg, i) =>
+        seg.type === "code_block" ? (
+          <pre
+            key={i}
+            className="my-2 p-3 bg-gray-800 text-green-300 rounded-lg text-xs font-mono overflow-x-auto whitespace-pre"
+          >
+            {seg.content}
+          </pre>
+        ) : (
+          <span key={i}>{renderTextSegment(seg.content, i)}</span>
+        )
+      )}
     </span>
   );
 }
@@ -58,6 +97,9 @@ export default function ChatClient() {
   const [isLoading, setIsLoading] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  // Ref que almacena el ID único del mensaje placeholder del assistant activo.
+  // Usar un ref en lugar de calcular messages.length evita el race condition de React batching.
+  const assistantMsgIdRef = useRef<string | null>(null);
 
   // Detectar si hay un token → el docente está probando su bot
   const isTeacherPreview =
@@ -90,36 +132,44 @@ export default function ChatClient() {
       content: userMessage,
       timestamp: new Date().toISOString(),
     };
+
+    // Generar un ID único y estable para el placeholder del assistant.
+    // Se usa un ref para que appendToAssistant/replaceAssistant siempre lean el valor correcto
+    // independientemente de qué renders de React estén pendientes (evita el bug de batching).
+    const assistantMsgId = crypto.randomUUID();
+    assistantMsgIdRef.current = assistantMsgId;
+
     const assistantPlaceholder: Message = {
+      id: assistantMsgId,
       role: "assistant",
       content: "",
       timestamp: new Date().toISOString(),
     };
 
-    // Insertar el mensaje del usuario + placeholder del assistant que se irá llenando.
     setMessages((prev) => [...prev, userMsgObj, assistantPlaceholder]);
-    const assistantIndex = messages.length + 1;
 
     const appendToAssistant = (chunk: string) => {
+      const targetId = assistantMsgIdRef.current;
       setMessages((prev) => {
         const next = [...prev];
-        const target = next[assistantIndex];
-        if (target && target.role === "assistant") {
-          next[assistantIndex] = { ...target, content: target.content + chunk };
+        const idx = next.findIndex((m) => m.id === targetId);
+        if (idx !== -1 && next[idx].role === "assistant") {
+          next[idx] = { ...next[idx], content: next[idx].content + chunk };
         }
         return next;
       });
     };
 
     const replaceAssistant = (content: string, sources?: string[]) => {
+      const targetId = assistantMsgIdRef.current;
       setMessages((prev) => {
         const next = [...prev];
-        const target = next[assistantIndex];
-        if (target && target.role === "assistant") {
-          next[assistantIndex] = {
-            ...target,
+        const idx = next.findIndex((m) => m.id === targetId);
+        if (idx !== -1 && next[idx].role === "assistant") {
+          next[idx] = {
+            ...next[idx],
             content,
-            sources: sources ?? target.sources,
+            sources: sources ?? next[idx].sources,
             timestamp: new Date().toISOString(),
           };
         }
@@ -139,11 +189,12 @@ export default function ChatClient() {
           },
           onDone: ({ conversation_id, sources }) => {
             if (conversation_id) setConversationId(conversation_id);
+            const targetId = assistantMsgIdRef.current;
             setMessages((prev) => {
               const next = [...prev];
-              const target = next[assistantIndex];
-              if (target && target.role === "assistant") {
-                next[assistantIndex] = { ...target, sources };
+              const idx = next.findIndex((m) => m.id === targetId);
+              if (idx !== -1 && next[idx].role === "assistant") {
+                next[idx] = { ...next[idx], sources };
               }
               return next;
             });
@@ -328,6 +379,7 @@ export default function ChatClient() {
               placeholder="Escribe tu mensaje..."
               className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none text-sm transition-all"
               disabled={isLoading}
+              maxLength={4000}
             />
             <button
               type="submit"
