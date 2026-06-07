@@ -49,6 +49,15 @@ async def update_user(user_id: str, updates: dict) -> dict:
     return updates
 
 
+async def delete_user(user_id: str) -> bool:
+    """Elimina un usuario por ID. Usar sólo desde endpoints admin con validación previa."""
+    try:
+        get_client().table("users").delete().eq("id", user_id).execute()
+        return True
+    except Exception:
+        return False
+
+
 # ── Chatbots ─────────────────────────────────────────────────────────
 
 async def create_chatbot(chatbot_data: dict) -> dict:
