@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react";
 import { api } from "./api";
-import type { User, Chatbot, Conversation } from "./types";
+import type { User, Chatbot } from "./types";
 
 interface AuthState {
   user: User | null;
@@ -14,7 +14,6 @@ interface AppState {
   auth: AuthState;
   chatbots: Chatbot[];
   currentChatbot: Chatbot | null;
-  conversations: Record<string, Conversation>;
 }
 
 interface AppContextType extends AppState {
@@ -38,7 +37,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const [chatbots, setChatbots] = useState<Chatbot[]>([]);
   const [currentChatbot, setCurrentChatbot] = useState<Chatbot | null>(null);
-  const [conversations, setConversations] = useState<Record<string, Conversation>>({});
 
   useEffect(() => {
     async function loadUser() {
@@ -88,7 +86,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setAuth({ user: null, token: null, isLoading: false });
     setChatbots([]);
     setCurrentChatbot(null);
-    setConversations({});
   }, []);
 
   const loadChatbots = useCallback(async () => {
@@ -128,7 +125,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         auth,
         chatbots,
         currentChatbot,
-        conversations,
         login,
         register,
         logout,

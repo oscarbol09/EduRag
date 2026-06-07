@@ -85,9 +85,7 @@ export default function TeacherDashboard() {
           <div className="flex items-center gap-3.5">
             <span className="text-sm text-gray-500 hidden sm:inline-block">
               Hola, <strong className="text-gray-900 font-semibold">
-                {auth.user?.institution && auth.user.institution.includes(" | ")
-                  ? auth.user.institution.split(" | ")[0]
-                  : auth.user?.email}
+                {auth.user?.firstName || auth.user?.email}
               </strong>
             </span>
             <Link
