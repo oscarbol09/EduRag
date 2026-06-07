@@ -15,7 +15,7 @@ export default function NewChatbotPage() {
     education_level: "secondary",
     tone: "friendly",
     restriction_level: "guided",
-    llm_provider: "gemini",
+    llm_provider: "openrouter",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
@@ -191,22 +191,22 @@ export default function NewChatbotPage() {
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
                 Proveedor LLM
-                <HelpTooltip text="Motor de inteligencia artificial activo. Gemini 2.0 Flash es el motor predeterminado y gratuito del RAG. Claude es una opción para el futuro." />
+                <HelpTooltip text="Motor de inteligencia artificial activo. OpenRouter es el proveedor unificado de modelos (Gemini, Llama, Nemotron, etc.) usado por EduRAG. Los modelos free soportan hasta 1M tokens de context window." />
               </label>
               <div className="grid grid-cols-2 gap-3">
                 <button
                   type="button"
-                  onClick={() => setFormData(prev => ({ ...prev, llm_provider: "gemini" }))}
+                  onClick={() => setFormData(prev => ({ ...prev, llm_provider: "openrouter" }))}
                   className={`p-4 rounded-xl border text-left transition-all flex flex-col gap-1.5 cursor-pointer ${
-                    formData.llm_provider === "gemini"
+                    formData.llm_provider === "openrouter"
                       ? "border-brand-600 bg-brand-50/40 shadow-sm"
                       : "border-gray-200 hover:bg-gray-50/50"
                   }`}
                 >
                   <span className="text-xl">✨</span>
                   <div>
-                    <h4 className="font-bold text-xs text-gray-900 leading-none">Gemini (RAG)</h4>
-                    <p className="text-[10px] text-gray-400 mt-1">1M tokens · Gratuito</p>
+                    <h4 className="font-bold text-xs text-gray-900 leading-none">OpenRouter</h4>
+                    <p className="text-[10px] text-gray-400 mt-1">~1M tokens · Modelos free</p>
                   </div>
                 </button>
                 <button

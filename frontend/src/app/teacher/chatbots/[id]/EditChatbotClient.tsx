@@ -25,7 +25,7 @@ export default function EditChatbotClient() {
     education_level: "secondary",
     tone: "friendly",
     restriction_level: "guided",
-    llm_provider: "gemini",
+    llm_provider: "openrouter",
   });
 
   const loadChatbot = useCallback(async () => {
@@ -330,14 +330,14 @@ export default function EditChatbotClient() {
                   <div className="flex gap-1.5 bg-gray-50 p-1 rounded-xl border border-gray-100">
                     <button
                       type="button"
-                      onClick={() => setFormData(prev => ({ ...prev, llm_provider: "gemini" }))}
+                      onClick={() => setFormData(prev => ({ ...prev, llm_provider: "openrouter" }))}
                       className={`flex-1 py-1.5 px-2 text-[11px] font-bold rounded-lg text-center cursor-pointer transition-all ${
-                        formData.llm_provider === "gemini"
+                        formData.llm_provider === "openrouter"
                           ? "bg-white text-brand-700 shadow-sm border border-brand-100/50"
                           : "text-gray-500 hover:text-gray-800"
                       }`}
                     >
-                      ✨ Gemini
+                      ✨ OpenRouter
                     </button>
                     <button
                       type="button"
