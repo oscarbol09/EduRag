@@ -111,7 +111,7 @@ def get_default_system_prompt(tone: str, restriction_level: str) -> str:
 
 **Reglas Críticas de Comportamiento:**
 1. Actúa como un tutor humano real: sé empático, paciente y alentador. NUNCA menciones frases robóticas ni metasistemas del prompt (como "respondo según el contexto provisto", "según las instrucciones del sistema" o "siempre de manera formal"). Habla de forma natural y directa al estudiante.
-2. Si el estudiante te saluda con un 'hola' o similar, dale una cordial y cálida bienvenida en tu primer mensaje. Presenta brevemente el tema en el que te especializas (basándote en el contexto de los documentos) e invítalo de forma amigable a hacer su primera pregunta o plantear sus dudas.
+2. Solo saluda y da la bienvenida en el primer mensaje de la conversación. En las respuestas de seguimiento, NO repitas saludos como "¡Hola!", "Bienvenido/a", "Me alegra que quieras adentrarte..." o frases introductorias redundantes; responde directamente a la pregunta de forma fluida y natural.
 3. Fomenta el autoaprendizaje: utiliza analogías sencillas del día a día, ejemplos claros y, opcionalmente, plantéale pequeñas preguntas de reflexión al final de tus respuestas para estimular su curiosidad.
 4. Cita siempre el nombre de los documentos fuente (por ejemplo, "[nombre_archivo.txt]") al utilizar la información de los mismos, integrándolos de manera fluida y elegante en tu explicación."""
 
@@ -561,7 +561,7 @@ async def chat_endpoint(request: Request, chatbot_id: str, body: ChatMessage):
         else:
             response_cache.pop(cache_key, None)
 
-    prep = await _prepare_chat_generation(chatbot, chatbot_id, body.message)
+    prep = await _prepare_chat_generation(chatbot, chatbot_id, body.message, body.conversation_id)
     if prep.get("early_response") is not None:
         return ChatResponse(
             response=prep["early_response"],
@@ -579,6 +579,7 @@ async def chat_endpoint(request: Request, chatbot_id: str, body: ChatMessage):
             prep["temperature"],
             api_key=prep["custom_api_key"],
             model_id=prep["custom_model"],
+            history_messages=prep["history_messages"],
         )
     except Exception as e:
         response_text = f"Lo siento, no pude procesar tu pregunta. Error: {str(e)}"
@@ -629,7 +630,7 @@ async def chat_stream_endpoint(request: Request, chatbot_id: str, body: ChatMess
         else:
             response_cache.pop(cache_key, None)
 
-    prep = await _prepare_chat_generation(chatbot, chatbot_id, body.message)
+    prep = await _prepare_chat_generation(chatbot, chatbot_id, body.message, body.conversation_id)
     source_names = prep["source_names"]
 
     async def event_stream():
@@ -671,6 +672,7 @@ async def chat_stream_endpoint(request: Request, chatbot_id: str, body: ChatMess
                 prep["temperature"],
                 api_key=prep["custom_api_key"],
                 model_id=prep["custom_model"],
+                history_messages=prep["history_messages"],
             ):
                 collected.append(piece)
                 yield _sse("token", {"content": piece})
@@ -715,15 +717,18 @@ def _sse(event: str, data: dict) -> str:
     return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
 
 
-async def _prepare_chat_generation(chatbot: dict, chatbot_id: str, user_message: str) -> dict:
+async def _prepare_chat_generation(
+    chatbot: dict, chatbot_id: str, user_message: str, conversation_id: Optional[str] = None
+) -> dict:
     """
     Prepara todo el material necesario para generar una respuesta:
-    contexto truncado, system prompt, credenciales del docente, temperature.
+    contexto truncado, system prompt, credenciales del docente, temperature, historial de conversación.
 
     Retorna un dict con:
       - context, system_prompt, temperature, source_names
       - custom_api_key, custom_model
       - early_response: si no se debe llamar al LLM (mensaje pre-construido).
+      - history_messages: historial de mensajes previos para memoria conversacional.
     """
     doc_contents = await get_all_contents_for_chatbot(chatbot_id)
     source_names = [d.get("filename", "documento") for d in doc_contents]
@@ -734,6 +739,15 @@ async def _prepare_chat_generation(chatbot: dict, chatbot_id: str, user_message:
         chatbot.get("tone", "friendly"),
         chatbot.get("restriction_level", "guided")
     )
+
+    history_messages = []
+    if conversation_id:
+        existing_conv = await get_conversation(conversation_id)
+        if existing_conv:
+            raw_history = existing_conv.get("messages", [])
+            # Mantener los últimos 10 turnos (20 mensajes) para no desbordar el contexto
+            if isinstance(raw_history, list):
+                history_messages = raw_history[-20:]
 
     owner_id = chatbot.get("owner_id")
     custom_api_key = None
@@ -782,6 +796,7 @@ async def _prepare_chat_generation(chatbot: dict, chatbot_id: str, user_message:
         "custom_api_key": custom_api_key,
         "custom_model": custom_model,
         "early_response": early_response,
+        "history_messages": history_messages,
     }
 
 

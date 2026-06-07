@@ -27,6 +27,7 @@ class LLMClient:
         temperature: float,
         model_id: Optional[str],
         stream: bool,
+        history_messages: Optional[list[dict]] = None,
     ) -> tuple[dict, dict]:
         effective_model = (model_id or "").strip() or DEFAULT_MODEL
 
@@ -34,9 +35,17 @@ class LLMClient:
             {
                 "role": "system",
                 "content": f"{system_prompt}\n\nContexto del documento:\n{context}",
-            },
-            {"role": "user", "content": user_message},
+            }
         ]
+
+        if history_messages:
+            for msg in history_messages:
+                role = msg.get("role")
+                content = msg.get("content")
+                if role in ("user", "assistant") and content:
+                    messages.append({"role": role, "content": content})
+
+        messages.append({"role": "user", "content": user_message})
 
         headers = {
             "Content-Type": "application/json",
@@ -71,11 +80,18 @@ class LLMClient:
         temperature: float = 0.5,
         api_key: Optional[str] = None,
         model_id: Optional[str] = None,
+        history_messages: Optional[list[dict]] = None,
     ) -> str:
         """Genera una respuesta completa de OpenRouter (no streaming)."""
         effective_key = self._resolve_auth(api_key)
         payload, headers = self._build_payload(
-            system_prompt, context, user_message, temperature, model_id, stream=False
+            system_prompt,
+            context,
+            user_message,
+            temperature,
+            model_id,
+            stream=False,
+            history_messages=history_messages,
         )
         headers["Authorization"] = f"Bearer {effective_key}"
 
@@ -114,6 +130,7 @@ class LLMClient:
         temperature: float = 0.5,
         api_key: Optional[str] = None,
         model_id: Optional[str] = None,
+        history_messages: Optional[list[dict]] = None,
     ) -> AsyncIterator[str]:
         """
         Genera la respuesta como un stream de chunks de texto.
@@ -121,7 +138,13 @@ class LLMClient:
         """
         effective_key = self._resolve_auth(api_key)
         payload, headers = self._build_payload(
-            system_prompt, context, user_message, temperature, model_id, stream=True
+            system_prompt,
+            context,
+            user_message,
+            temperature,
+            model_id,
+            stream=True,
+            history_messages=history_messages,
         )
         headers["Authorization"] = f"Bearer {effective_key}"
 
