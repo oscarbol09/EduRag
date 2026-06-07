@@ -20,7 +20,8 @@ from supabase_db import (
     create_user, get_user, get_user_by_email, list_users, update_user, delete_user,
     create_chatbot, get_chatbot, get_chatbot_by_id_and_owner, update_chatbot, delete_chatbot, list_chatbots,
     create_document, get_document, update_document, list_documents, delete_document,
-    create_conversation, get_conversation, save_conversation, list_conversations
+    create_conversation, get_conversation, save_conversation, list_conversations,
+    get_client
 )
 from document_content_store import (
     store_document_content,
@@ -61,19 +62,8 @@ async def startup_event():
             "Esto representa un riesgo de seguridad en producción.",
             UserWarning
         )
-    if not settings.ENCRYPTION_KEY:
-        warnings.warn(
-            "ENCRYPTION_KEY no está configurada. Las API keys de docentes se cifrarán "
-            "derivando la clave de JWT_SECRET. Para mayor seguridad, configure ENCRYPTION_KEY "
-            "con: python -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\"",
-            UserWarning
-        )
-    if not settings.SUPABASE_URL or not settings.SUPABASE_KEY:
-        warnings.warn(
-            "SUPABASE_URL o SUPABASE_KEY no están configurados. "
-            "El servidor arrancará pero las operaciones de base de datos fallarán.",
-            UserWarning
-        )
+
+
 
 @app.middleware("http")
 async def add_security_headers(request: Request, call_next):
@@ -179,7 +169,6 @@ async def health_check():
 @app.get("/ready")
 async def readiness_check():
     try:
-        from supabase_db import get_client
         get_client()
         return {"status": "ready"}
     except Exception as e:
@@ -270,7 +259,6 @@ async def register(request: Request, body: RegisterRequest):
             password_hash = hash_password(body.password)
             
             # Actualizar contraseña y método de autenticación en Supabase
-            from supabase_db import get_client
             get_client().table("users").update({
                 "password": password_hash,
                 "auth_method": "email_password"
@@ -313,14 +301,25 @@ async def register(request: Request, body: RegisterRequest):
 
 
 @app.get("/chatbots")
-async def get_chatbots(request: Request, owner_id: Optional[str] = None, published_only: bool = False):
+async def get_chatbots(
+    request: Request,
+    owner_id: Optional[str] = None,
+    published_only: bool = False,
+    limit: Optional[int] = None,
+    offset: Optional[int] = None,
+):
     if not owner_id:
         user = await get_current_user_optional(request)
         if user and user.get("role") == "teacher" and not published_only:
             owner_id = user.get("sub")
         else:
             owner_id = None
-    chatbots = await list_chatbots(owner_id=owner_id, published_only=published_only)
+    chatbots = await list_chatbots(
+        owner_id=owner_id,
+        published_only=published_only,
+        limit=limit,
+        offset=offset,
+    )
     return chatbots
 
 
@@ -517,13 +516,18 @@ async def get_document_details(document_id: str, current_user: dict = Depends(ge
 
 
 @app.get("/documents")
-async def get_documents(chatbot_id: str, current_user: dict = Depends(get_current_user)):
+async def get_documents(
+    chatbot_id: str,
+    limit: Optional[int] = None,
+    offset: Optional[int] = None,
+    current_user: dict = Depends(get_current_user),
+):
     # Parche de seguridad: Validar propiedad del chatbot antes de listar documentos
     chatbot = await get_chatbot(chatbot_id)
     if not chatbot or chatbot.get("owner_id") != current_user.get("sub"):
         raise HTTPException(status_code=403, detail="No tienes permisos para este chatbot.")
         
-    documents = await list_documents(chatbot_id)
+    documents = await list_documents(chatbot_id, limit=limit, offset=offset)
     return documents
 
 
@@ -546,7 +550,6 @@ async def chat_endpoint(request: Request, chatbot_id: str, body: ChatMessage):
     if not chatbot:
         raise HTTPException(status_code=404, detail="Chatbot no encontrado")
 
-    import hashlib
     msg_hash = hashlib.sha256(body.message.encode("utf-8")).hexdigest()
     cache_key = f"{chatbot_id}:{msg_hash}"
     if cache_key in response_cache:
@@ -618,7 +621,6 @@ async def chat_stream_endpoint(request: Request, chatbot_id: str, body: ChatMess
     if not chatbot:
         raise HTTPException(status_code=404, detail="Chatbot no encontrado")
 
-    import hashlib
     msg_hash = hashlib.sha256(body.message.encode("utf-8")).hexdigest()
     cache_key = f"{chatbot_id}:{msg_hash}"
 
@@ -921,10 +923,14 @@ async def create_teacher(data: TeacherCreate, current_user: dict = Depends(get_c
 
 
 @app.get("/admin/teachers")
-async def list_teachers(current_user: dict = Depends(get_current_user)):
+async def list_teachers(
+    limit: Optional[int] = None,
+    offset: Optional[int] = None,
+    current_user: dict = Depends(get_current_user),
+):
     if current_user.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Solo admins pueden listar docentes")
-    teachers = await list_users(role="teacher")
+    teachers = await list_users(role="teacher", limit=limit, offset=offset)
     return [map_user_response({k: v for k, v in t.items() if k != "password"}) for t in teachers]
 
 
@@ -1040,16 +1046,14 @@ async def get_teacher_metrics(current_user: dict = Depends(get_current_user)):
     
     chatbot_ids = [cb.get("id") for cb in chatbots]
     if chatbot_ids:
-        from supabase_db import get_client
         db = get_client()
-        
+
         # Consultar todos los documentos asociados a la vez
         docs_res = db.table("documents").select("status").in_("chatbot_id", chatbot_ids).execute()
         if docs_res and docs_res.data:
             total_documents = len([d for d in docs_res.data if d.get("status") == "indexed"])
-            
+
         # 3. Obtener conversaciones semanales a la vez
-        from datetime import datetime, timedelta
         one_week_ago = datetime.utcnow() - timedelta(days=7)
         
         convs_res = db.table("conversations").select("updated_at", "created_at").in_("chatbot_id", chatbot_ids).execute()

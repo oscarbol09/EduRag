@@ -4,17 +4,16 @@ import json
 
 
 class Settings(BaseSettings):
-    # Supabase Settings — requeridos; sin default vacío para detectar misconfiguración en startup
-    SUPABASE_URL: str = ""
-    SUPABASE_KEY: str = ""
+    # Supabase Settings — requeridos; sin default para detectar misconfiguración en startup
+    SUPABASE_URL: str
+    SUPABASE_KEY: str
 
     # JWT Settings (Obligatorio - Lanza error en startup si está vacío)
     JWT_SECRET: str
 
-    # Cifrado de API keys de docentes.
-    # Si está vacío, se deriva de JWT_SECRET (ver security_utils.get_encryption_key).
-    # Recomendado: generar con `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`
-    ENCRYPTION_KEY: str = ""
+    # Cifrado de API keys de docentes. (Obligatorio)
+    # Generar con `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`
+    ENCRYPTION_KEY: str
 
     # OpenRouter (fallback para cuentas @edurag.com)
     OPENROUTER_API_KEY: str = ""

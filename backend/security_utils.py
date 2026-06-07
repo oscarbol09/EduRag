@@ -8,22 +8,18 @@ logger = logging.getLogger(__name__)
 
 
 def get_encryption_key() -> bytes:
-    key_env = os.environ.get("ENCRYPTION_KEY")
-    if key_env:
-        try:
-            # Verificar si ya es una clave Fernet válida (44 bytes base64url)
-            Fernet(key_env.encode())
-            return key_env.encode()
-        except Exception:
-            # Si es un string arbitrario, derivarla de forma segura con SHA-256
-            derived = hashlib.sha256(key_env.encode()).digest()
-            return base64.urlsafe_b64encode(derived)
-
-    # Fallback: derivar de JWT_SECRET. Garantiza que el cifrado siempre funcione
-    # siempre que JWT_SECRET esté configurado (validación en startup).
-    jwt_secret = os.environ.get("JWT_SECRET", "default_safe_secret_key_at_least_32_chars")
-    derived = hashlib.sha256(jwt_secret.encode()).digest()
-    return base64.urlsafe_b64encode(derived)
+    from settings import settings
+    key_env = settings.ENCRYPTION_KEY
+    if not key_env:
+        raise ValueError("La variable de entorno ENCRYPTION_KEY no está configurada.")
+    try:
+        # Verificar si ya es una clave Fernet válida (44 bytes base64url)
+        Fernet(key_env.encode())
+        return key_env.encode()
+    except Exception:
+        # Si es un string arbitrario, derivarla de forma segura con SHA-256
+        derived = hashlib.sha256(key_env.encode()).digest()
+        return base64.urlsafe_b64encode(derived)
 
 
 def encrypt_api_key(api_key: str) -> str:

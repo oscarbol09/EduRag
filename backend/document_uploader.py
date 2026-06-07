@@ -63,9 +63,26 @@ def extract_text_from_file(content: bytes, filename: str, content_type: str | No
             import io
             doc = docx.Document(io.BytesIO(content))
             text = []
+            
+            # Extraer texto de párrafos
             for p in doc.paragraphs:
                 if p.text:
                     text.append(p.text)
+            
+            # Extraer texto de tablas
+            for table in doc.tables:
+                for row in table.rows:
+                    row_text = []
+                    seen_cells = set()
+                    for cell in row.cells:
+                        if cell not in seen_cells:
+                            seen_cells.add(cell)
+                            val = cell.text.strip()
+                            if val:
+                                row_text.append(val)
+                    if row_text:
+                        text.append(" | ".join(row_text))
+                        
             return "\n".join(text)
         except Exception as e:
             raise ValueError(f"Error al extraer texto del archivo DOCX: {str(e)}")

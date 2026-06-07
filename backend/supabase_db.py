@@ -37,10 +37,16 @@ async def get_user_by_email(email: str) -> Optional[dict]:
     return r.data if r else None
 
 
-async def list_users(role: Optional[str] = None) -> List[dict]:
+async def list_users(role: Optional[str] = None, limit: Optional[int] = None, offset: Optional[int] = None) -> List[dict]:
     q = get_client().table("users").select("*")
     if role:
         q = q.eq("role", role)
+    # Ordenar por fecha de creación descendente
+    q = q.order("created_at", descending=True)
+    if limit is not None:
+        q = q.limit(limit)
+    if offset is not None:
+        q = q.offset(offset)
     return q.execute().data
 
 
@@ -104,7 +110,12 @@ async def delete_chatbot(chatbot_id: str, owner_id: str) -> bool:
         return False
 
 
-async def list_chatbots(owner_id: Optional[str] = None, published_only: bool = False) -> List[dict]:
+async def list_chatbots(
+    owner_id: Optional[str] = None,
+    published_only: bool = False,
+    limit: Optional[int] = None,
+    offset: Optional[int] = None,
+) -> List[dict]:
     q = get_client().table("chatbots").select("*")
     if owner_id:
         q = q.eq("owner_id", owner_id)
@@ -113,6 +124,12 @@ async def list_chatbots(owner_id: Optional[str] = None, published_only: bool = F
     else:
         # Parche de seguridad: Si no hay owner_id, forzar estrictamente que solo retorne publicados
         q = q.eq("is_published", True)
+        
+    q = q.order("created_at", descending=True)
+    if limit is not None:
+        q = q.limit(limit)
+    if offset is not None:
+        q = q.offset(offset)
     return q.execute().data
 
 
@@ -140,15 +157,19 @@ async def update_document(document_id: str, updates: dict, chatbot_id: str) -> O
     return r.data[0] if r.data else None
 
 
-async def list_documents(chatbot_id: str) -> List[dict]:
-    return (
+async def list_documents(chatbot_id: str, limit: Optional[int] = None, offset: Optional[int] = None) -> List[dict]:
+    q = (
         get_client()
         .table("documents")
         .select("*")
         .eq("chatbot_id", chatbot_id)
-        .execute()
-        .data
+        .order("created_at", descending=True)
     )
+    if limit is not None:
+        q = q.limit(limit)
+    if offset is not None:
+        q = q.offset(offset)
+    return q.execute().data
 
 
 async def delete_document(document_id: str, chatbot_id: str) -> bool:
