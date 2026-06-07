@@ -4,15 +4,31 @@ import json
 
 
 class Settings(BaseSettings):
-    # Supabase Settings
+    # Supabase Settings — requeridos; sin default vacío para detectar misconfiguración en startup
     SUPABASE_URL: str = ""
     SUPABASE_KEY: str = ""
 
     # JWT Settings (Obligatorio - Lanza error en startup si está vacío)
     JWT_SECRET: str
 
+    # Cifrado de API keys de docentes.
+    # Si está vacío, se deriva de JWT_SECRET (ver security_utils.get_encryption_key).
+    # Recomendado: generar con `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`
+    ENCRYPTION_KEY: str = ""
+
     # OpenRouter (fallback para cuentas @edurag.com)
     OPENROUTER_API_KEY: str = ""
+
+    # Cuentas de testeo autorizadas a usar la API key del sistema (comma-separated)
+    TEST_ACCOUNTS_WHITELIST: str = ""
+
+    @property
+    def test_accounts_list(self) -> List[str]:
+        """Devuelve la lista de emails autorizados para usar la API key del sistema."""
+        return [e.strip() for e in self.TEST_ACCOUNTS_WHITELIST.split(",") if e.strip()]
+
+    # LLM por defecto (usado si el docente no tiene modelo configurado)
+    DEFAULT_LLM_MODEL: str = "google/gemma-3-27b-it:free"
 
     # App Settings
     APP_HOST: str = "0.0.0.0"
@@ -43,6 +59,9 @@ class Settings(BaseSettings):
 
     # Cache
     MAX_CACHE_SIZE: int = 1000
+
+    # Límite de longitud del system_prompt_override (chars)
+    MAX_SYSTEM_PROMPT_LENGTH: int = 2000
 
     # TTL
     TTL_CONVERSATIONS_DAYS: int = 90

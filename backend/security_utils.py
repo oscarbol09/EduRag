@@ -1,41 +1,54 @@
 import os
 import base64
 import hashlib
+import logging
 from cryptography.fernet import Fernet
+
+logger = logging.getLogger(__name__)
+
 
 def get_encryption_key() -> bytes:
     key_env = os.environ.get("ENCRYPTION_KEY")
     if key_env:
         try:
-            # Verificar si ya es una clave Fernet valida
+            # Verificar si ya es una clave Fernet válida (44 bytes base64url)
             Fernet(key_env.encode())
             return key_env.encode()
         except Exception:
-            # Si es un string normal, derivarla de forma segura
+            # Si es un string arbitrario, derivarla de forma segura con SHA-256
             derived = hashlib.sha256(key_env.encode()).digest()
             return base64.urlsafe_b64encode(derived)
-    
-    # Fallback seguro a JWT_SECRET para evitar caidas si ENCRYPTION_KEY no esta configurado
+
+    # Fallback: derivar de JWT_SECRET. Garantiza que el cifrado siempre funcione
+    # siempre que JWT_SECRET esté configurado (validación en startup).
     jwt_secret = os.environ.get("JWT_SECRET", "default_safe_secret_key_at_least_32_chars")
     derived = hashlib.sha256(jwt_secret.encode()).digest()
     return base64.urlsafe_b64encode(derived)
 
+
 def encrypt_api_key(api_key: str) -> str:
+    """Cifra una API key con Fernet. Lanza excepción si falla — no hay fallback a texto plano."""
     if not api_key:
         return ""
-    try:
-        f = Fernet(get_encryption_key())
-        return f.encrypt(api_key.encode("utf-8")).decode("utf-8")
-    except Exception:
-        # Si falla el cifrado, retornar la clave original para evitar bloqueos
-        return api_key
+    # Sin try/except: si el cifrado falla, debe ser ruidoso para evitar almacenar en texto plano.
+    f = Fernet(get_encryption_key())
+    return f.encrypt(api_key.encode("utf-8")).decode("utf-8")
+
 
 def decrypt_api_key(encrypted_key: str) -> str:
+    """Descifra una API key. Si falla (clave legada en texto plano), devuelve el valor crudo
+    con un warning para facilitar la migración gradual de datos legados."""
     if not encrypted_key:
         return ""
     try:
         f = Fernet(get_encryption_key())
         return f.decrypt(encrypted_key.encode("utf-8")).decode("utf-8")
     except Exception:
-        # Si falla el descifrado (ej. es una clave legada plana), retornar el valor crudo
+        # Clave legada almacenada en texto plano — registrar para auditoría y migracion.
+        logger.warning(
+            "decrypt_api_key: no se pudo descifrar con Fernet. "
+            "La clave puede estar almacenada en texto plano (dato legado). "
+            "Se recomienda que el docente actualice su API Key desde Configuración."
+        )
         return encrypted_key
+
