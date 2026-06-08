@@ -9,6 +9,7 @@ import json
 import logging
 import os
 import re
+import threading
 import unicodedata
 import uvicorn
 import uuid
@@ -17,14 +18,16 @@ from typing import Optional
 from settings import settings
 from models import *
 from supabase_db import (
-    create_user, get_user, get_user_by_email, list_users, update_user, delete_user,
+    create_user, get_user, get_user_by_email, list_users, update_user, update_user_auth_claim, delete_user,
     create_chatbot, get_chatbot, get_chatbot_by_id_and_owner, update_chatbot, delete_chatbot, list_chatbots,
-    create_document, get_document, update_document, list_documents, delete_document,
-    create_conversation, get_conversation, save_conversation, list_conversations,
+    create_document, get_document, update_document, list_documents, list_documents_for_chatbots, delete_document,
+    create_conversation, get_conversation, save_conversation, list_conversations, list_conversations_for_chatbots,
+    create_messages_batch, list_messages_for_conversation,
     get_client
 )
 from document_content_store import (
     store_document_content,
+    get_document_content_by_hash,
     get_all_contents_for_chatbot,
     delete_all_contents_for_chatbot,
     delete_document_content,
@@ -73,7 +76,12 @@ async def add_security_headers(request: Request, call_next):
     return response
 
 response_cache: dict = {}
-CACHE_TTL_SECONDS = 300  # Parche de seguridad: caché de 5 minutos de tiempo de vida (TTL)
+response_cache_lock = threading.RLock()
+# Caché TTL de 5 minutos. NOTA: este caché es en memoria y local al worker.
+# En deploys multi-worker (Gunicorn con varios procesos) cada worker tiene su propio caché.
+# La migraçión a Redis (Upstash Free) requeriría una variable de entorno REDIS_URL
+# y el paquete `redis`. Postergada hasta que el tráfico justifique el costo operativo.
+CACHE_TTL_SECONDS = 300  # 5 minutos
 
 RESTRICTION_TEMPERATURES = {
     "strict": 0.2,
@@ -81,6 +89,33 @@ RESTRICTION_TEMPERATURES = {
     "open": 0.8
 }
 
+
+def _get_cached_response(cache_key: str) -> Optional[dict]:
+    """Return a fresh cached response, deleting stale entries under a lock."""
+    with response_cache_lock:
+        cached = response_cache.get(cache_key)
+        if not cached:
+            return None
+        if (datetime.utcnow() - cached["timestamp"]).total_seconds() < CACHE_TTL_SECONDS:
+            return dict(cached)
+        response_cache.pop(cache_key, None)
+        return None
+
+
+def _set_cached_response(cache_key: str, response_text: str, sources: list[str]) -> None:
+    """Store a chat response without racing concurrent requests in the same worker."""
+    with response_cache_lock:
+        if len(response_cache) >= settings.MAX_CACHE_SIZE:
+            oldest_key = min(
+                response_cache,
+                key=lambda key: response_cache[key].get("timestamp", datetime.min),
+            )
+            response_cache.pop(oldest_key, None)
+        response_cache[cache_key] = {
+            "response": response_text,
+            "sources": sources,
+            "timestamp": datetime.utcnow(),
+        }
 
 def get_default_system_prompt(tone: str, restriction_level: str) -> str:
     tone_instruction = {
@@ -106,53 +141,37 @@ def get_default_system_prompt(tone: str, restriction_level: str) -> str:
 4. Cita siempre el nombre de los documentos fuente (por ejemplo, "[nombre_archivo.txt]") al utilizar la información de los mismos, integrándolos de manera fluida y elegante en tu explicación."""
 
 def map_user_response(user: dict) -> dict:
+    """Mapea un registro de usuario a la estructura de respuesta del API.
+    Lee exclusivamente las columnas nativas (first_name, last_name, institution_name,
+    openrouter_api_key, openrouter_model). Migración legacy completada.
+    """
     if not user:
         return {}
-    # Valores por defecto
-    first_name = user.get("first_name")
-    last_name = user.get("last_name")
-    institution_name = user.get("institution_name")
+    first_name = user.get("first_name") or ""
+    last_name = user.get("last_name") or ""
+    institution_name = user.get("institution_name") or ""
     openrouter_api_key = decrypt_api_key(user.get("openrouter_api_key"))
-    openrouter_model = user.get("openrouter_model")
+    openrouter_model = user.get("openrouter_model") or ""
     is_test_account = user.get("is_test_account") or False
 
-    # Si los nuevos campos son nulos/vacíos pero existe el campo legacy, parsearlo como fallback
-    inst_field = user.get("institution") or ""
-    if " | " in inst_field and not (first_name or last_name or institution_name or openrouter_api_key or openrouter_model):
-        parts = inst_field.split(" | ")
-        if len(parts) >= 1:
-            full_name = parts[0].strip()
-            name_parts = full_name.split(" ", 1)
-            first_name = name_parts[0] if name_parts else ""
-            last_name = name_parts[1] if len(name_parts) > 1 else ""
-        if len(parts) >= 2:
-            institution_name = parts[1].strip()
-        if len(parts) >= 3:
-            openrouter_api_key = decrypt_api_key(parts[2].strip())
-        if len(parts) >= 4:
-            openrouter_model = parts[3].strip()
-
-    # Si los nuevos campos tienen valor pero el campo legacy está vacío, construirlo
-    if not inst_field and (first_name or last_name or institution_name):
-        full_name = f"{first_name or ''} {last_name or ''}".strip()
-        inst_field = f"{full_name} | {institution_name or ''} | {openrouter_api_key or ''} | {openrouter_model or ''}"
-
     res = dict(user)
+    # Columnas nativas snake_case
     res["first_name"] = first_name
     res["last_name"] = last_name
     res["institution_name"] = institution_name
     res["openrouter_api_key"] = openrouter_api_key
     res["openrouter_model"] = openrouter_model
     res["is_test_account"] = is_test_account
-    
-    # Compatibilidad con frontend camelCase
+    # Alias camelCase para el frontend
     res["firstName"] = first_name
     res["lastName"] = last_name
     res["institutionName"] = institution_name
     res["openrouterApiKey"] = openrouter_api_key
     res["openrouterModel"] = openrouter_model
-    res["institution"] = inst_field
-    
+    # Eliminar campos legacy que ya no existen en el schema
+    res.pop("institution", None)
+    res.pop("name", None)
+
     return res
 
 
@@ -200,27 +219,16 @@ async def update_my_profile(body: ProfileUpdateRequest, current_user: dict = Dep
     encrypted_key = encrypt_api_key(openrouter_key)
     openrouter_model = body.openrouterModel.strip() if body.openrouterModel else ""
     
-    combined_inst = f"{body.firstName.strip()} {body.lastName.strip()} | {body.institution.strip()} | {encrypted_key} | {openrouter_model}"
-    
-    updates = {
-        "institution": combined_inst,
-        "country": body.country.strip() if body.country else None
-    }
-    
     updates_native = {
-        **updates,
         "first_name": body.firstName.strip(),
         "last_name": body.lastName.strip(),
         "institution_name": body.institution.strip(),
         "openrouter_api_key": encrypted_key,
-        "openrouter_model": openrouter_model
+        "openrouter_model": openrouter_model,
+        "country": body.country.strip() if body.country else None,
     }
-    
-    try:
-        await update_user(user_id, updates_native)
-    except Exception:
-        # Fallback si no se han creado las columnas en Supabase
-        await update_user(user_id, updates)
+
+    await update_user(user_id, updates_native)
     
     # Obtener el usuario actualizado
     updated_user = await get_user(user_id)
@@ -259,10 +267,7 @@ async def register(request: Request, body: RegisterRequest):
             password_hash = hash_password(body.password)
             
             # Actualizar contraseña y método de autenticación en Supabase
-            get_client().table("users").update({
-                "password": password_hash,
-                "auth_method": "email_password"
-            }).eq("id", existing["id"]).execute()
+            await update_user_auth_claim(existing["id"], password_hash)
             
             # Recargar usuario para tener datos actualizados
             updated_user = await get_user_by_email(body.email)
@@ -330,6 +335,13 @@ async def create_new_chatbot(data: ChatbotCreate, request: Request):
     if not owner_id:
         raise HTTPException(status_code=401, detail="Usuario no autenticado")
 
+    # Validar longitud del system_prompt_override
+    if data.system_prompt_override and len(data.system_prompt_override) > settings.MAX_SYSTEM_PROMPT_LENGTH:
+        raise HTTPException(
+            status_code=400,
+            detail=f"El system prompt personalizado no puede superar {settings.MAX_SYSTEM_PROMPT_LENGTH} caracteres."
+        )
+
     chatbot_id = str(uuid.uuid4())
     now = datetime.utcnow().isoformat()
     chatbot = {
@@ -377,6 +389,14 @@ async def get_chatbot_details(chatbot_id: str, request: Request):
 async def update_chatbot_details(chatbot_id: str, data: ChatbotCreate, request: Request):
     user = await get_current_user(request)
     owner_id = user.get("sub")
+
+    # Validar longitud del system_prompt_override
+    if data.system_prompt_override and len(data.system_prompt_override) > settings.MAX_SYSTEM_PROMPT_LENGTH:
+        raise HTTPException(
+            status_code=400,
+            detail=f"El system prompt personalizado no puede superar {settings.MAX_SYSTEM_PROMPT_LENGTH} caracteres."
+        )
+
     chatbot = await update_chatbot(chatbot_id, data.model_dump(), owner_id=owner_id)
     if not chatbot:
         raise HTTPException(status_code=404, detail="Chatbot no encontrado")
@@ -470,6 +490,24 @@ async def upload_document(
     if not text_content or not text_content.strip():
         raise HTTPException(status_code=400, detail="No se pudo extraer texto del archivo.")
 
+    if len(text_content) > settings.MAX_EXTRACTED_TEXT_CHARS:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "El texto extraÃ­do supera el lÃ­mite permitido "
+                f"({settings.MAX_EXTRACTED_TEXT_CHARS} caracteres). "
+                "Divide el documento en archivos mÃ¡s pequeÃ±os."
+            ),
+        )
+
+    content_hash = hashlib.sha256(text_content.encode("utf-8")).hexdigest()
+    duplicate = await get_document_content_by_hash(chatbot_id, content_hash)
+    if duplicate:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Este contenido ya fue subido como {duplicate.get('filename', 'otro documento')}.",
+        )
+
     # Sanitize filename for safe Supabase Storage key path
     safe_filename = sanitize_filename(filename)
 
@@ -483,6 +521,7 @@ async def upload_document(
         chatbot_id=chatbot_id,
         filename=filename,
         content=text_content,
+        content_hash=content_hash,
     )
 
     document = {
@@ -491,6 +530,7 @@ async def upload_document(
         "filename": filename,
         "mime_type": file.content_type or "text/plain",
         "blob_url": blob_url,
+        "content_hash": content_hash,
         "status": "indexed",
         "chunk_count": 1,
         "created_at": now,
@@ -550,26 +590,39 @@ async def chat_endpoint(request: Request, chatbot_id: str, body: ChatMessage):
     if not chatbot:
         raise HTTPException(status_code=404, detail="Chatbot no encontrado")
 
+    current_user = await get_current_user_optional(request)
+    student_id = current_user.get("sub") if current_user and current_user.get("role") != "anonymous" else None
+
     msg_hash = hashlib.sha256(body.message.encode("utf-8")).hexdigest()
     cache_key = f"{chatbot_id}:{msg_hash}"
-    if cache_key in response_cache:
-        cached = response_cache[cache_key]
-        # Parche de seguridad: Validar que la caché no haya expirado (TTL de 5 minutos)
-        if (datetime.utcnow() - cached["timestamp"]).total_seconds() < CACHE_TTL_SECONDS:
-            return ChatResponse(
-                response=cached["response"],
-                conversation_id=body.conversation_id or str(uuid.uuid4()),
-                sources=cached["sources"]
-            )
-        else:
-            response_cache.pop(cache_key, None)
+    cached = _get_cached_response(cache_key)
+    if cached:
+        conversation_id = await _persist_chat_turn(
+            chatbot_id,
+            body.conversation_id,
+            body.message,
+            cached["response"],
+            student_id=student_id,
+        )
+        return ChatResponse(
+            response=cached["response"],
+            conversation_id=conversation_id,
+            sources=cached["sources"],
+        )
 
     prep = await _prepare_chat_generation(chatbot, chatbot_id, body.message, body.conversation_id)
     if prep.get("early_response") is not None:
+        conversation_id = await _persist_chat_turn(
+            chatbot_id,
+            body.conversation_id,
+            body.message,
+            prep["early_response"],
+            student_id=student_id,
+        )
         return ChatResponse(
             response=prep["early_response"],
-            conversation_id=body.conversation_id or str(uuid.uuid4()),
-            sources=prep["source_names"]
+            conversation_id=conversation_id,
+            sources=prep["source_names"],
         )
 
     llm = get_llm_client()
@@ -589,24 +642,21 @@ async def chat_endpoint(request: Request, chatbot_id: str, body: ChatMessage):
         is_error = True
 
     if not is_error:
-        if len(response_cache) >= settings.MAX_CACHE_SIZE:
-            response_cache.pop(next(iter(response_cache)))
-        response_cache[cache_key] = {
-            "response": response_text,
-            "sources": prep["source_names"],
-            "timestamp": datetime.utcnow()
-        }
+        _set_cached_response(cache_key, response_text, prep["source_names"])
 
     conversation_id = await _persist_chat_turn(
-        chatbot_id, body.conversation_id, body.message, response_text
+        chatbot_id,
+        body.conversation_id,
+        body.message,
+        response_text,
+        student_id=student_id,
     )
 
     return ChatResponse(
         response=response_text,
         conversation_id=conversation_id,
-        sources=prep["source_names"]
+        sources=prep["source_names"],
     )
-
 
 @app.post("/chat/{chatbot_id}/stream")
 @limiter.limit("100/minute")
@@ -614,32 +664,31 @@ async def chat_stream_endpoint(request: Request, chatbot_id: str, body: ChatMess
     """
     Variante streaming del endpoint de chat. Devuelve Server-Sent Events
     con la respuesta incremental del LLM y un evento final con metadata
-    (conversation_id, sources). Mantiene la conexión activa enviando
+    (conversation_id, sources). Mantiene la conexion activa enviando
     bytes constantemente para evitar timeouts de proxies intermedios.
     """
     chatbot = await get_chatbot(chatbot_id)
     if not chatbot:
         raise HTTPException(status_code=404, detail="Chatbot no encontrado")
 
+    current_user = await get_current_user_optional(request)
+    student_id = current_user.get("sub") if current_user and current_user.get("role") != "anonymous" else None
+
     msg_hash = hashlib.sha256(body.message.encode("utf-8")).hexdigest()
     cache_key = f"{chatbot_id}:{msg_hash}"
-
-    cached_payload = None
-    if cache_key in response_cache:
-        cached = response_cache[cache_key]
-        if (datetime.utcnow() - cached["timestamp"]).total_seconds() < CACHE_TTL_SECONDS:
-            cached_payload = cached
-        else:
-            response_cache.pop(cache_key, None)
+    cached_payload = _get_cached_response(cache_key)
 
     prep = await _prepare_chat_generation(chatbot, chatbot_id, body.message, body.conversation_id)
     source_names = prep["source_names"]
 
     async def event_stream():
-        # 1. Cache hit: emitir respuesta completa en un solo chunk.
         if cached_payload is not None:
             conv_id = await _persist_chat_turn(
-                chatbot_id, body.conversation_id, body.message, cached_payload["response"]
+                chatbot_id,
+                body.conversation_id,
+                body.message,
+                cached_payload["response"],
+                student_id=student_id,
             )
             yield _sse("token", {"content": cached_payload["response"]})
             yield _sse("done", {
@@ -649,10 +698,13 @@ async def chat_stream_endpoint(request: Request, chatbot_id: str, body: ChatMess
             })
             return
 
-        # 2. Respuesta temprana (sin API key del docente, etc.).
         if prep.get("early_response") is not None:
             conv_id = await _persist_chat_turn(
-                chatbot_id, body.conversation_id, body.message, prep["early_response"]
+                chatbot_id,
+                body.conversation_id,
+                body.message,
+                prep["early_response"],
+                student_id=student_id,
             )
             yield _sse("token", {"content": prep["early_response"]})
             yield _sse("done", {
@@ -662,7 +714,6 @@ async def chat_stream_endpoint(request: Request, chatbot_id: str, body: ChatMess
             })
             return
 
-        # 3. Streaming real desde OpenRouter.
         llm = get_llm_client()
         collected: list[str] = []
         is_error = False
@@ -687,16 +738,14 @@ async def chat_stream_endpoint(request: Request, chatbot_id: str, body: ChatMess
         full_response = "".join(collected)
 
         if not is_error and full_response:
-            if len(response_cache) >= settings.MAX_CACHE_SIZE:
-                response_cache.pop(next(iter(response_cache)))
-            response_cache[cache_key] = {
-                "response": full_response,
-                "sources": source_names,
-                "timestamp": datetime.utcnow(),
-            }
+            _set_cached_response(cache_key, full_response, source_names)
 
         conv_id = await _persist_chat_turn(
-            chatbot_id, body.conversation_id, body.message, full_response
+            chatbot_id,
+            body.conversation_id,
+            body.message,
+            full_response,
+            student_id=student_id,
         )
         yield _sse("done", {
             "conversation_id": conv_id,
@@ -713,7 +762,6 @@ async def chat_stream_endpoint(request: Request, chatbot_id: str, body: ChatMess
             "Connection": "keep-alive",
         },
     )
-
 
 def _sse(event: str, data: dict) -> str:
     return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
@@ -744,12 +792,24 @@ async def _prepare_chat_generation(
 
     history_messages = []
     if conversation_id:
-        existing_conv = await get_conversation(conversation_id)
-        if existing_conv:
-            raw_history = existing_conv.get("messages", [])
-            # Mantener los últimos 10 turnos (20 mensajes) para no desbordar el contexto
-            if isinstance(raw_history, list):
-                history_messages = raw_history[-20:]
+        # Leer el historial desde la tabla normalizada messages
+        raw_messages = await list_messages_for_conversation(conversation_id, limit=20)
+        if raw_messages:
+            # Verificar que la conversación pertenece a este chatbot
+            existing_conv = await get_conversation(conversation_id)
+            if existing_conv and existing_conv.get("chatbot_id") == chatbot_id:
+                history_messages = [
+                    {"role": m["role"], "content": m["content"]}
+                    for m in raw_messages
+                ]
+        else:
+            # Fallback: intentar leer del campo JSONB legacy (conversaciones antiguas)
+            existing_conv = await get_conversation(conversation_id)
+            if existing_conv and existing_conv.get("chatbot_id") == chatbot_id:
+                raw_history = existing_conv.get("messages", [])
+                if isinstance(raw_history, list):
+                    # Mantener los últimos 20 mensajes para no desbordar el contexto
+                    history_messages = raw_history[-20:]
 
     owner_id = chatbot.get("owner_id")
     custom_api_key = None
@@ -759,19 +819,10 @@ async def _prepare_chat_generation(
     if owner_id:
         owner = await get_user(owner_id)
         if owner:
+            # Columnas nativas son autoritativas. Si están vacías, no hay key configurada.
             encrypted_key = owner.get("openrouter_api_key")
             custom_api_key = decrypt_api_key(encrypted_key) or None
             custom_model = owner.get("openrouter_model") or None
-
-            # Fallback si están vacíos al campo legacy
-            if not custom_api_key or not custom_model:
-                inst_field = owner.get("institution", "")
-                if inst_field and " | " in inst_field:
-                    parts = inst_field.split(" | ")
-                    if len(parts) >= 3 and not custom_api_key:
-                        custom_api_key = decrypt_api_key(parts[2].strip()) or None
-                    if len(parts) >= 4 and not custom_model:
-                        custom_model = parts[3].strip() or None
 
             # Si no hay API Key configurada, validar si es una cuenta de testeo autorizada
             if not custom_api_key:
@@ -807,36 +858,45 @@ async def _persist_chat_turn(
     conversation_id_in: Optional[str],
     user_message: str,
     assistant_response: str,
+    student_id: Optional[str] = None,
 ) -> str:
-    """Guarda el turno de chat en Supabase y retorna el conversation_id final."""
-    new_messages = [
-        {"role": "user", "content": user_message, "timestamp": datetime.utcnow().isoformat()},
-        {"role": "assistant", "content": assistant_response, "timestamp": datetime.utcnow().isoformat()}
-    ]
+    """Guarda el turno de chat en Supabase (tabla messages normalizada) y retorna el conversation_id final."""
+    now = datetime.utcnow().isoformat()
 
     existing_conv = None
     if conversation_id_in:
         existing_conv = await get_conversation(conversation_id_in)
+        if existing_conv and existing_conv.get("chatbot_id") != chatbot_id:
+            raise HTTPException(status_code=403, detail="Conversation ID no autorizado para este chatbot")
 
     if existing_conv:
-        messages = existing_conv.get("messages", [])
-        if not isinstance(messages, list):
-            messages = []
-        messages.extend(new_messages)
-        existing_conv["messages"] = messages
+        existing_student_id = existing_conv.get("student_id")
+        if existing_student_id and student_id and existing_student_id != student_id:
+            raise HTTPException(status_code=403, detail="Conversation ID no autorizado para este usuario")
+
+        conversation_id = existing_conv["id"]
+        # Actualizar metadatos de la conversación (updated_at)
+        if student_id and not existing_student_id:
+            existing_conv["student_id"] = student_id
         await save_conversation(existing_conv)
-        return existing_conv["id"]
+    else:
+        conversation_id = str(uuid.uuid4())
+        conversation = {
+            "id": conversation_id,
+            "chatbot_id": chatbot_id,
+            "student_id": student_id,
+        }
+        await create_conversation(conversation)
 
-    new_conv_id = conversation_id_in or str(uuid.uuid4())
-    conversation = {
-        "id": new_conv_id,
-        "chatbot_id": chatbot_id,
-        "student_id": None,
-        "messages": new_messages
-    }
-    await create_conversation(conversation)
-    return new_conv_id
+    # Persistir los dos mensajes del turno en la tabla normalizada
+    assistant_ts = datetime.utcnow().isoformat()
+    new_messages = [
+        {"conversation_id": conversation_id, "role": "user", "content": user_message, "created_at": now},
+        {"conversation_id": conversation_id, "role": "assistant", "content": assistant_response, "created_at": assistant_ts},
+    ]
+    await create_messages_batch(new_messages)
 
+    return conversation_id
 
 @app.get("/chat/{chatbot_id}/history")
 async def get_chat_history(chatbot_id: str, conversation_id: str, request: Request):
@@ -862,13 +922,22 @@ async def get_chat_history(chatbot_id: str, conversation_id: str, request: Reque
     chatbot = await get_chatbot(chatbot_id)
     is_owner = chatbot and chatbot.get("owner_id") == current_user.get("sub")
     is_admin = current_user.get("role") == "admin"
+    is_student = conversation.get("student_id") and conversation.get("student_id") == current_user.get("sub")
 
-    if not (is_owner or is_admin):
+    if not (is_owner or is_admin or is_student):
         raise HTTPException(
             status_code=403,
-            detail="Solo el docente propietario puede ver el historial de conversaciones."
+            detail="No tienes permisos para ver este historial de conversación."
         )
 
+    # Obtener mensajes desde la tabla normalizada
+    messages = await list_messages_for_conversation(conversation_id)
+    if messages:
+        return {
+            **conversation,
+            "messages": messages,
+        }
+    # Fallback para conversaciones antiguas con JSONB
     return conversation
 
 
@@ -883,42 +952,31 @@ async def create_teacher(data: TeacherCreate, current_user: dict = Depends(get_c
 
     teacher_id = str(uuid.uuid4())
     password_hash = hash_password(data.password)
-    
+
     first = (data.firstName or "").strip()
     last = (data.lastName or "").strip()
-    full_name = f"{first} {last}".strip()
     inst = (data.institution or "").strip()
-    serialized_inst = f"{full_name} | {inst} |  | " if full_name or inst else None
-    
-    teacher = {
+
+    teacher_data = {
         "id": teacher_id,
         "email": data.email,
         "password": password_hash,
         "role": "teacher",
         "auth_method": "email_password",
-        "institution": serialized_inst,
         "country": data.country,
         "is_active": True,
-        "created_at": datetime.utcnow().isoformat()
-    }
-    
-    teacher_native = {
-        **teacher,
+        "created_at": datetime.utcnow().isoformat(),
         "first_name": first,
         "last_name": last,
         "institution_name": inst,
         "openrouter_api_key": "",
         "openrouter_model": "",
-        "is_test_account": False
+        "is_test_account": False,
     }
-    
-    try:
-        await create_user(teacher_native)
-    except Exception:
-        # Fallback si las nuevas columnas no existen todavía
-        await create_user(teacher)
-    
-    safe_user = {k: v for k, v in teacher.items() if k != "password"}
+
+    await create_user(teacher_data)
+
+    safe_user = {k: v for k, v in teacher_data.items() if k != "password"}
     return map_user_response(safe_user)
 
 
@@ -950,63 +1008,26 @@ async def update_teacher(teacher_id: str, data: TeacherUpdate, current_user: dic
             if existing:
                 raise HTTPException(status_code=400, detail="El correo electrónico ya está registrado")
         updates["email"] = data.email
-        
+
     if data.password is not None and data.password.strip() != "":
         updates["password"] = hash_password(data.password)
         updates["auth_method"] = "email_password"
-    
-    has_name_update = data.firstName is not None or data.lastName is not None or data.institution is not None
-    updates_native = dict(updates)
-    
-    if has_name_update:
-        # Parsear el campo actual para preservar los campos no actualizados
-        current_inst = teacher.get("institution", "") or ""
-        current_first = teacher.get("first_name") or ""
-        current_last = teacher.get("last_name") or ""
-        current_institution = teacher.get("institution_name") or ""
-        current_or_key = teacher.get("openrouter_api_key") or ""
-        current_or_model = teacher.get("openrouter_model") or ""
 
-        if not (current_first or current_last or current_institution or current_or_key or current_or_model) and " | " in current_inst:
-            parts = current_inst.split(" | ")
-            current_full_name = parts[0].strip()
-            current_name_parts = current_full_name.split(" ", 1)
-            current_first = current_name_parts[0] if current_name_parts else ""
-            current_last = current_name_parts[1] if len(current_name_parts) > 1 else ""
-            current_institution = parts[1].strip() if len(parts) > 1 else ""
-            current_or_key = parts[2].strip() if len(parts) > 2 else ""
-            current_or_model = parts[3].strip() if len(parts) > 3 else ""
-        
-        new_first = data.firstName.strip() if data.firstName is not None else current_first
-        new_last = data.lastName.strip() if data.lastName is not None else current_last
-        new_inst = data.institution.strip() if data.institution is not None else current_institution
-        full_name = f"{new_first} {new_last}".strip()
-        
-        current_or_key_decrypted = decrypt_api_key(current_or_key)
-        current_or_key_encrypted = encrypt_api_key(current_or_key_decrypted)
-        
-        updates["institution"] = f"{full_name} | {new_inst} | {current_or_key_encrypted} | {current_or_model}"
-        
-        updates_native = {
-            **updates_native,
-            "institution": updates["institution"],
-            "first_name": new_first,
-            "last_name": new_last,
-            "institution_name": new_inst,
-            "openrouter_api_key": current_or_key_encrypted,
-            "openrouter_model": current_or_model
-        }
-        
+    if data.firstName is not None or data.lastName is not None or data.institution is not None:
+        # Leer valores actuales desde columnas nativas
+        new_first = data.firstName.strip() if data.firstName is not None else (teacher.get("first_name") or "")
+        new_last = data.lastName.strip() if data.lastName is not None else (teacher.get("last_name") or "")
+        new_inst = data.institution.strip() if data.institution is not None else (teacher.get("institution_name") or "")
+        updates["first_name"] = new_first
+        updates["last_name"] = new_last
+        updates["institution_name"] = new_inst
+
     if data.country is not None:
         updates["country"] = data.country
-        updates_native["country"] = data.country
-        
+
     if updates:
-        try:
-            await update_user(teacher_id, updates_native)
-        except Exception:
-            await update_user(teacher_id, updates)
-        
+        await update_user(teacher_id, updates)
+
     updated_teacher = await get_user(teacher_id)
     safe_user = {k: v for k, v in updated_teacher.items() if k != "password"}
     return map_user_response(safe_user)
@@ -1046,31 +1067,25 @@ async def get_teacher_metrics(current_user: dict = Depends(get_current_user)):
     
     chatbot_ids = [cb.get("id") for cb in chatbots]
     if chatbot_ids:
-        db = get_client()
-
-        # Consultar todos los documentos asociados a la vez
-        docs_res = db.table("documents").select("status").in_("chatbot_id", chatbot_ids).execute()
-        if docs_res and docs_res.data:
-            total_documents = len([d for d in docs_res.data if d.get("status") == "indexed"])
+        documents = await list_documents_for_chatbots(chatbot_ids)
+        total_documents = len([d for d in documents if d.get("status") == "indexed"])
 
         # 3. Obtener conversaciones semanales a la vez
         one_week_ago = datetime.utcnow() - timedelta(days=7)
-        
-        convs_res = db.table("conversations").select("updated_at", "created_at").in_("chatbot_id", chatbot_ids).execute()
-        if convs_res and convs_res.data:
-            for conv in convs_res.data:
-                updated_at_str = conv.get("updated_at") or conv.get("created_at")
-                if updated_at_str:
-                    try:
-                        updated_at_str_clean = updated_at_str.replace("Z", "+00:00")
-                        updated_at = datetime.fromisoformat(updated_at_str_clean)
-                        updated_at_naive = updated_at.replace(tzinfo=None)
-                        if updated_at_naive >= one_week_ago:
-                            weekly_conversations_count += 1
-                    except Exception:
+        conversations = await list_conversations_for_chatbots(chatbot_ids)
+        for conv in conversations:
+            updated_at_str = conv.get("updated_at") or conv.get("created_at")
+            if updated_at_str:
+                try:
+                    updated_at_str_clean = updated_at_str.replace("Z", "+00:00")
+                    updated_at = datetime.fromisoformat(updated_at_str_clean)
+                    updated_at_naive = updated_at.replace(tzinfo=None)
+                    if updated_at_naive >= one_week_ago:
                         weekly_conversations_count += 1
-                else:
+                except Exception:
                     weekly_conversations_count += 1
+            else:
+                weekly_conversations_count += 1
                 
     return {
         "totalChatbots": total_chatbots,
@@ -1079,6 +1094,29 @@ async def get_teacher_metrics(current_user: dict = Depends(get_current_user)):
         "weeklyConversations": weekly_conversations_count,
         "channelStatus": "100% Activo"
     }
+
+
+@app.get("/platform/stats")
+async def get_platform_stats():
+    """
+    Estadísticas públicas de la plataforma para la landing page.
+    No requiere autenticación — solo retorna conteos agregados.
+    """
+    try:
+        client = get_client()
+        chatbots_resp = client.table("chatbots").select("id", count="exact").eq("is_published", True).execute()
+        teachers_resp = client.table("users").select("id", count="exact").eq("role", "teacher").eq("is_active", True).execute()
+        # Contar mensajes desde la tabla normalizada (no desde el JSONB legacy)
+        messages_resp = client.table("messages").select("id", count="exact").execute()
+
+        return {
+            "totalChatbots": chatbots_resp.count or 0,
+            "totalTeachers": teachers_resp.count or 0,
+            "totalMessages": messages_resp.count or 0,
+        }
+    except Exception as e:
+        logger.warning(f"platform/stats error: {e}")
+        raise HTTPException(status_code=503, detail="Estadísticas no disponibles temporalmente")
 
 
 if __name__ == "__main__":

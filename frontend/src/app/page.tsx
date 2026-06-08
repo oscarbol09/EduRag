@@ -1,6 +1,25 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect, useState } from "react";
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+interface PlatformStats {
+  totalChatbots: number;
+  totalTeachers: number;
+  totalMessages: number;
+}
 
 export default function HomePage() {
+  const [stats, setStats] = useState<PlatformStats | null>(null);
+
+  useEffect(() => {
+    fetch(`${API_URL}/platform/stats`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => { if (data) setStats(data); })
+      .catch(() => null);
+  }, []);
   return (
     <main className="min-h-screen bg-gray-50 flex flex-col font-sans selection:bg-brand-500 selection:text-white">
       {/* Hero oscuro premium con dot-grid */}
@@ -45,12 +64,12 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Sección de Estadísticas reales */}
+      {/* Sección de estadísticas — datos reales con fallback si el endpoint no responde */}
       <section className="bg-white border-y border-gray-100 py-12 px-4 shadow-sm relative z-20">
         <div className="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-8">
-          <StatItem value="500+" label="Chatbots Creados" />
-          <StatItem value="150+" label="Docentes Activos" />
-          <StatItem value="30K+" label="Mensajes Educativos" />
+          <StatItem value={stats ? `${stats.totalChatbots}+` : "—"} label="Chatbots Creados" />
+          <StatItem value={stats ? `${stats.totalTeachers}+` : "—"} label="Docentes Activos" />
+          <StatItem value={stats ? `${stats.totalMessages.toLocaleString()}+` : "—"} label="Mensajes Educativos" />
           <StatItem value="99.9%" label="Uptime en la Nube" />
         </div>
       </section>

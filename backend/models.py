@@ -90,6 +90,7 @@ class Document(DocumentBase):
     id: str
     chatbot_id: str
     blob_url: str
+    content_hash: Optional[str] = None
     status: Literal["queued", "processing", "indexed", "error"] = "queued"
     chunk_count: int = 0
     error_message: Optional[str] = None
@@ -137,7 +138,7 @@ class RegisterRequest(BaseModel):
 
 
 class ChatMessage(BaseModel):
-    message: str
+    message: str = Field(..., min_length=1, max_length=4000)
     conversation_id: Optional[str] = None
 
 

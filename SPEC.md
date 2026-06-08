@@ -121,16 +121,17 @@ create table conversations (
 - `GET /auth/me` — Usuario actual
 
 ### Chatbots
-- `GET /chatbots` — Listar chatbots del docente
+- `GET /chatbots` ? Listar chatbots del docente (soporta `limit` y `offset`)
 - `POST /chatbots` — Crear chatbot
 - `GET /chatbots/{id}` — Obtener chatbot
 - `PUT /chatbots/{id}` — Actualizar chatbot
 - `DELETE /chatbots/{id}` — Eliminar chatbot + contenidos
 - `POST /chatbots/{id}/publish` — Publicar chatbot
 - `GET /chatbots/{id}/embed` — Obtener código embed
+- `GET /teacher/metrics` [JWT docente] — Obtener métricas agregadas del docente (chatbots totales/publicados, documentos indexados, conversaciones semanales).
 
 ### Documentos (Parches de seguridad activos)
-- `POST /documents/upload` [JWT] — Subir documento (MD, TXT, PDF, DOCX). Valida propiedad del bot.
+- `POST /documents/upload` [JWT] ? Subir documento (MD, TXT, PDF, DOCX). Valida propiedad, limita texto extraido y deduplica por hash.
 - `GET /documents/{id}` [JWT] — Estado del documento. Valida propiedad del bot.
 - `GET /documents?chatbot_id=` [JWT] — Listar documentos de un chatbot. Valida propiedad del bot.
 - `DELETE /documents/{id}?chatbot_id=` [JWT] — Eliminar documento y su contenido. Valida propiedad del bot.
@@ -138,7 +139,7 @@ create table conversations (
 ### Chat
 - `POST /chat/{chatbot_id}` — Enviar mensaje (Caché local con TTL de 5 min, 100 req/min/IP)
 - `POST /chat/{chatbot_id}/stream` — Enviar mensaje con SSE token-a-token (mismo pipeline, respuesta incremental)
-- `GET /chat/{chatbot_id}/history` — Historial de conversación
+- `GET /chat/{chatbot_id}/history` [JWT] - Historial de conversacion. Solo owner, admin o estudiante asociado.
 
 ### Admin
 - `POST /admin/teachers` [JWT admin] — Crear cuenta de docente
@@ -149,13 +150,11 @@ create table conversations (
 ### Perfil del docente
 - `PUT /auth/me/profile` [JWT docente] — Actualizar perfil + OpenRouter key + modelo
 
-### Sistema
+### Sistema / Estadísticas
 - `GET /health` — Health check
 - `GET /ready` — Readiness (verifica conexión a Supabase)
+- `GET /platform/stats` — Estadísticas públicas agregadas de la plataforma (chatbots publicados, docentes activos, total mensajes) para la landing page.
 
-### Sistema
-- `GET /health` — Health check
-- `GET /ready` — Readiness check (verifica conexión a Supabase)
 
 ---
 

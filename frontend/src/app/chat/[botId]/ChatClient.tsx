@@ -103,7 +103,7 @@ export default function ChatClient() {
 
   // Detectar si hay un token → el docente está probando su bot
   const isTeacherPreview =
-    typeof window !== "undefined" && Boolean(localStorage.getItem("token"));
+    typeof window !== "undefined" && Boolean(sessionStorage.getItem("token"));
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });

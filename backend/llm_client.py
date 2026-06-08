@@ -4,8 +4,12 @@ from typing import AsyncIterator, Optional
 from settings import settings
 
 OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
-DEFAULT_MODEL = "google/gemma-4-26b-a4b-it:free"
 DEFAULT_TIMEOUT = httpx.Timeout(connect=10.0, read=120.0, write=30.0, pool=10.0)
+
+
+def _default_model() -> str:
+    """Lee el modelo por defecto desde settings, con fallback defensivo."""
+    return settings.DEFAULT_LLM_MODEL or "google/gemma-3-27b-it:free"
 
 
 class LLMClient:
@@ -29,7 +33,7 @@ class LLMClient:
         stream: bool,
         history_messages: Optional[list[dict]] = None,
     ) -> tuple[dict, dict]:
-        effective_model = (model_id or "").strip() or DEFAULT_MODEL
+        effective_model = (model_id or "").strip() or _default_model()
 
         messages = [
             {

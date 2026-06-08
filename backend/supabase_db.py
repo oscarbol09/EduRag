@@ -42,7 +42,7 @@ async def list_users(role: Optional[str] = None, limit: Optional[int] = None, of
     if role:
         q = q.eq("role", role)
     # Ordenar por fecha de creación descendente
-    q = q.order("created_at", descending=True)
+    q = q.order("created_at", desc=True)
     if limit is not None:
         q = q.limit(limit)
     if offset is not None:
@@ -53,6 +53,14 @@ async def list_users(role: Optional[str] = None, limit: Optional[int] = None, of
 async def update_user(user_id: str, updates: dict) -> dict:
     get_client().table("users").update(updates).eq("id", user_id).execute()
     return updates
+
+
+async def update_user_auth_claim(user_id: str, password_hash: str) -> None:
+    """Claim a pre-created account by setting password and auth method."""
+    get_client().table("users").update({
+        "password": password_hash,
+        "auth_method": "email_password",
+    }).eq("id", user_id).execute()
 
 
 async def delete_user(user_id: str) -> bool:
@@ -125,7 +133,7 @@ async def list_chatbots(
         # Parche de seguridad: Si no hay owner_id, forzar estrictamente que solo retorne publicados
         q = q.eq("is_published", True)
         
-    q = q.order("created_at", descending=True)
+    q = q.order("created_at", desc=True)
     if limit is not None:
         q = q.limit(limit)
     if offset is not None:
@@ -163,13 +171,26 @@ async def list_documents(chatbot_id: str, limit: Optional[int] = None, offset: O
         .table("documents")
         .select("*")
         .eq("chatbot_id", chatbot_id)
-        .order("created_at", descending=True)
+        .order("created_at", desc=True)
     )
     if limit is not None:
         q = q.limit(limit)
     if offset is not None:
         q = q.offset(offset)
     return q.execute().data
+
+
+async def list_documents_for_chatbots(chatbot_ids: List[str]) -> List[dict]:
+    if not chatbot_ids:
+        return []
+    return (
+        get_client()
+        .table("documents")
+        .select("id, chatbot_id, status")
+        .in_("chatbot_id", chatbot_ids)
+        .execute()
+        .data
+    )
 
 
 async def delete_document(document_id: str, chatbot_id: str) -> bool:
@@ -214,3 +235,48 @@ async def list_conversations(chatbot_id: str) -> List[dict]:
         .execute()
         .data
     )
+
+
+async def list_conversations_for_chatbots(chatbot_ids: List[str]) -> List[dict]:
+    if not chatbot_ids:
+        return []
+    return (
+        get_client()
+        .table("conversations")
+        .select("id, chatbot_id, updated_at, created_at")
+        .in_("chatbot_id", chatbot_ids)
+        .execute()
+        .data
+    )
+
+
+# ── Messages (tabla normalizada, reemplaza conversations.messages JSONB) ───────
+
+async def create_message(message_data: dict) -> dict:
+    """Inserta un mensaje individual en la tabla messages."""
+    get_client().table("messages").insert(message_data).execute()
+    return message_data
+
+
+async def create_messages_batch(messages: List[dict]) -> None:
+    """Inserta múltiples mensajes en una sola llamada para eficiencia."""
+    if not messages:
+        return
+    get_client().table("messages").insert(messages).execute()
+
+
+async def list_messages_for_conversation(
+    conversation_id: str,
+    limit: Optional[int] = None,
+) -> List[dict]:
+    """Devuelve mensajes de una conversación ordenados cronológicamente."""
+    q = (
+        get_client()
+        .table("messages")
+        .select("id, role, content, created_at")
+        .eq("conversation_id", conversation_id)
+        .order("created_at", desc=False)
+    )
+    if limit is not None:
+        q = q.limit(limit)
+    return q.execute().data

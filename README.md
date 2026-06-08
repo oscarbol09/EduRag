@@ -250,6 +250,7 @@ POST /chat/{chatbot_id}/stream    (text/event-stream)
 |---|---|---|---|
 | `GET` | `/health` | — | Health check |
 | `GET` | `/ready` | — | Readiness (verifica Supabase) |
+| `GET` | `/platform/stats` | — | Estadísticas públicas de la plataforma (chatbots publicados, docentes, mensajes) |
 
 ### Autenticación (exclusión de hashes de contraseñas)
 
@@ -264,7 +265,7 @@ POST /chat/{chatbot_id}/stream    (text/event-stream)
 
 | Método | Ruta | Auth | Descripción |
 |---|---|---|---|
-| `GET` | `/chatbots` | — / JWT | Lista con filtros `owner_id`, `published_only` |
+| `GET` | `/chatbots` | - / JWT | Lista con filtros `owner_id`, `published_only`, `limit`, `offset` |
 | `POST` | `/chatbots` | JWT | Crear chatbot |
 | `GET` | `/chatbots/{id}` | — / JWT | Detalle del chatbot |
 | `PUT` | `/chatbots/{id}` | JWT (owner) | Actualizar chatbot |
@@ -276,8 +277,8 @@ POST /chat/{chatbot_id}/stream    (text/event-stream)
 
 | Método | Ruta | Auth | Descripción |
 |---|---|---|---|
-| `POST` | `/documents/upload` | JWT (owner) | Subir MD/TXT/PDF/DOCX. Valida propiedad del bot. |
-| `GET` | `/documents?chatbot_id=` | JWT (owner) | Listar por chatbot. Valida propiedad del bot. |
+| `POST` | `/documents/upload` | JWT (owner) | Subir MD/TXT/PDF/DOCX. Valida propiedad, limita texto extraido y deduplica por hash. |
+| `GET` | `/documents?chatbot_id=` | JWT (owner) | Listar por chatbot. Valida propiedad. Soporta `limit` y `offset`. |
 | `GET` | `/documents/{id}` | JWT (owner) | Detalle de un documento. Valida propiedad del bot. |
 | `DELETE` | `/documents/{id}?chatbot_id=` | JWT (owner) | Eliminar metadatos + contenido. Valida propiedad del bot. |
 
@@ -287,7 +288,8 @@ POST /chat/{chatbot_id}/stream    (text/event-stream)
 |---|---|---|---|
 | `POST` | `/chat/{chatbot_id}` | opcional | Enviar mensaje — respuesta completa (100 req/min/IP) |
 | `POST` | `/chat/{chatbot_id}/stream` | opcional | Enviar mensaje con SSE (token a token) |
-| `GET` | `/chat/{chatbot_id}/history` | opcional | Historial de conversación |
+| `GET` | `/chat/{chatbot_id}/history` | JWT | Historial de conversacion. Solo owner, admin o estudiante asociado. |
+| `GET` | `/teacher/metrics` | JWT (teacher) | Metricas agregadas del dashboard docente |
 
 ### Admin
 
@@ -312,14 +314,22 @@ SUPABASE_KEY=eyJ...  # service_role key (Settings > API > service_role)
 # JWT Secret (Requerido)
 JWT_SECRET=your-jwt-secret-min-32-chars
 
+# Cifrado de API keys de docentes (Requerido)
+ENCRYPTION_KEY=your-fernet-or-strong-random-key
+
 # OpenRouter API Key (fallback para cuentas @edurag.com)
 OPENROUTER_API_KEY=sk-or-v1-...
+
+# Modelo default y whitelist para fallback administrado
+DEFAULT_LLM_MODEL=google/gemma-3-27b-it:free
+TEST_ACCOUNTS_WHITELIST=admin@edurag.com,test@edurag.com
 
 # App Settings
 APP_HOST=0.0.0.0
 APP_PORT=8000
 CORS_ORIGINS=http://localhost:3000,https://edu-rag-red.vercel.app
 MAX_FILE_SIZE_MB=20
+MAX_EXTRACTED_TEXT_CHARS=1000000
 MAX_CACHE_SIZE=1000
 ```
 
@@ -346,8 +356,10 @@ python manual_test_api.py
 * **Aislamiento Multi-tenant:** Validación de `owner_id` y `chatbot_id` en todas las queries y endpoints.
 * **Endpoints Protegidos:** `/documents` protegidos obligatoriamente con token JWT.
 * **Filtro de Contraseñas:** Se eliminaron los campos de contraseñas hasheadas en todas las respuestas HTTP de auth.
-* **Caché en Memoria con TTL:** Expiración de caché estricta de 5 minutos en el chat para evitar persistencia obsoleta.
+* **Cache en Memoria con TTL:** Expiracion estricta de 5 minutos y lock por worker para evitar carreras locales.
 * **Firma JWT Segura:** Obliga a configurar un `JWT_SECRET` fuerte al inicio, sin fallbacks inseguros.
+* **Historial Protegido:** `/chat/{chatbot_id}/history` requiere JWT y valida owner/admin/estudiante asociado.
+* **Supabase Hardening:** Migracion con indices, `content_hash` y RLS defensivo en tablas publicas.
 
 ---
 

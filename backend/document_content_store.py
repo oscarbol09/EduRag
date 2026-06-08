@@ -14,6 +14,7 @@ async def store_document_content(
     chatbot_id: str,
     filename: str,
     content: str,
+    content_hash: str | None = None,
 ) -> dict:
     """Store extracted document text in Supabase."""
     item = {
@@ -21,9 +22,26 @@ async def store_document_content(
         "chatbot_id": chatbot_id,
         "filename": filename,
         "content": content,
+        "content_hash": content_hash,
     }
     get_client().table("document_contents").upsert(item).execute()
     return item
+
+
+async def get_document_content_by_hash(chatbot_id: str, content_hash: str) -> Optional[dict]:
+    """Return an existing document for this chatbot with the same extracted text hash."""
+    if not content_hash:
+        return None
+    r = (
+        get_client()
+        .table("document_contents")
+        .select("id, chatbot_id, filename, content_hash")
+        .eq("chatbot_id", chatbot_id)
+        .eq("content_hash", content_hash)
+        .maybe_single()
+        .execute()
+    )
+    return r.data
 
 
 async def get_document_content(document_id: str, chatbot_id: str) -> Optional[dict]:

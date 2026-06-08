@@ -51,9 +51,12 @@ class Settings(BaseSettings):
         return [o.strip() for o in raw.split(",") if o.strip()]
 
     MAX_FILE_SIZE_MB: int = 20
+    MAX_EXTRACTED_TEXT_CHARS: int = 1_000_000
     ALLOWED_MIME_TYPES: list = [
         "text/markdown",
         "text/plain",
+        "application/pdf",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     ]
 
     # Cache

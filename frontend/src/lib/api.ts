@@ -23,7 +23,7 @@ async function fetchApi<T>(
   options: RequestInit = {},
   timeoutMs: number = LIGHT_TIMEOUT_MS
 ): Promise<T> {
-  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+  const token = typeof window !== "undefined" ? sessionStorage.getItem("token") : null;
 
   const headers: HeadersInit = {
     "Content-Type": "application/json",
@@ -72,7 +72,7 @@ async function streamChat(
   message: ChatMessage,
   callbacks: StreamCallbacks
 ): Promise<void> {
-  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+  const token = typeof window !== "undefined" ? sessionStorage.getItem("token") : null;
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     "Accept": "text/event-stream",
@@ -192,7 +192,7 @@ export const api = {
       formData.append("file", file);
       formData.append("chatbot_id", chatbotId);
 
-      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+      const token = typeof window !== "undefined" ? sessionStorage.getItem("token") : null;
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
 
