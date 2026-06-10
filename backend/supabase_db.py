@@ -1,9 +1,13 @@
+import logging
+
 from supabase import create_client, Client
 from typing import Optional, List
 from datetime import datetime
 from settings import settings
 
 import threading
+
+logger = logging.getLogger(__name__)
 
 _client: Optional[Client] = None
 _client_lock = threading.Lock()
@@ -20,7 +24,7 @@ def get_client() -> Client:
     return _client
 
 
-# ── Users ────────────────────────────────────────────────────────────
+# ── Users ────────────────────────────────────
 
 async def create_user(user_data: dict) -> dict:
     get_client().table("users").insert(user_data).execute()
@@ -41,7 +45,6 @@ async def list_users(role: Optional[str] = None, limit: Optional[int] = None, of
     q = get_client().table("users").select("*")
     if role:
         q = q.eq("role", role)
-    # Ordenar por fecha de creación descendente
     q = q.order("created_at", desc=True)
     if limit is not None:
         q = q.limit(limit)
@@ -72,7 +75,7 @@ async def delete_user(user_id: str) -> bool:
         return False
 
 
-# ── Chatbots ─────────────────────────────────────────────────────────
+# ── Chatbots ───────────────────────────────────────
 
 async def create_chatbot(chatbot_data: dict) -> dict:
     get_client().table("chatbots").insert(chatbot_data).execute()
@@ -130,7 +133,6 @@ async def list_chatbots(
         if published_only:
             q = q.eq("is_published", True)
     else:
-        # Parche de seguridad: Si no hay owner_id, forzar estrictamente que solo retorne publicados
         q = q.eq("is_published", True)
         
     q = q.order("created_at", desc=True)
@@ -141,7 +143,7 @@ async def list_chatbots(
     return q.execute().data
 
 
-# ── Documents ─────────────────────────────────────────────────────────
+# ── Documents ───────────────────────────────────────
 
 async def create_document(document_data: dict) -> dict:
     get_client().table("documents").insert(document_data).execute()
@@ -201,7 +203,7 @@ async def delete_document(document_id: str, chatbot_id: str) -> bool:
         return False
 
 
-# ── Conversations ─────────────────────────────────────────────────────
+# ── Conversations ─────────────────────────────────────
 
 async def create_conversation(conversation_data: dict) -> dict:
     get_client().table("conversations").insert(conversation_data).execute()
@@ -250,7 +252,7 @@ async def list_conversations_for_chatbots(chatbot_ids: List[str]) -> List[dict]:
     )
 
 
-# ── Messages (tabla normalizada, reemplaza conversations.messages JSONB) ───────
+# ── Messages (tabla normalizada, reemplaza conversations.messages JSONB) ───────────
 
 async def create_message(message_data: dict) -> dict:
     """Inserta un mensaje individual en la tabla messages."""
@@ -259,24 +261,43 @@ async def create_message(message_data: dict) -> dict:
 
 
 async def create_messages_batch(messages: List[dict]) -> None:
-    """Inserta múltiples mensajes en una sola llamada para eficiencia."""
+    """Inserta múltiples mensajes en una sola llamada para eficiencia.
+    Si la tabla public.messages no existe aún (migraciones pendientes),
+    registra un warning y retorna sin lanzar excepción — el historial
+    seguirá disponible vía el fallback JSONB en _prepare_chat_generation.
+    """
     if not messages:
         return
-    get_client().table("messages").insert(messages).execute()
+    try:
+        get_client().table("messages").insert(messages).execute()
+    except Exception as e:
+        logger.warning(
+            "create_messages_batch: no se pudo insertar en public.messages. "
+            "¿Migraciones pendientes? Ejecutar `supabase db push`. Error: %s", e
+        )
 
 
 async def list_messages_for_conversation(
     conversation_id: str,
     limit: Optional[int] = None,
 ) -> List[dict]:
-    """Devuelve mensajes de una conversación ordenados cronológicamente."""
-    q = (
-        get_client()
-        .table("messages")
-        .select("id, role, content, created_at")
-        .eq("conversation_id", conversation_id)
-        .order("created_at", desc=False)
-    )
-    if limit is not None:
-        q = q.limit(limit)
-    return q.execute().data
+    """Devuelve mensajes de una conversación ordenados cronológicamente.
+    Si la tabla no existe, retorna lista vacía para que el fallback JSONB tome el relevo.
+    """
+    try:
+        q = (
+            get_client()
+            .table("messages")
+            .select("id, role, content, created_at")
+            .eq("conversation_id", conversation_id)
+            .order("created_at", desc=False)
+        )
+        if limit is not None:
+            q = q.limit(limit)
+        return q.execute().data
+    except Exception as e:
+        logger.warning(
+            "list_messages_for_conversation: no se pudo leer de public.messages. "
+            "Fallback a JSONB activo. Error: %s", e
+        )
+        return []
