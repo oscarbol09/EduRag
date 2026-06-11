@@ -4,21 +4,21 @@ from datetime import datetime
 
 
 class UserBase(BaseModel):
-    email: str
+    email: str = Field(..., max_length=254)
     role: Literal["teacher", "student", "admin"]
     auth_method: Literal["pre_created", "email_password", "google", "microsoft"]
-    institution: Optional[str] = None
-    country: Optional[str] = None
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
-    institution_name: Optional[str] = None
-    openrouter_api_key: Optional[str] = None
-    openrouter_model: Optional[str] = None
+    institution: Optional[str] = Field(None, max_length=200)
+    country: Optional[str] = Field(None, max_length=100)
+    first_name: Optional[str] = Field(None, max_length=100)
+    last_name: Optional[str] = Field(None, max_length=100)
+    institution_name: Optional[str] = Field(None, max_length=200)
+    openrouter_api_key: Optional[str] = Field(None, max_length=500)
+    openrouter_model: Optional[str] = Field(None, max_length=100)
     is_test_account: Optional[bool] = False
 
 
 class UserCreate(UserBase):
-    password: Optional[str] = None
+    password: Optional[str] = Field(None, max_length=128)
 
 
 class User(UserBase):
@@ -31,30 +31,30 @@ class User(UserBase):
 
 
 class TeacherCreate(BaseModel):
-    email: str
-    password: str
-    firstName: Optional[str] = None
-    lastName: Optional[str] = None
-    institution: Optional[str] = None
-    country: Optional[str] = None
+    email: str = Field(..., max_length=254)
+    password: str = Field(..., max_length=128)
+    firstName: Optional[str] = Field(None, max_length=100)
+    lastName: Optional[str] = Field(None, max_length=100)
+    institution: Optional[str] = Field(None, max_length=200)
+    country: Optional[str] = Field(None, max_length=100)
 
 
 class TeacherUpdate(BaseModel):
-    email: Optional[str] = None
-    password: Optional[str] = None
-    firstName: Optional[str] = None
-    lastName: Optional[str] = None
-    institution: Optional[str] = None
-    country: Optional[str] = None
+    email: Optional[str] = Field(None, max_length=254)
+    password: Optional[str] = Field(None, max_length=128)
+    firstName: Optional[str] = Field(None, max_length=100)
+    lastName: Optional[str] = Field(None, max_length=100)
+    institution: Optional[str] = Field(None, max_length=200)
+    country: Optional[str] = Field(None, max_length=100)
 
 
 class ChatbotBase(BaseModel):
-    name: str
-    subject_area: str
+    name: str = Field(..., max_length=200)
+    subject_area: str = Field(..., max_length=200)
     education_level: Literal["secondary", "university"]
     tone: Literal["formal", "friendly", "technical"] = "friendly"
-    welcome_message: Optional[str] = None
-    system_prompt_override: Optional[str] = None
+    welcome_message: Optional[str] = Field(None, max_length=2000)
+    system_prompt_override: Optional[str] = Field(None, max_length=2000)
     restriction_level: Literal["strict", "guided", "open"] = "guided"
     llm_provider: str = "openrouter"
 
@@ -77,23 +77,23 @@ class Chatbot(ChatbotBase):
 
 
 class DocumentBase(BaseModel):
-    filename: str
-    mime_type: str
+    filename: str = Field(..., max_length=500)
+    mime_type: str = Field(..., max_length=100)
 
 
 class DocumentCreate(DocumentBase):
     chatbot_id: str
-    blob_url: str
+    blob_url: str = Field(..., max_length=2000)
 
 
 class Document(DocumentBase):
     id: str
     chatbot_id: str
     blob_url: str
-    content_hash: Optional[str] = None
+    content_hash: Optional[str] = Field(None, max_length=64)
     status: Literal["queued", "processing", "indexed", "error"] = "queued"
     chunk_count: int = 0
-    error_message: Optional[str] = None
+    error_message: Optional[str] = Field(None, max_length=500)
     created_at: datetime
     processed_at: Optional[datetime] = None
 
@@ -103,7 +103,7 @@ class Document(DocumentBase):
 
 class Message(BaseModel):
     role: Literal["user", "assistant"]
-    content: str
+    content: str = Field(..., max_length=50000)
     timestamp: datetime
 
 
@@ -127,35 +127,35 @@ class Conversation(ConversationBase):
 
 
 class LoginRequest(BaseModel):
-    email: str
-    password: str
+    email: str = Field(..., max_length=254)
+    password: str = Field(..., max_length=128)
 
 
 class RefreshRequest(BaseModel):
-    refresh_token: str
+    refresh_token: str = Field(..., max_length=2000)
 
 
 class RegisterRequest(BaseModel):
-    email: str
-    password: str
+    email: str = Field(..., max_length=254)
+    password: str = Field(..., max_length=128)
     role: Optional[str] = "student"  # Mantenido por compatibilidad con el frontend, ignorado por seguridad en el endpoint.
 
 
 class ChatMessage(BaseModel):
     message: str = Field(..., min_length=1, max_length=4000)
-    conversation_id: Optional[str] = None
+    conversation_id: Optional[str] = Field(None, max_length=36)
 
 
 class ChatResponse(BaseModel):
-    response: str
+    response: str = Field(..., max_length=50000)
     conversation_id: str
     sources: list[str] = []
 
 
 class ProfileUpdateRequest(BaseModel):
-    firstName: str
-    lastName: str
-    institution: str
-    country: Optional[str] = None
-    openrouterApiKey: Optional[str] = None
-    openrouterModel: Optional[str] = None
+    firstName: str = Field(..., max_length=100)
+    lastName: str = Field(..., max_length=100)
+    institution: str = Field(..., max_length=200)
+    country: Optional[str] = Field(None, max_length=100)
+    openrouterApiKey: Optional[str] = Field(None, max_length=500)
+    openrouterModel: Optional[str] = Field(None, max_length=100)

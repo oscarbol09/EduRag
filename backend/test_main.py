@@ -1,3 +1,4 @@
+import logging
 import pytest
 import uuid
 import asyncio
@@ -8,7 +9,7 @@ from main import app, _persist_chat_turn, get_client_ip
 from security_utils import encrypt_api_key, decrypt_api_key
 from context_builder import build_context, MAX_CONTEXT_CHARS
 from supabase_db import create_user
-from password import hash_password
+from password import hash_password, verify_password
 from jwt_token import create_jwt_token, create_refresh_token, verify_jwt_token
 from document_uploader import extract_text_from_file
 
@@ -216,12 +217,12 @@ def test_login_wrong_password_returns_401():
 # ─── Validación de system_prompt ──────────────────────────────────────────────
 
 def test_system_prompt_override_too_long_rejected():
-    """Un system_prompt_override que supere MAX_SYSTEM_PROMPT_LENGTH debe rechazarse con 400."""
+    """Un system_prompt_override que supere MAX_SYSTEM_PROMPT_LENGTH debe rechazarse con 422."""
     uid = str(uuid.uuid4())[:8]
     _user, token = _register_and_login(f"prompt_test_{uid}@example.com", "Password123!")
     headers = {"Authorization": f"Bearer {token}"}
 
-    long_prompt = "x" * 2001  # settings.MAX_SYSTEM_PROMPT_LENGTH = 2000
+    long_prompt = "x" * 2001  # Field(max_length=2000) en ChatbotBase
     resp = client.post("/chatbots", json={
         "name": f"Bot {uid}",
         "subject_area": "Testing",
@@ -230,8 +231,7 @@ def test_system_prompt_override_too_long_rejected():
         "restriction_level": "guided",
         "system_prompt_override": long_prompt,
     }, headers=headers)
-    assert resp.status_code == 400
-    assert "2000" in resp.json()["detail"]
+    assert resp.status_code == 422
 
 
 def test_system_prompt_override_at_limit_accepted():
@@ -654,3 +654,189 @@ def test_extract_text_docx_invalid_raises():
     """DOCX inválido debe lanzar ValueError."""
     with pytest.raises(ValueError, match="Error al extraer texto del archivo DOCX"):
         extract_text_from_file(b"not a docx", "test.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+
+
+# ─── password.py — hash/verify ──────────────────────────────────────
+
+def test_password_hash_verify_roundtrip():
+    """hash_password + verify_password con la misma contraseña debe funcionar."""
+    pwd = "MySecureP@ss1"
+    hashed = hash_password(pwd)
+    assert verify_password(pwd, hashed) is True
+
+
+def test_password_verify_wrong_password():
+    """verify_password con contraseña incorrecta debe retornar False."""
+    hashed = hash_password("CorrectP@ss1")
+    assert verify_password("WrongP@ss1", hashed) is False
+
+
+def test_password_verify_invalid_hash():
+    """verify_password con hash malformado debe retornar False sin excepción."""
+    assert verify_password("any", "not-a-hash") is False
+    assert verify_password("any", "") is False
+
+
+# ─── settings.py — test_accounts_list ───────────────────────────────
+
+def test_settings_test_accounts_list_valid():
+    """test_accounts_list debe parsear correctamente los emails válidos."""
+    from settings import Settings
+    s = Settings(
+        SUPABASE_URL="http://test", SUPABASE_KEY="k",
+        JWT_SECRET="s", ENCRYPTION_KEY="k",
+        TEST_ACCOUNTS_WHITELIST="a@b.com, c@d.com.co",
+    )
+    assert s.test_accounts_list == ["a@b.com", "c@d.com.co"]
+
+
+def test_settings_test_accounts_list_invalid_ignored(caplog):
+    """test_accounts_list debe ignorar emails inválidos y logear warning."""
+    from settings import Settings
+    with caplog.at_level(logging.WARNING):
+        s = Settings(
+            SUPABASE_URL="http://test", SUPABASE_KEY="k",
+            JWT_SECRET="s", ENCRYPTION_KEY="k",
+            TEST_ACCOUNTS_WHITELIST="valid@test.com, invalid-email, @missing.com",
+        )
+    assert s.test_accounts_list == ["valid@test.com"]
+    assert "email inválido ignorado" in caplog.text
+
+
+# ─── settings.py — cors_origins_list ────────────────────────────────
+
+def test_settings_cors_origins_list_comma():
+    """cors_origins_list debe parsear orígenes separados por coma."""
+    from settings import Settings
+    s = Settings(
+        SUPABASE_URL="http://test", SUPABASE_KEY="k",
+        JWT_SECRET="s", ENCRYPTION_KEY="k",
+        CORS_ORIGINS="http://a.com, https://b.com",
+    )
+    assert s.cors_origins_list == ["http://a.com", "https://b.com"]
+
+
+def test_settings_cors_origins_list_json():
+    """cors_origins_list debe parsear JSON array."""
+    from settings import Settings
+    s = Settings(
+        SUPABASE_URL="http://test", SUPABASE_KEY="k",
+        JWT_SECRET="s", ENCRYPTION_KEY="k",
+        CORS_ORIGINS='["http://a.com", "https://b.com"]',
+    )
+    assert s.cors_origins_list == ["http://a.com", "https://b.com"]
+
+
+def test_settings_cors_origins_list_empty():
+    """cors_origins_list vacío debe devolver ['*']."""
+    from settings import Settings
+    s = Settings(
+        SUPABASE_URL="http://test", SUPABASE_KEY="k",
+        JWT_SECRET="s", ENCRYPTION_KEY="k",
+        CORS_ORIGINS="",
+    )
+    assert s.cors_origins_list == ["*"]
+
+
+# ─── context_builder.py — edge cases ────────────────────────────────
+
+def test_context_builder_empty_doc_content():
+    """build_context con documentos sin contenido debe retornar mensaje."""
+    docs = [{"filename": "empty.txt", "content": ""}, {"filename": "none.txt", "content": None}]
+    result = build_context(docs, "pregunta")
+    assert "No hay documentos" in result
+
+
+def test_context_builder_single_char_content():
+    """build_context con contenido de 1 carácter debe funcionar."""
+    docs = [{"filename": "tiny.txt", "content": "x"}]
+    result = build_context(docs, "pregunta")
+    assert "tiny.txt" in result
+    assert "x" in result
+
+
+def test_context_builder_budget_exact():
+    """build_context debe respetar el presupuesto exacto."""
+    docs = [{"filename": "big.txt", "content": "Hola " * 20_000}]
+    result = build_context(docs, "pregunta", max_chars=500)
+    assert len(result) <= 500
+
+
+# ─── security_utils.py — SHA-256 fallback ───────────────────────────
+
+def test_sha256_fallback_logs_warning(caplog):
+    """Cuando ENCRYPTION_KEY no es Fernet válida, debe logear warning de derivación SHA-256."""
+    from security_utils import get_encryption_key
+    from settings import settings as settings_obj
+
+    original = settings_obj.ENCRYPTION_KEY
+    try:
+        settings_obj.ENCRYPTION_KEY = "not-a-valid-fernet-key-for-sure"
+        with caplog.at_level(logging.WARNING):
+            key = get_encryption_key()
+            assert len(key) > 0
+            assert "no es una clave Fernet válida" in caplog.text
+    finally:
+        settings_obj.ENCRYPTION_KEY = original
+
+
+# ─── JWT — edge cases ───────────────────────────────────────────────
+
+def test_jwt_expired_token_returns_none():
+    """verify_jwt_token debe retornar None para tokens expirados."""
+    import jwt as pyjwt
+    from settings import settings
+    expired = pyjwt.encode(
+        {"sub": "user1", "exp": 0, "jti": str(uuid.uuid4())},
+        settings.JWT_SECRET,
+        algorithm="HS256",
+    )
+    assert verify_jwt_token(expired) is None
+
+
+def test_jwt_invalid_signature_returns_none():
+    """verify_jwt_token debe retornar None para tokens con firma inválida."""
+    uid = str(uuid.uuid4())
+    token = create_jwt_token(uid, "test@test.com", "teacher")
+    parts = token.split(".")
+    tampered = f"{parts[0]}.{parts[1]}.invalidsignature"
+    assert verify_jwt_token(tampered) is None
+
+
+# ─── Endpoint tests adicionales ────────────────────────────────────
+
+def test_chat_unpublished_chatbot_rejected():
+    """POST /chat/{id} debe rechazar chatbots no publicados con 403."""
+    uid = str(uuid.uuid4())[:8]
+    _user, token = _register_and_login(f"unpub_{uid}@example.com", "Password123!")
+    bot = _create_chatbot(token, f"Unpub Bot {uid}", auto_publish=False)
+
+    resp = client.post(f"/chat/{bot['id']}", json={"message": "hola"})
+    assert resp.status_code == 403
+    assert "publicado" in resp.text.lower()
+
+
+def test_chatbots_published_only_listing():
+    """GET /chatbots?published_only=true debe listar solo chatbots publicados."""
+    uid = str(uuid.uuid4())[:8]
+    teacher, teacher_token = _register_and_login(f"teacher_pub_{uid}@example.com", "Password123!")
+    bot = _create_chatbot(teacher_token, f"Pub Bot {uid}")
+
+    student, student_token = _register_and_login(f"student_pub_{uid}@example.com", "Password123!")
+    resp = client.get("/chatbots?published_only=true", headers={"Authorization": f"Bearer {student_token}"})
+    assert resp.status_code == 200
+    bots = resp.json()
+    assert any(b["id"] == bot["id"] for b in bots)
+
+
+def test_logout():
+    """POST /auth/logout debe responder 200 e intentar revocar el token."""
+    uid = str(uuid.uuid4())[:8]
+    user, token = _register_and_login(f"logout_{uid}@example.com", "Password123!")
+
+    headers = {"Authorization": f"Bearer {token}"}
+    resp = client.post("/auth/logout", headers=headers)
+    assert resp.status_code == 200
+    # El mensaje exacto depende de si la tabla revoked_tokens existe en el test env
+    data = resp.json()
+    assert "message" in data or "detail" in data

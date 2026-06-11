@@ -170,20 +170,24 @@ Mismo pipeline hasta paso 3. Luego:
 ## Tests — Cobertura Actual
 
 ```bash
-cd backend && pytest -v   # 44 tests
+cd backend && pytest -v   # 61 tests
 ```
 
 | Grupo | Tests |
-|---|---|---|
+|---|---|
 | Sistema | `test_health`, `test_readiness` |
-| Auth | `test_auth_flow_and_chatbot_creation`, `test_register_forces_student_role`, `test_password_hash_not_exposed_in_login`, `test_login_wrong_password_returns_401`, `test_refresh_token_rotation`, `test_refresh_token_requires_valid_token` |
-| Seguridad multi-tenant | `test_chatbot_ownership_isolation`, `test_document_upload_rejects_wrong_owner`, `test_persist_rejects_cross_chatbot_conversation_id`, `test_chat_history_requires_auth`, `test_unpublished_chatbot_rejected_in_chat` |
+| Auth | `test_auth_flow_and_chatbot_creation`, `test_register_forces_student_role`, `test_password_hash_not_exposed_in_login`, `test_login_wrong_password_returns_401`, `test_logout` |
+| Seguridad multi-tenant | `test_chatbot_ownership_isolation`, `test_document_upload_rejects_wrong_owner`, `test_persist_rejects_cross_chatbot_conversation_id`, `test_chat_history_requires_auth`, `test_chat_unpublished_chatbot_rejected` |
 | Chat | `test_chat_returns_response_for_published_chatbot`, `test_chat_unknown_chatbot_returns_404`, `test_chat_preserves_conversation_id_across_turns`, `test_chat_rejects_cross_chatbot_conversation`, `test_chat_history_returns_messages`, `test_chat_stream_returns_sse_events` |
-| Validación | `test_system_prompt_override_too_long_rejected`, `test_system_prompt_override_at_limit_accepted`, `test_chat_message_too_long_rejected`, `test_chatbots_listing_with_limit` |
+| Validación | `test_system_prompt_override_too_long_rejected`, `test_system_prompt_override_at_limit_accepted`, `test_chat_message_too_long_rejected`, `test_chatbots_listing_with_limit`, `test_chatbots_published_only_listing` |
 | Admin | `test_admin_create_teacher`, `test_admin_create_teacher_rejects_duplicate_email`, `test_admin_list_teachers`, `test_admin_update_teacher`, `test_admin_delete_teacher`, `test_non_admin_cannot_access_admin_endpoints`, `test_admin_cannot_delete_nonexistent_teacher` |
-| Document Upload | `test_document_upload_pdf`, `test_document_upload_docx`, `test_document_upload_txt`, `test_document_upload_rejects_invalid_type` |
+| Document Upload | `test_extract_text_from_md`, `test_extract_text_from_txt`, `test_extract_text_unknown_extension`, `test_extract_text_pdf_invalid_raises`, `test_extract_text_docx_invalid_raises` |
+| password | `test_password_hash_verify_roundtrip`, `test_password_verify_wrong_password`, `test_password_verify_invalid_hash` |
+| settings | `test_settings_test_accounts_list_valid`, `test_settings_test_accounts_list_invalid_ignored`, `test_settings_cors_origins_list_comma`, `test_settings_cors_origins_list_json`, `test_settings_cors_origins_list_empty` |
 | security_utils | `test_encrypt_decrypt_roundtrip`, `test_encrypt_empty_key_returns_empty`, `test_decrypt_empty_key_returns_empty`, `test_sha256_fallback_logs_warning` |
-| context_builder | `test_context_builder_respects_budget`, `test_context_builder_no_docs_returns_message`, `test_context_builder_scores_relevant_chunks_first`, `test_context_builder_budget_edge_cases` |
+| context_builder | `test_context_builder_respects_budget`, `test_context_builder_no_docs_returns_message`, `test_context_builder_scores_relevant_chunks_first`, `test_context_builder_empty_doc_content`, `test_context_builder_single_char_content`, `test_context_builder_budget_exact` |
+| JWT | `test_create_and_verify_refresh_token`, `test_access_token_has_jti`, `test_refresh_login_response_includes_refresh_token`, `test_jwt_expired_token_returns_none`, `test_jwt_invalid_signature_returns_none` |
+| Utilidades | `test_get_client_ip_forwarded_for`, `test_get_client_ip_fallback_to_host`, `test_auth_me_anonymous` |
 
 ---
 

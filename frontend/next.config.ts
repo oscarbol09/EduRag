@@ -1,18 +1,14 @@
 import type { NextConfig } from "next";
 
-// URL del backend en producción — usada en la directiva connect-src de CSP
-const API_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? "https://edurag-production.up.railway.app";
-
 // Cabeceras de seguridad globales aplicadas a todas las rutas excepto assets estáticos
+// NOTA: Content-Security-Policy se maneja en middleware.ts con nonces dinámicos por request
 const globalSecurityHeaders = [
   // Previene MIME-sniffing (CWE-693)
   {
     key: "X-Content-Type-Options",
     value: "nosniff",
   },
-  // Protección anti-Clickjacking para rutas normales de la app (CWE-1021)
-  // La ruta /chat/[botId] sobreescribe esto para permitir el embed en Moodle/LMS
+  // Protección anti-Clickjacking — CSP frame-ancestors en middleware maneja esto también
   {
     key: "X-Frame-Options",
     value: "SAMEORIGIN",
@@ -27,31 +23,6 @@ const globalSecurityHeaders = [
     key: "Strict-Transport-Security",
     value: "max-age=63072000; includeSubDomains; preload",
   },
-  // Content Security Policy (CWE-693)
-  // - default-src 'self': por defecto solo origen propio
-  // - script-src: Next.js requiere 'unsafe-inline' para hydration y 'unsafe-eval' en dev
-  // - style-src: Tailwind CSS + estilos en línea
-  // - connect-src: permite llamadas al backend Railway + APIs de fuentes de Google
-  // - font-src: Google Fonts + data URIs locales
-  // - img-src: imágenes propias, blob y data URIs
-  // - frame-ancestors 'self': complementa X-Frame-Options a nivel CSP
-  {
-    key: "Content-Security-Policy",
-    value: [
-      "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
-      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-      `connect-src 'self' ${API_URL} https://fonts.googleapis.com https://fonts.gstatic.com`,
-      "font-src 'self' data: https://fonts.gstatic.com",
-      "img-src 'self' blob: data:",
-      "frame-src 'none'",
-      "frame-ancestors 'self'",
-      "object-src 'none'",
-      "base-uri 'self'",
-      "form-action 'self'",
-      "upgrade-insecure-requests",
-    ].join("; "),
-  },
   // Previene apertura de ventanas no deseadas desde enlaces externos
   {
     key: "Permissions-Policy",
@@ -60,7 +31,7 @@ const globalSecurityHeaders = [
 ];
 
 // Cabeceras para páginas autenticadas (login, register, admin, teacher)
-// Se añade Cache-Control estricto para evitar que contenido sensible quede en caché (CWE-525)
+// Cache-Control estricto manejado también en middleware.ts como defensa adicional
 const authPageHeaders = [
   ...globalSecurityHeaders,
   {
@@ -78,28 +49,10 @@ const authPageHeaders = [
 ];
 
 // Cabeceras especiales para la ruta de chat embebido (/chat/[botId])
-// Esta ruta es intencionalmente embebible en iframes de Moodle u otros LMS
+// CSP con frame-ancestors * se maneja en middleware.ts
 const embedChatHeaders = [
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-  // Permite que cualquier origen cargue el chat en un iframe (necesario para LMS externos)
-  // Se omite X-Frame-Options para que frame-ancestors de CSP tome precedencia
-  {
-    key: "Content-Security-Policy",
-    value: [
-      "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
-      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-      `connect-src 'self' ${API_URL} https://fonts.googleapis.com https://fonts.gstatic.com`,
-      "font-src 'self' data: https://fonts.gstatic.com",
-      "img-src 'self' blob: data:",
-      // Permite que cualquier origen incruste esta página en un iframe
-      "frame-ancestors *",
-      "object-src 'none'",
-      "base-uri 'self'",
-      "upgrade-insecure-requests",
-    ].join("; "),
-  },
 ];
 
 const nextConfig: NextConfig = {

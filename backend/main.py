@@ -4,6 +4,7 @@ from fastapi.responses import StreamingResponse
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 import hashlib
+import html
 import json
 import logging
 import os
@@ -92,6 +93,7 @@ async def add_security_headers(request: Request, call_next):
     response = await call_next(request)
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains; preload"
     return response
 
 response_cache: dict = {}
@@ -229,7 +231,8 @@ async def get_current_user_endpoint(request: Request):
 
 
 @app.put("/auth/me/profile")
-async def update_my_profile(body: ProfileUpdateRequest, current_user: dict = Depends(get_current_user)):
+@limiter.limit("10/minute")
+async def update_my_profile(request: Request, body: ProfileUpdateRequest, current_user: dict = Depends(get_current_user)):
     user_id = current_user.get("sub")
     user = await get_user(user_id)
     if not user:
@@ -383,18 +386,12 @@ async def get_chatbots(
 
 
 @app.post("/chatbots")
+@limiter.limit("10/minute")
 async def create_new_chatbot(data: ChatbotCreate, request: Request):
     user = await get_current_user(request)
     owner_id = user.get("sub")
     if not owner_id:
         raise HTTPException(status_code=401, detail="Usuario no autenticado")
-
-    # Validar longitud del system_prompt_override
-    if data.system_prompt_override and len(data.system_prompt_override) > settings.MAX_SYSTEM_PROMPT_LENGTH:
-        raise HTTPException(
-            status_code=400,
-            detail=f"El system prompt personalizado no puede superar {settings.MAX_SYSTEM_PROMPT_LENGTH} caracteres."
-        )
 
     chatbot_id = str(uuid.uuid4())
     now = datetime.utcnow().isoformat()
@@ -440,16 +437,10 @@ async def get_chatbot_details(chatbot_id: str, request: Request):
 
 
 @app.put("/chatbots/{chatbot_id}")
+@limiter.limit("10/minute")
 async def update_chatbot_details(chatbot_id: str, data: ChatbotCreate, request: Request):
     user = await get_current_user(request)
     owner_id = user.get("sub")
-
-    # Validar longitud del system_prompt_override
-    if data.system_prompt_override and len(data.system_prompt_override) > settings.MAX_SYSTEM_PROMPT_LENGTH:
-        raise HTTPException(
-            status_code=400,
-            detail=f"El system prompt personalizado no puede superar {settings.MAX_SYSTEM_PROMPT_LENGTH} caracteres."
-        )
 
     chatbot = await update_chatbot(chatbot_id, data.model_dump(), owner_id=owner_id)
     if not chatbot:
@@ -458,6 +449,7 @@ async def update_chatbot_details(chatbot_id: str, data: ChatbotCreate, request: 
 
 
 @app.delete("/chatbots/{chatbot_id}")
+@limiter.limit("10/minute")
 async def delete_chatbot_endpoint(chatbot_id: str, request: Request):
     user = await get_current_user(request)
     owner_id = user.get("sub")
@@ -467,6 +459,7 @@ async def delete_chatbot_endpoint(chatbot_id: str, request: Request):
 
 
 @app.post("/chatbots/{chatbot_id}/publish")
+@limiter.limit("10/minute")
 async def publish_chatbot(chatbot_id: str, request: Request):
     user = await get_current_user(request)
     owner_id = user.get("sub")
@@ -518,7 +511,9 @@ def sanitize_filename(filename: str) -> str:
 
 
 @app.post("/documents/upload")
+@limiter.limit("10/minute")
 async def upload_document(
+    request: Request,
     file: UploadFile = File(...),
     chatbot_id: str = Form(...),
     current_user: dict = Depends(get_current_user)
@@ -1004,16 +999,26 @@ async def get_chat_history(chatbot_id: str, conversation_id: str, request: Reque
     # Obtener mensajes desde la tabla normalizada
     messages = await list_messages_for_conversation(conversation_id)
     if messages:
+        sanitized = [
+            {**m, "content": html.escape(m.get("content", ""))}
+            for m in messages
+        ]
         return {
             **conversation,
-            "messages": messages,
+            "messages": sanitized,
         }
-    # Fallback para conversaciones antiguas con JSONB
+    # Fallback para conversaciones antiguas con JSONB — sanitizar también
+    if "messages" in conversation and isinstance(conversation["messages"], list):
+        conversation["messages"] = [
+            {**m, "content": html.escape(m.get("content", ""))}
+            for m in conversation["messages"]
+        ]
     return conversation
 
 
 @app.post("/admin/teachers")
-async def create_teacher(data: TeacherCreate, current_user: dict = Depends(get_current_user)):
+@limiter.limit("10/minute")
+async def create_teacher(request: Request, data: TeacherCreate, current_user: dict = Depends(get_current_user)):
     if current_user.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Solo admins pueden crear docentes")
 
@@ -1064,7 +1069,8 @@ async def list_teachers(
 
 
 @app.put("/admin/teachers/{teacher_id}")
-async def update_teacher(teacher_id: str, data: TeacherUpdate, current_user: dict = Depends(get_current_user)):
+@limiter.limit("10/minute")
+async def update_teacher(request: Request, teacher_id: str, data: TeacherUpdate, current_user: dict = Depends(get_current_user)):
     if current_user.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Solo admins pueden actualizar docentes")
     
@@ -1105,7 +1111,8 @@ async def update_teacher(teacher_id: str, data: TeacherUpdate, current_user: dic
 
 
 @app.delete("/admin/teachers/{teacher_id}")
-async def delete_teacher(teacher_id: str, current_user: dict = Depends(get_current_user)):
+@limiter.limit("10/minute")
+async def delete_teacher(request: Request, teacher_id: str, current_user: dict = Depends(get_current_user)):
     if current_user.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Solo admins pueden eliminar docentes")
 

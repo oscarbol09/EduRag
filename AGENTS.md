@@ -156,9 +156,10 @@ DELETE /admin/teachers/{id}           → eliminar docente [JWT admin]
 
 ```bash
 cd backend
-pytest -v          # 44 tests — auth, seguridad, chat, admin, document_upload, refresh_token, context_builder, security_utils
+pytest -v          # 61 tests — auth, seguridad, chat, admin, document_upload, refresh_token, context_builder, security_utils, password, settings, JWT, logout
 
 cd frontend
+npx vitest run     # 82 tests — componentes, hooks, api.ts, context, utils
 npm run build      # verifica TypeScript y build de producción
 ```
 
