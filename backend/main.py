@@ -494,9 +494,9 @@ async def upload_document(
         raise HTTPException(
             status_code=400,
             detail=(
-                "El texto extraÃ­do supera el lÃ­mite permitido "
+                "El texto extraído supera el límite permitido "
                 f"({settings.MAX_EXTRACTED_TEXT_CHARS} caracteres). "
-                "Divide el documento en archivos mÃ¡s pequeÃ±os."
+                "Divide el documento en archivos más pequeños."
             ),
         )
 
