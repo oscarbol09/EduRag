@@ -3,30 +3,66 @@ Document uploader — handles file uploads to Supabase Storage and
 text extraction from Markdown and plain-text files.
 """
 
+import logging
+from fastapi import HTTPException
 from supabase_db import get_client
+
+logger = logging.getLogger(__name__)
+
+
+def _ensure_bucket_exists(client, bucket: str) -> None:
+    """Crea el bucket si no existe. Ignora el error si ya existe."""
+    try:
+        client.storage.get_bucket(bucket)
+    except Exception as e:
+        err_str = str(e).lower()
+        # Si el error indica que no existe, intentar crearlo
+        if "not found" in err_str or "does not exist" in err_str or "404" in err_str:
+            try:
+                client.storage.create_bucket(bucket, options={"public": False})
+                logger.info(f"Bucket '{bucket}' creado exitosamente.")
+            except Exception as create_err:
+                create_err_str = str(create_err).lower()
+                # Si ya existe (race condition), ignorar
+                if "already exists" in create_err_str or "duplicate" in create_err_str or "409" in create_err_str:
+                    pass
+                else:
+                    raise HTTPException(
+                        status_code=500,
+                        detail=f"No se pudo crear el bucket de almacenamiento: {str(create_err)}"
+                    )
+        else:
+            # Otro error al verificar el bucket (ej: permisos, red)
+            logger.warning(f"Advertencia al verificar bucket '{bucket}': {e}. Intentando upload de todas formas.")
 
 
 async def upload_file_to_blob(content: bytes, blob_path: str, content_type: str) -> str:
     client = get_client()
     bucket = "documents"
 
-    # Ensure bucket exists (create if missing)
+    # Garantizar que el bucket existe antes de subir
+    _ensure_bucket_exists(client, bucket)
+
+    # Subir archivo con manejo de errores explícito
     try:
-        client.storage.get_bucket(bucket)
-    except Exception:
-        # Create a private bucket
-        client.storage.create_bucket(bucket, options={"public": False})
+        client.storage.from_(bucket).upload(
+            path=blob_path,
+            file=content,
+            file_options={"content-type": content_type, "upsert": "true"},
+        )
+    except Exception as e:
+        err_str = str(e).lower()
+        logger.error(f"Error al subir archivo a Supabase Storage (path={blob_path}): {e}")
+        if "duplicate" in err_str or "already exists" in err_str or "409" in err_str:
+            # El archivo ya existe y upsert no funcionó — no es un error crítico
+            logger.warning(f"Archivo ya existe en storage, continuando: {blob_path}")
+        else:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Error al guardar el archivo en el almacenamiento: {str(e)}"
+            )
 
-    # Upload file
-    client.storage.from_(bucket).upload(
-        path=blob_path,
-        file=content,
-        file_options={"content-type": content_type, "upsert": "true"},
-    )
-
-    # Return public URL or direct reference
-    # Supabase public bucket has a public URL, but since it is private, get_public_url works if it's permitted,
-    # or we can construct/use the storage API URL. Let's return the public URL representation.
+    # Construir URL de referencia (el bucket es privado, así que es una URL de acceso interno)
     return client.storage.from_(bucket).get_public_url(blob_path)
 
 
