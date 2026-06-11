@@ -7,6 +7,8 @@
   --color-brand-600: #4f46e5;
   --color-brand-700: #4338ca;
   --color-brand-800: #3730a3;
+  --color-accent-50: #ecfeff;
+  --color-accent-100: #cffafe;
   --color-accent-500: #06b6d4;
   --color-accent-600: #0891b2;
   --font-sans: var(--font-sans), sans-serif;
@@ -36,4 +38,19 @@ body {
 .glow-card:hover {
   transform: translateY(-2px);
   box-shadow: 0 12px 30px -10px rgba(79, 70, 229, 0.12), 0 4px 12px -5px rgba(6, 182, 212, 0.08);
+}
+
+/* Accesibilidad: respetar preferencias de movimiento reducido (MEN-01) */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .glow-card:hover {
+    transform: none;
+  }
 }

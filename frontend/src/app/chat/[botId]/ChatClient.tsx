@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
+import { useApp } from "@/lib/context";
 import type { ChatMessage, ChatResponse, Message, Chatbot } from "@/lib/types";
 
 function renderMessageContent(content: string, isUser: boolean) {
@@ -31,7 +32,6 @@ function renderMessageContent(content: string, isUser: boolean) {
   }
 
   const renderTextSegment = (text: string, segKey: number) => {
-    // Dividir por líneas para manejar listas
     const lines = text.split("\n");
     return lines.map((line, lineIdx) => {
       const listMatch = line.match(/^(\s*)([-*]|\d+\.)\s+(.*)$/);
@@ -91,6 +91,10 @@ export default function ChatClient() {
   const { botId } = useParams();
   const router = useRouter();
 
+  // CRIT-04: detectar rol via contexto de autenticación, no via sessionStorage
+  const { auth } = useApp();
+  const isTeacherPreview = auth.user?.role === "teacher";
+
   const [chatbot, setChatbot] = useState<Chatbot | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -100,10 +104,6 @@ export default function ChatClient() {
   // Ref que almacena el ID único del mensaje placeholder del assistant activo.
   // Usar un ref en lugar de calcular messages.length evita el race condition de React batching.
   const assistantMsgIdRef = useRef<string | null>(null);
-
-  // Detectar si hay un token → el docente está probando su bot
-  const isTeacherPreview =
-    typeof window !== "undefined" && Boolean(sessionStorage.getItem("token"));
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -243,6 +243,7 @@ export default function ChatClient() {
           <button
             onClick={() => router.back()}
             className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 font-medium px-3 py-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+            aria-label="Volver a la página anterior"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -251,6 +252,7 @@ export default function ChatClient() {
               viewBox="0 0 24 24"
               stroke="currentColor"
               strokeWidth={2}
+              aria-hidden="true"
             >
               <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
             </svg>
@@ -265,43 +267,40 @@ export default function ChatClient() {
             )}
           </div>
 
-          {/* Botón Publicar (solo visible para el docente en preview) */}
-          {isTeacherPreview && chatbot && (
+          {/* Botón Publicar — visible solo para docentes en preview (CRIT-04: via contexto) */}
+          {isTeacherPreview && chatbot ? (
             <button
               onClick={() => {
                 api.chatbots.publish(botId as string).then(() => router.back());
               }}
+              disabled={chatbot.is_published}
+              aria-label={chatbot.is_published ? "Chatbot ya publicado" : "Publicar este chatbot"}
               className={`flex items-center gap-1.5 text-sm font-medium px-4 py-1.5 rounded-lg transition-colors ${
-                  chatbot.is_published
-                    ? "bg-green-50 text-green-700 border border-green-200 cursor-default"
-                    : "bg-brand-600 text-white hover:bg-brand-700"
-                }`}
-                disabled={chatbot.is_published}
+                chatbot.is_published
+                  ? "bg-green-50 text-green-700 border border-green-200 cursor-default"
+                  : "bg-brand-600 text-white hover:bg-brand-700"
+              }`}
             >
               {chatbot.is_published ? (
                 <>
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                   </svg>
                   Publicado
                 </>
               ) : (
                 <>
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-                    />
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                   </svg>
                   Publicar
                 </>
               )}
             </button>
+          ) : (
+            /* Placeholder para mantener el layout centrado cuando no hay botón de publicar */
+            <div className="w-20" aria-hidden="true" />
           )}
-
-          {/* Placeholder para mantener el layout centrado cuando no hay botón de publicar */}
-          {!isTeacherPreview && <div className="w-20" />}
         </div>
       </header>
 
@@ -310,16 +309,16 @@ export default function ChatClient() {
           {/* Mensaje de bienvenida */}
           {chatbot?.welcome_message && messages.length === 0 && (
             <div className="px-6 pt-6 pb-2">
-              <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 text-sm text-blue-800">
+              <div className="bg-brand-50 border border-brand-100 rounded-xl p-4 text-sm text-brand-800">
                 {chatbot.welcome_message}
               </div>
             </div>
           )}
 
-          <div className="flex-1 overflow-auto p-6 space-y-4">
+          <div className="flex-1 overflow-auto p-6 space-y-4" role="log" aria-label="Mensajes del chat" aria-live="polite">
             {messages.length === 0 ? (
               <div className="text-center text-gray-400 py-16">
-                <div className="text-5xl mb-4">💬</div>
+                <div className="text-5xl mb-4" aria-hidden="true">💬</div>
                 <p className="text-base font-semibold text-gray-600">Envía un mensaje para comenzar</p>
                 <p className="text-sm text-gray-400 mt-1.5">El asistente responderá basándose en los documentos cargados por tu docente</p>
               </div>
@@ -337,7 +336,7 @@ export default function ChatClient() {
                     }`}
                   >
                     {msg.role === "assistant" && !msg.content ? (
-                      <div className="flex gap-1.5 items-center h-4">
+                      <div className="flex gap-1.5 items-center h-4" aria-label="El asistente está escribiendo">
                         <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
                         <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
                         <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
@@ -346,13 +345,13 @@ export default function ChatClient() {
                       renderMessageContent(msg.content, msg.role === "user")
                     )}
                     {msg.role === "assistant" && msg.sources && msg.sources.length > 0 && (
-                      <div className="mt-2.5 flex flex-wrap gap-1.5 border-t border-gray-200/50 pt-2">
+                      <div className="mt-2.5 flex flex-wrap gap-1.5 border-t border-gray-200/50 pt-2" aria-label="Fuentes citadas">
                         {msg.sources.map((src, idx) => (
                           <span
                             key={idx}
                             className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-brand-50 text-brand-700 border border-brand-100/50 select-none shadow-sm hover:shadow transition-shadow"
                           >
-                            📄 {src}
+                            <span aria-hidden="true">📄</span> {src}
                           </span>
                         ))}
                       </div>
@@ -361,6 +360,7 @@ export default function ChatClient() {
                       className={`text-[10px] mt-1.5 ${
                         msg.role === "user" ? "text-brand-200" : "text-gray-400"
                       }`}
+                      aria-label={`Enviado a las ${new Date(msg.timestamp).toLocaleTimeString()}`}
                     >
                       {new Date(msg.timestamp).toLocaleTimeString()}
                     </p>
@@ -372,7 +372,9 @@ export default function ChatClient() {
           </div>
 
           <form onSubmit={handleSend} className="border-t p-4 flex gap-3">
+            <label htmlFor="chat-input" className="sr-only">Escribe tu mensaje</label>
             <input
+              id="chat-input"
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -380,11 +382,13 @@ export default function ChatClient() {
               className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none text-sm transition-all"
               disabled={isLoading}
               maxLength={4000}
+              autoComplete="off"
             />
             <button
               type="submit"
               disabled={isLoading || !input.trim()}
               className="px-5 py-2.5 bg-brand-600 text-white rounded-xl hover:bg-brand-700 disabled:opacity-40 disabled:cursor-not-allowed font-semibold text-sm transition-colors shadow-sm"
+              aria-label="Enviar mensaje"
             >
               Enviar
             </button>

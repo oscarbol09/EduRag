@@ -33,6 +33,19 @@ export interface Chatbot {
   updated_at: string;
 }
 
+/** Payload explícito para mutaciones de chatbot — evita casts `as Partial<Chatbot>` (MEN-03) */
+export interface UpdateChatbotPayload {
+  name?: string;
+  subject_area?: string;
+  education_level?: "secondary" | "university";
+  tone?: "formal" | "friendly" | "technical";
+  welcome_message?: string;
+  system_prompt_override?: string;
+  restriction_level?: "strict" | "guided" | "open";
+  llm_provider?: string;
+  is_published?: boolean;
+}
+
 export interface Document {
   id: string;
   chatbot_id: string;

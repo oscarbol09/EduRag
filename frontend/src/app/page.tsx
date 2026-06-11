@@ -1,25 +1,8 @@
-"use client";
-
+// Server Component — sin "use client" para preservar SSG y SEO (CRIT-01 resuelto)
 import Link from "next/link";
-import { useEffect, useState } from "react";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-
-interface PlatformStats {
-  totalChatbots: number;
-  totalTeachers: number;
-  totalMessages: number;
-}
+import { StatsSection } from "./_components/StatsSection";
 
 export default function HomePage() {
-  const [stats, setStats] = useState<PlatformStats | null>(null);
-
-  useEffect(() => {
-    fetch(`${API_URL}/platform/stats`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => { if (data) setStats(data); })
-      .catch(() => null);
-  }, []);
   return (
     <main className="min-h-screen bg-gray-50 flex flex-col font-sans selection:bg-brand-500 selection:text-white">
       {/* Hero oscuro premium con dot-grid */}
@@ -64,15 +47,8 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Sección de estadísticas — datos reales con fallback si el endpoint no responde */}
-      <section className="bg-white border-y border-gray-100 py-12 px-4 shadow-sm relative z-20">
-        <div className="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-8">
-          <StatItem value={stats ? `${stats.totalChatbots}+` : "—"} label="Chatbots Creados" />
-          <StatItem value={stats ? `${stats.totalTeachers}+` : "—"} label="Docentes Activos" />
-          <StatItem value={stats ? `${stats.totalMessages.toLocaleString()}+` : "—"} label="Mensajes Educativos" />
-          <StatItem value="99.9%" label="Uptime en la Nube" />
-        </div>
-      </section>
+      {/* Estadísticas — Client Component aislado para no romper SSG (CRIT-01) */}
+      <StatsSection />
 
       {/* Sección "Cómo Funciona" en 3 Pasos */}
       <section className="py-24 px-4 bg-gray-50">
@@ -87,37 +63,32 @@ export default function HomePage() {
           </div>
 
           <div className="grid md:grid-cols-3 gap-8 relative">
-            {/* Step 1 */}
             <StepCard
               step="1"
               title="Sube tus Documentos"
-              description="Sube apuntes de clase, guías, silabus o lecturas académicas en texto plano (.txt, .md). La plataforma los indexa de forma aislada y ultra segura."
+              description="Sube apuntes de clase, guías, silabus o lecturas académicas (PDF, Word, TXT). La plataforma los indexa de forma aislada y segura."
               icon={
-                <svg className="w-6 h-6 text-brand-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <svg className="w-6 h-6 text-brand-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
               }
             />
-
-            {/* Step 2 */}
             <StepCard
               step="2"
               title="Personaliza tu Tutor"
-              description="Define el nivel académico (Secundaria o Universidad), el tono del chatbot (Amigable, Formal o Técnico) y las restricciones de respuesta para el aprendizaje."
+              description="Define el nivel académico, el tono del chatbot y las restricciones de respuesta para un aprendizaje guiado."
               icon={
-                <svg className="w-6 h-6 text-brand-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <svg className="w-6 h-6 text-brand-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
                 </svg>
               }
             />
-
-            {/* Step 3 */}
             <StepCard
               step="3"
               title="Comparte y Enseña"
-              description="Publica tu chatbot con un solo clic. Genera enlaces directos para tus estudiantes o copia el código iframe para embeberlo directo en Moodle u otros LMS."
+              description="Publica tu chatbot con un clic. Genera enlaces directos o copia el iframe para embeberlo en Moodle u otros LMS."
               icon={
-                <svg className="w-6 h-6 text-brand-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <svg className="w-6 h-6 text-brand-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 10.742l4.684-2.342m0 0l-4.684-2.342m4.684 2.342l4.684 2.342m0 0l-4.684 2.342m0-4.684h-4.684m0 0v4.684" />
                 </svg>
               }
@@ -126,7 +97,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Footer elegante */}
+      {/* Footer */}
       <footer className="bg-slate-900 text-slate-400 py-12 px-4 border-t border-slate-800 text-sm mt-auto relative z-10">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-2">
@@ -136,25 +107,14 @@ export default function HomePage() {
             <span className="text-slate-600">|</span>
             <p>© 2026 EduRAG Platform. Todos los derechos reservados.</p>
           </div>
-          <div className="flex items-center gap-6 font-semibold">
+          <nav className="flex items-center gap-6 font-semibold" aria-label="Footer">
             <Link href="/login" className="hover:text-white transition-colors">Docentes</Link>
             <Link href="/marketplace" className="hover:text-white transition-colors">Marketplace</Link>
             <Link href="/admin" className="hover:text-white transition-colors">Administradores</Link>
-          </div>
+          </nav>
         </div>
       </footer>
     </main>
-  );
-}
-
-function StatItem({ value, label }: { value: string; label: string }) {
-  return (
-    <div className="text-center space-y-1">
-      <div className="text-3xl sm:text-4xl font-extrabold bg-gradient-to-r from-brand-600 to-accent-600 bg-clip-text text-transparent font-display">
-        {value}
-      </div>
-      <div className="text-xs sm:text-sm font-semibold text-gray-500 uppercase tracking-wider">{label}</div>
-    </div>
   );
 }
 
@@ -171,7 +131,7 @@ function StepCard({
 }) {
   return (
     <div className="bg-white rounded-2xl border border-gray-100 p-8 shadow-sm relative glow-card flex flex-col h-full">
-      <div className="absolute top-[-18px] left-[32px] w-[36px] h-[36px] bg-brand-600 text-white rounded-full flex items-center justify-center font-bold text-sm select-none shadow">
+      <div className="absolute top-[-18px] left-[32px] w-[36px] h-[36px] bg-brand-600 text-white rounded-full flex items-center justify-center font-bold text-sm select-none shadow" aria-hidden="true">
         {step}
       </div>
       <div className="w-12 h-12 rounded-xl bg-brand-50 border border-brand-100 flex items-center justify-center mb-5 mt-2">

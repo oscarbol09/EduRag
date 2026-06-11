@@ -1,227 +1,307 @@
-# EduRAG - Plataforma SaaS Educativa (Especificación Técnica)
+# EduRAG — Especificación Técnica (SPEC.md)
 
-## 1. Concepto & Visión
+## 1. Concepto y Visión
 
-EduRAG es una plataforma multi-tenant donde los docentes crean agentes conversacionales basados en sus propios documentos, y los estudiantes los consumen a través de un marketplace centralizado o mediante integración con LMS externos (Moodle). El sistema prioriza costo mínimo ($0/mes post-primer-mes), arquitectura extensible para múltiples LLMs, y experiencias de RAG directas en context window.
+EduRAG es una plataforma SaaS educativa multi-tenant donde los docentes crean agentes conversacionales basados en sus propios documentos, y los estudiantes los consumen a través de un marketplace centralizado o mediante integración con LMS externos (Moodle) vía `<iframe>`.
 
----
-
-## 2. Arquitectura del Sistema
-
-### Stack Tecnológico
-
-| Frontend SPA | Vercel | Free |
-| API Backend | Railway | Free / Económico |
-| Base de datos principal | Supabase PostgreSQL | Free Tier permanente |
-| Almacenamiento documentos | Supabase Storage (Bucket: `documents`) | Free (1 GB) |
-| Autenticación | JWT propio (PyJWT + bcrypt) | Free |
-| LLM | OpenRouter (Gemini, Llama, Nemotron) | Free tier |
-
-> **Decisión arquitectural:** ChromaDB fue eliminado para evitar problemas de ContainerTimeout en servicios de hosting (~500 MB venv). El texto plano se pasa de forma directa al context window de OpenRouter.
-
-### Estructura del Proyecto
-
-```
-/
-├── frontend/          # Next.js 1 SPA
-├── backend/           # FastAPI REST API (Supabase & Pytest)
-└── SPEC.md
-```
+**Restricciones de diseño:**
+- $0/mes post-primer-mes (Supabase Free Tier + APIs gratuitas).
+- Aislamiento estricto multi-tenant por `chatbot_id` / `owner_id`.
+- Arquitectura extensible para múltiples LLMs sin cambios de lógica de negocio.
 
 ---
 
-## 3. Modelo de Datos (PostgreSQL - Supabase)
+## 2. Stack Tecnológico
 
-### Tabla: users
+| Capa | Tecnología | Proveedor | Tier |
+|---|---|---|---|
+| Frontend SPA | Next.js 16 + Tailwind CSS + Radix UI | Vercel | Free |
+| API Backend | FastAPI (Python 3.11) + Uvicorn | Railway | Free |
+| Base de datos | Supabase PostgreSQL | Supabase | Free permanente |
+| Almacenamiento | Supabase Storage (bucket `documents`) | Supabase | Free (1 GB) |
+| Autenticación | JWT HS256 (PyJWT + bcrypt) | — | Free |
+| Cifrado | Fernet (cryptography) para API keys | — | Free |
+| LLM | OpenRouter (Gemini, Llama, etc.) | OpenRouter | Free (BYOK) |
+
+> **Sin ChromaDB:** eliminado por `ContainerTimeout` en Railway (~500 MB de venv). El texto se almacena en Supabase y se pasa directamente al context window vía chunking léxico.
+
+---
+
+## 3. Modelo de Datos (PostgreSQL — Supabase)
+
+### Tabla `users`
 ```sql
 create table users (
-  id text primary key,
-  email text unique not null,
-  password text,
-  role text not null default 'student' check (role in ('teacher', 'student', 'admin')),
-  auth_method text not null default 'email_password',
-  first_name text,
-  last_name text,
-  institution_name text,
-  openrouter_api_key text,
-  openrouter_model text,
+  id           text primary key,
+  email        text unique not null,
+  password     text,
+  role         text not null default 'student' check (role in ('teacher','student','admin')),
+  auth_method  text not null default 'email_password',
+  first_name   text default '',
+  last_name    text default '',
+  institution_name text default '',
+  openrouter_api_key text default '',  -- cifrado con Fernet
+  openrouter_model   text default '',
   is_test_account boolean default false,
-  institution text, -- Retenido para compatibilidad legacy
-  country text,
-  is_active boolean default true,
-  created_at timestamptz default now()
+  country      text,
+  is_active    boolean default true,
+  created_at   timestamptz default now()
 );
 ```
 
-### Tabla: chatbots
+### Tabla `chatbots`
 ```sql
 create table chatbots (
-  id text primary key,
-  owner_id text references users(id) on delete cascade,
-  name text not null,
-  subject_area text,
-  education_level text,
-  tone text default 'friendly' check (tone in ('formal', 'friendly', 'technical')),
-  welcome_message text,
-  system_prompt_override text,
-  restriction_level text default 'guided' check (restriction_level in ('strict', 'guided', 'open')),
-  llm_provider text default 'openrouter' check (llm_provider in ('openrouter')),
-  public_url text,
-  embed_code text,
-  is_published boolean default false,
-  created_at timestamptz default now(),
-  updated_at timestamptz default now()
+  id                    text primary key,
+  owner_id              text references users(id) on delete cascade,
+  name                  text not null,
+  subject_area          text,
+  education_level       text,
+  tone                  text default 'friendly' check (tone in ('formal','friendly','technical')),
+  welcome_message       text,
+  system_prompt_override text,  -- máx 2000 chars (validado en backend)
+  restriction_level     text default 'guided' check (restriction_level in ('strict','guided','open')),
+  llm_provider          text default 'openrouter',
+  public_url            text,
+  embed_code            text,
+  is_published          boolean default false,
+  created_at            timestamptz default now(),
+  updated_at            timestamptz default now()
 );
 ```
 
-### Tabla: documents
+### Tabla `documents`
 ```sql
 create table documents (
-  id text primary key,
-  chatbot_id text references chatbots(id) on delete cascade,
-  filename text,
-  mime_type text,
-  blob_url text,
-  status text default 'indexed' check (status in ('queued', 'processing', 'indexed', 'error')),
-  chunk_count int default 1,
-  created_at timestamptz default now(),
+  id           text primary key,
+  chatbot_id   text references chatbots(id) on delete cascade,
+  filename     text,
+  mime_type    text,
+  blob_url     text,
+  content_hash text,  -- SHA-256 del texto extraído (deduplicación)
+  status       text default 'indexed' check (status in ('queued','processing','indexed','error')),
+  chunk_count  int default 1,
+  created_at   timestamptz default now(),
   processed_at timestamptz default now()
 );
 ```
 
-### Tabla: document_contents
+### Tabla `document_contents`
 ```sql
 create table document_contents (
-  id text primary key,
-  chatbot_id text references chatbots(id) on delete cascade,
-  filename text,
-  content text
+  id           text primary key,
+  chatbot_id   text references chatbots(id) on delete cascade,
+  filename     text,
+  content      text,
+  content_hash text  -- SHA-256 (índice único por chatbot para deduplicación)
 );
 ```
 
-### Tabla: conversations
+### Tabla `conversations`
 ```sql
 create table conversations (
-  id text primary key,
-  chatbot_id text references chatbots(id) on delete cascade,
-  student_id text,
-  messages jsonb default '[]'::jsonb,
-  created_at timestamptz default now(),
-  updated_at timestamptz default now()
+  id          text primary key,
+  chatbot_id  text references chatbots(id) on delete cascade,
+  student_id  uuid,  -- nullable — usuarios no autenticados
+  created_at  timestamptz default now(),
+  updated_at  timestamptz default now()
+  -- El campo messages (JSONB) fue eliminado por migración 20260608120000
 );
 ```
 
+### Tabla `messages` (normalizada — reemplaza el JSONB)
+```sql
+create table messages (
+  id              uuid primary key default gen_random_uuid(),
+  conversation_id uuid not null references conversations(id) on delete cascade,
+  role            text not null check (role in ('user','assistant','system')),
+  content         text not null,
+  created_at      timestamptz not null default now()
+);
+create index idx_messages_conversation_id      on messages(conversation_id);
+create index idx_messages_conversation_created on messages(conversation_id, created_at asc);
+```
+
 ---
 
-## 4. API Endpoints
+## 4. Índices de Rendimiento
+
+Creados por la migración `20260607153000_add_missing_indexes.sql`:
+
+```sql
+-- chatbots
+create index idx_chatbots_owner_id             on chatbots(owner_id);
+create index idx_chatbots_published_created_at on chatbots(is_published, created_at desc);
+
+-- documents
+create index idx_documents_chatbot_id          on documents(chatbot_id);
+create index idx_documents_status              on documents(status);
+
+-- document_contents
+create index idx_document_contents_chatbot_id  on document_contents(chatbot_id);
+create unique index idx_document_contents_chatbot_hash_unique
+  on document_contents(chatbot_id, content_hash) where content_hash is not null;
+
+-- conversations
+create index idx_conversations_chatbot_id           on conversations(chatbot_id);
+create index idx_conversations_student_id            on conversations(student_id) where student_id is not null;
+create index idx_conversations_chatbot_updated_at    on conversations(chatbot_id, updated_at desc);
+
+-- users
+create index idx_users_role        on users(role);
+create index idx_users_email       on users(email);
+create index idx_users_role_active on users(role, is_active) where is_active = true;
+```
+
+---
+
+## 5. API Endpoints
+
+### Sistema
+- `GET /health` — health check
+- `GET /ready` — readiness (verifica Supabase)
+- `GET /platform/stats` — estadísticas públicas (chatbots publicados, docentes activos, total mensajes de `public.messages`)
 
 ### Autenticación
-- `POST /auth/login` — Login con email/password (retorna JSON seguro sin hash de clave)
-- `POST /auth/register` — Registro de estudiantes (fuerza rol student y filtra hash de clave)
-- `GET /auth/me` — Usuario actual
+- `POST /auth/login` (10/min) — JWT sin hash de password en respuesta
+- `POST /auth/register` (5/min) — fuerza `role: student`
+- `GET /auth/me` — usuario actual [JWT]
+- `PUT /auth/me/profile` — perfil + API key cifrada + modelo [JWT]
 
 ### Chatbots
-- `GET /chatbots` ? Listar chatbots del docente (soporta `limit` y `offset`)
-- `POST /chatbots` — Crear chatbot
-- `GET /chatbots/{id}` — Obtener chatbot
-- `PUT /chatbots/{id}` — Actualizar chatbot
-- `DELETE /chatbots/{id}` — Eliminar chatbot + contenidos
-- `POST /chatbots/{id}/publish` — Publicar chatbot
-- `GET /chatbots/{id}/embed` — Obtener código embed
-- `GET /teacher/metrics` [JWT docente] — Obtener métricas agregadas del docente (chatbots totales/publicados, documentos indexados, conversaciones semanales).
+- `GET /chatbots` — lista (`owner_id`, `published_only`, `limit`, `offset`)
+- `POST /chatbots` — crear [JWT] — valida `system_prompt_override` ≤ 2000 chars
+- `GET /chatbots/{id}` — detalle (oculta `system_prompt_override` a terceros)
+- `PUT /chatbots/{id}` — actualizar [JWT owner]
+- `DELETE /chatbots/{id}` — eliminar + `document_contents` [JWT owner]
+- `POST /chatbots/{id}/publish` — publicar [JWT owner]
+- `GET /chatbots/{id}/embed` — `embed_code` + `public_url`
 
-### Documentos (Parches de seguridad activos)
-- `POST /documents/upload` [JWT] ? Subir documento (MD, TXT, PDF, DOCX). Valida propiedad, limita texto extraido y deduplica por hash.
-- `GET /documents/{id}` [JWT] — Estado del documento. Valida propiedad del bot.
-- `GET /documents?chatbot_id=` [JWT] — Listar documentos de un chatbot. Valida propiedad del bot.
-- `DELETE /documents/{id}?chatbot_id=` [JWT] — Eliminar documento y su contenido. Valida propiedad del bot.
+### Documentos (protegidos por JWT + validación de propiedad)
+- `POST /documents/upload` — subir MD/TXT/PDF/DOCX; deduplica por SHA-256
+- `GET /documents?chatbot_id=` — listar (`limit`, `offset`)
+- `GET /documents/{id}` — detalle
+- `DELETE /documents/{id}?chatbot_id=` — eliminar metadatos + contenido
 
 ### Chat
-- `POST /chat/{chatbot_id}` — Enviar mensaje (Caché local con TTL de 5 min, 100 req/min/IP)
-- `POST /chat/{chatbot_id}/stream` — Enviar mensaje con SSE token-a-token (mismo pipeline, respuesta incremental)
-- `GET /chat/{chatbot_id}/history` [JWT] - Historial de conversacion. Solo owner, admin o estudiante asociado.
+- `POST /chat/{id}` — síncrono (100 req/min/IP) — memoria conversacional via `messages`
+- `POST /chat/{id}/stream` — SSE token-a-token (mismo pipeline)
+- `GET /chat/{id}/history` — historial [JWT: owner | admin | student asociado]
 
 ### Admin
-- `POST /admin/teachers` [JWT admin] — Crear cuenta de docente
-- `GET /admin/teachers` [JWT admin] — Listar docentes
-- `PUT /admin/teachers/{id}` [JWT admin] — Editar docente
-- `DELETE /admin/teachers/{id}` [JWT admin] — Eliminar docente
+- `POST /admin/teachers` — crear docente [JWT admin]
+- `GET /admin/teachers` — listar (sin passwords) [JWT admin]
+- `PUT /admin/teachers/{id}` — editar [JWT admin]
+- `DELETE /admin/teachers/{id}` — eliminar [JWT admin]
 
-### Perfil del docente
-- `PUT /auth/me/profile` [JWT docente] — Actualizar perfil + OpenRouter key + modelo
-
-### Sistema / Estadísticas
-- `GET /health` — Health check
-- `GET /ready` — Readiness (verifica conexión a Supabase)
-- `GET /platform/stats` — Estadísticas públicas agregadas de la plataforma (chatbots publicados, docentes activos, total mensajes) para la landing page.
-
+### Docente
+- `GET /teacher/metrics` — chatbots totales/publicados, documentos indexados, conversaciones semanales [JWT teacher]
 
 ---
 
-## 5. Estrategia de Documentos
+## 6. Pipeline de Documentos
 
-### Por qué se eliminó ChromaDB
-
-ChromaDB y sus dependencias (onnxruntime, numpy, tokenizers, pysqlite3) suman ~500 MB al virtualenv. En entornos de hosting como Railway o Azure, el proceso de extracción del venv en cada arranque del contenedor superaba el límite de 230 segundos, causando `ContainerTimeout`. La plataforma no puede arrancar con esa dependencia.
-
-### Enfoque actual: texto directo a OpenRouter LLMs
-
-**Upload (síncrono):**
+### Upload (síncrono)
 ```
-Docente sube archivo (MD / TXT / PDF / DOCX)
-    → Extracción de texto en memoria (UTF-8 decode, PyMuPDF, python-docx)
-    → Supabase Storage: archivo original
-    → Supabase Postgres (document_contents): texto completo
-    → Supabase Postgres (documents): metadatos, status: "indexed"
+POST /documents/upload (multipart: file + chatbot_id)
+  → JWT + validación de propiedad (owner_id == chatbot.owner_id)
+  → Validación: extensión (.md/.txt/.pdf/.docx), tamaño (≤20 MB)
+  → extract_text_from_file() — UTF-8 / PyMuPDF / python-docx (párrafos + tablas)
+  → SHA-256 del texto → verificar duplicado en document_contents
+  → upload_file_to_blob() → Supabase Storage
+  → store_document_content() → Supabase document_contents
+  → create_document() → Supabase documents (status: "indexed")
 ```
 
-**Construcción de contexto (`backend/context_builder.py`):**
+### Construcción de Contexto (`context_builder.py`)
 ```
-Recuperar todos los document_contents del chatbot
-    → Chunking léxico: segmentos de 1500 chars con overlap de 200 chars
-    → Ranking por overlap de tokens entre la pregunta y cada chunk
-    → Selección greedy hasta completar presupuesto (60 000 chars)
-    → Contexto final: "--- Documento: {filename} ---\n{chunk}"
-```
-
-**Chat (síncrono — `POST /chat/{chatbot_id}`):**
-```
-Estudiante envía mensaje
-    → Recuperar todos los document_contents del chatbot desde Supabase
-    → `context_builder.build_context()` con la pregunta del usuario
-    → Prompt: system_prompt + contexto + pregunta
-    → OpenRouter vía `httpx.AsyncClient` (no bloquea event loop)
-    → Respuesta con nombres de documentos como fuentes
-    → Persistida en `conversations`
+get_all_contents_for_chatbot(chatbot_id)
+  → [{"filename": "...", "content": "texto completo"}, ...]
+  → chunk_document(text, chunk_size=1500, overlap=200) → chunks
+  → rank_chunks(chunks, query) → orden por overlap de tokens
+  → selección greedy hasta MAX_CONTEXT_CHARS (60 000)
+  → "--- Documento: {filename} ---\n{chunk}\n" concatenado
 ```
 
-**Chat (streaming SSE — `POST /chat/{chatbot_id}/stream`):**
+### Chat (síncrono)
 ```
-Mismo pipeline, pero la respuesta se emite token-a-token vía
-`StreamingResponse(media_type="text/event-stream")` con eventos:
-    event: token  → { "content": "..." }
-    event: done   → { "conversation_id": "...", "sources": [...] }
-    event: error  → { "message": "..." }
-El frontend parsea el stream y hace fallback automático al endpoint
-síncrono si el stream no entrega tokens.
+POST /chat/{chatbot_id}
+  → Caché TTL 5 min (key: chatbot_id:sha256(message))
+  → get_all_contents_for_chatbot() → context_builder.build_context()
+  → list_messages_for_conversation(limit=20) — tabla messages (fallback JSONB)
+  → system_prompt: chatbot.system_prompt_override o default por tone/restriction_level
+  → decrypt_api_key(owner.openrouter_api_key) → validar → fallback whitelist
+  → llm.generate(system_prompt, context, message, temperature, history_messages)
+  → _persist_chat_turn() → create_messages_batch([user_msg, assistant_msg])
+  → ChatResponse { response, conversation_id, sources: [filenames] }
 ```
 
-### Formatos soportados
+### Chat (streaming SSE)
+```
+POST /chat/{chatbot_id}/stream
+  → Mismo pipeline de preparación
+  → StreamingResponse(media_type="text/event-stream")
+  → event: token → { "content": "fragmento" }  (por cada chunk de OpenRouter)
+  → event: done  → { "conversation_id": "...", "sources": [...] }
+  → event: error → { "message": "..." }
+  → Headers: X-Accel-Buffering: no, Cache-Control: no-cache, no-transform
+```
 
-| Formato | MIME type | Extracción |
+### Temperatures por `restriction_level`
+
+| Nivel | Temperature |
+|---|---|
+| `strict` | 0.2 |
+| `guided` | 0.5 |
+| `open` | 0.8 |
+
+---
+
+## 7. Seguridad
+
+| Control | Implementación |
+|---|---|
+| Cifrado API keys | Fernet (`security_utils.py`) — sin fallback silencioso a texto plano |
+| Rate limiting | `slowapi`: login 10/min, register 5/min, chat 100/min/IP |
+| Aislamiento multi-tenant | `owner_id` / `chatbot_id` validados en todas las queries y endpoints |
+| Passwords | bcrypt — filtrados de toda respuesta HTTP en `map_user_response()` |
+| JWT | HS256, `JWT_SECRET` requerido, sin defaults hardcodeados |
+| Rol forzado | Registro público siempre asigna `role: student` |
+| system_prompt | `MAX_SYSTEM_PROMPT_LENGTH = 2000` chars — validado en POST y PUT |
+| CSP + Headers | `vercel.json`: CSP con `connect-src` explícito, `X-Frame-Options: DENY`, etc. |
+| Historial | `GET /chat/{id}/history` — requiere JWT + validación de rol |
+| Token frontend | `sessionStorage` — se borra al cerrar la pestaña |
+
+---
+
+## 8. Testing
+
+```bash
+cd backend && pytest -v   # 26 tests
+```
+
+**Grupos:** sistema, auth, seguridad multi-tenant, chat (sync+stream), validaciones, admin CRUD, `security_utils`, `context_builder`.
+
+---
+
+## 9. Formatos de Documento Soportados
+
+| Formato | MIME | Extracción |
 |---|---|---|
-| Markdown | text/markdown + .md | UTF-8 decode |
-| Texto plano | text/plain + .txt | UTF-8 decode |
-| PDF | application/pdf + .pdf | PyMuPDF (fitz) |
-| Word | application/vnd.openxmlformats-officedocument.wordprocessingml.document + .docx | python-docx |
+| Markdown | `text/markdown` | UTF-8 decode |
+| Texto plano | `text/plain` | UTF-8 decode |
+| PDF digital | `application/pdf` | PyMuPDF (`fitz`) — PDFs escaneados devuelven 400 |
+| Word | `application/vnd.openxmlformats-officedocument.wordprocessingml.document` | python-docx (párrafos + tablas) |
 
 ---
 
-## 6. Seguridad
+## 10. Migraciones SQL
 
-### Controles Implementados
-1. **Aislamiento multi-tenant**: Filtro obligatorio por `chatbot_id` y validación de `owner_id` en todas las operaciones del backend.
-2. **Endpoints Protegidos**: Todos los endpoints de carga y visualización de documentos requieren autenticación JWT obligatoria y verifican la propiedad del bot.
-3. **Filtro de Contraseñas**: El backend elimina el campo `password` de todas las respuestas públicas en login y registro.
-4. **Caché Seguro con TTL**: Respuestas cacheadas en memoria poseen un tiempo de vida (TTL) estricto de 5 minutos para evitar persistencias obsoletas y fugas de datos.
-5. **Autenticación sin Fallbacks**: La firma JWT con `JWT_SECRET` es obligatoria y no posee fallbacks en el código para prevenir la falsificación de tokens.
+Aplicar con `supabase db push` desde la raíz del proyecto:
+
+| Archivo | Contenido |
+|---|---|
+| `20260607152000_harden_core_tables.sql` | Columnas nativas en `users`, columnas pedagógicas en `chatbots`, campos adicionales en `documents` y `conversations` |
+| `20260607153000_add_missing_indexes.sql` | 12 índices en 5 tablas |
+| `20260607154000_extract_messages_table.sql` | Crea tabla `messages` + migra datos desde JSONB |
+| `20260608120000_drop_messages_jsonb_legacy.sql` | Elimina `conversations.messages` (JSONB) |
