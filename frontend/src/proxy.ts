@@ -14,15 +14,16 @@ export function proxy(request: NextRequest) {
     (p) => pathname === p || pathname.startsWith(p + "/")
   );
 
-  // CSP con nonce para Next.js, unsafe-inline necesario para Google Sign-In
-  // (identidad visual) que inyecta scripts inline dinámicamente.
-  // strict-dynamic deshabilitado porque rompe Google Sign-In al bloquear
-  // la carga de scripts desde accounts.google.com y sus inline injection.
+  // CSP — script-src sin nonce porque 'unsafe-inline' es ignorado cuando hay
+  // un nonce o hash presente (spec CSP). Google Sign-In inyecta scripts inline
+  // dinámicos sin nonce, así que necesitamos unsafe-inline + domain whitelist.
+  // El x-nonce se mantiene para Next.js (lo usa para nonce en sus scripts)
+  // aunque el CSP no lo exija — no interfiere.
   // unsafe-eval solo en dev (Fast Refresh de React).
   // frame-ancestors * solo en /chat/[botId] (embebible en Moodle).
   const cspParts = [
     "default-src 'self'",
-    `script-src 'self' 'nonce-${nonce}' 'unsafe-inline' https://accounts.google.com https://www.googletagmanager.com${
+    `script-src 'self' 'unsafe-inline' https://accounts.google.com https://www.googletagmanager.com${
       isDev ? " 'unsafe-eval'" : ""
     }`,
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
