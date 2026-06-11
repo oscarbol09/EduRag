@@ -13,6 +13,13 @@ _client: Optional[Client] = None
 _client_lock = threading.Lock()
 
 
+def _safe_data(response) -> Optional[dict]:
+    """Extract .data from a supabase-py response, tolerating None or missing attribute."""
+    if response is None:
+        return None
+    return getattr(response, "data", None)
+
+
 def get_client() -> Client:
     global _client
     if _client is None:
@@ -32,13 +39,21 @@ async def create_user(user_data: dict) -> dict:
 
 
 async def get_user(user_id: str) -> Optional[dict]:
-    r = get_client().table("users").select("*").eq("id", user_id).maybe_single().execute()
-    return r.data if r else None
+    try:
+        resp = get_client().table("users").select("*").eq("id", user_id).maybe_single().execute()
+        return _safe_data(resp)
+    except Exception as e:
+        logger.warning("get_user(%s) failed: %s", user_id, e)
+        return None
 
 
 async def get_user_by_email(email: str) -> Optional[dict]:
-    r = get_client().table("users").select("*").eq("email", email).maybe_single().execute()
-    return r.data if r else None
+    try:
+        resp = get_client().table("users").select("*").eq("email", email).maybe_single().execute()
+        return _safe_data(resp)
+    except Exception as e:
+        logger.warning("get_user_by_email(%s) failed: %s", email, e)
+        return None
 
 
 async def list_users(role: Optional[str] = None, limit: Optional[int] = None, offset: Optional[int] = None) -> List[dict]:
@@ -50,7 +65,8 @@ async def list_users(role: Optional[str] = None, limit: Optional[int] = None, of
         q = q.limit(limit)
     if offset is not None:
         q = q.offset(offset)
-    return q.execute().data
+    resp = q.execute()
+    return _safe_data(resp) if isinstance(_safe_data(resp), list) else []
 
 
 async def update_user(user_id: str, updates: dict) -> dict:
@@ -83,34 +99,46 @@ async def create_chatbot(chatbot_data: dict) -> dict:
 
 
 async def get_chatbot(chatbot_id: str) -> Optional[dict]:
-    r = get_client().table("chatbots").select("*").eq("id", chatbot_id).maybe_single().execute()
-    return r.data if r else None
+    try:
+        resp = get_client().table("chatbots").select("*").eq("id", chatbot_id).maybe_single().execute()
+        return _safe_data(resp)
+    except Exception as e:
+        logger.warning("get_chatbot(%s) failed: %s", chatbot_id, e)
+        return None
 
 
 async def get_chatbot_by_id_and_owner(chatbot_id: str, owner_id: str) -> Optional[dict]:
-    r = (
-        get_client()
-        .table("chatbots")
-        .select("*")
-        .eq("id", chatbot_id)
-        .eq("owner_id", owner_id)
-        .maybe_single()
-        .execute()
-    )
-    return r.data if r else None
+    try:
+        resp = (
+            get_client()
+            .table("chatbots")
+            .select("*")
+            .eq("id", chatbot_id)
+            .eq("owner_id", owner_id)
+            .maybe_single()
+            .execute()
+        )
+        return _safe_data(resp)
+    except Exception as e:
+        logger.warning("get_chatbot_by_id_and_owner(%s) failed: %s", chatbot_id, e)
+        return None
 
 
 async def update_chatbot(chatbot_id: str, updates: dict, owner_id: str) -> Optional[dict]:
     updates["updated_at"] = datetime.utcnow().isoformat()
-    r = (
-        get_client()
-        .table("chatbots")
-        .update(updates)
-        .eq("id", chatbot_id)
-        .eq("owner_id", owner_id)
-        .execute()
-    )
-    return r.data[0] if r.data else None
+    try:
+        r = (
+            get_client()
+            .table("chatbots")
+            .update(updates)
+            .eq("id", chatbot_id)
+            .eq("owner_id", owner_id)
+            .execute()
+        )
+        return r.data[0] if (r and r.data) else None
+    except Exception as e:
+        logger.warning("update_chatbot(%s) failed: %s", chatbot_id, e)
+        return None
 
 
 async def delete_chatbot(chatbot_id: str, owner_id: str) -> bool:
@@ -134,13 +162,13 @@ async def list_chatbots(
             q = q.eq("is_published", True)
     else:
         q = q.eq("is_published", True)
-        
     q = q.order("created_at", desc=True)
     if limit is not None:
         q = q.limit(limit)
     if offset is not None:
         q = q.offset(offset)
-    return q.execute().data
+    resp = q.execute()
+    return _safe_data(resp) if isinstance(_safe_data(resp), list) else []
 
 
 # ── Documents ───────────────────────────────────────
@@ -151,20 +179,28 @@ async def create_document(document_data: dict) -> dict:
 
 
 async def get_document(document_id: str) -> Optional[dict]:
-    r = get_client().table("documents").select("*").eq("id", document_id).maybe_single().execute()
-    return r.data if r else None
+    try:
+        resp = get_client().table("documents").select("*").eq("id", document_id).maybe_single().execute()
+        return _safe_data(resp)
+    except Exception as e:
+        logger.warning("get_document(%s) failed: %s", document_id, e)
+        return None
 
 
 async def update_document(document_id: str, updates: dict, chatbot_id: str) -> Optional[dict]:
-    r = (
-        get_client()
-        .table("documents")
-        .update(updates)
-        .eq("id", document_id)
-        .eq("chatbot_id", chatbot_id)
-        .execute()
-    )
-    return r.data[0] if r.data else None
+    try:
+        r = (
+            get_client()
+            .table("documents")
+            .update(updates)
+            .eq("id", document_id)
+            .eq("chatbot_id", chatbot_id)
+            .execute()
+        )
+        return r.data[0] if (r and r.data) else None
+    except Exception as e:
+        logger.warning("update_document(%s) failed: %s", document_id, e)
+        return None
 
 
 async def list_documents(chatbot_id: str, limit: Optional[int] = None, offset: Optional[int] = None) -> List[dict]:
@@ -179,20 +215,21 @@ async def list_documents(chatbot_id: str, limit: Optional[int] = None, offset: O
         q = q.limit(limit)
     if offset is not None:
         q = q.offset(offset)
-    return q.execute().data
+    resp = q.execute()
+    return _safe_data(resp) if isinstance(_safe_data(resp), list) else []
 
 
 async def list_documents_for_chatbots(chatbot_ids: List[str]) -> List[dict]:
     if not chatbot_ids:
         return []
-    return (
+    resp = (
         get_client()
         .table("documents")
         .select("id, chatbot_id, status")
         .in_("chatbot_id", chatbot_ids)
         .execute()
-        .data
     )
+    return _safe_data(resp) if isinstance(_safe_data(resp), list) else []
 
 
 async def delete_document(document_id: str, chatbot_id: str) -> bool:
@@ -211,15 +248,19 @@ async def create_conversation(conversation_data: dict) -> dict:
 
 
 async def get_conversation(conversation_id: str) -> Optional[dict]:
-    r = (
-        get_client()
-        .table("conversations")
-        .select("*")
-        .eq("id", conversation_id)
-        .maybe_single()
-        .execute()
-    )
-    return r.data if r else None
+    try:
+        resp = (
+            get_client()
+            .table("conversations")
+            .select("*")
+            .eq("id", conversation_id)
+            .maybe_single()
+            .execute()
+        )
+        return _safe_data(resp)
+    except Exception as e:
+        logger.warning("get_conversation(%s) failed: %s", conversation_id, e)
+        return None
 
 
 async def save_conversation(conversation_data: dict) -> dict:
@@ -229,27 +270,27 @@ async def save_conversation(conversation_data: dict) -> dict:
 
 
 async def list_conversations(chatbot_id: str) -> List[dict]:
-    return (
+    resp = (
         get_client()
         .table("conversations")
         .select("*")
         .eq("chatbot_id", chatbot_id)
         .execute()
-        .data
     )
+    return _safe_data(resp) if isinstance(_safe_data(resp), list) else []
 
 
 async def list_conversations_for_chatbots(chatbot_ids: List[str]) -> List[dict]:
     if not chatbot_ids:
         return []
-    return (
+    resp = (
         get_client()
         .table("conversations")
         .select("id, chatbot_id, updated_at, created_at")
         .in_("chatbot_id", chatbot_ids)
         .execute()
-        .data
     )
+    return _safe_data(resp) if isinstance(_safe_data(resp), list) else []
 
 
 # ── Messages (tabla normalizada, reemplaza conversations.messages JSONB) ───────────
@@ -294,7 +335,8 @@ async def list_messages_for_conversation(
         )
         if limit is not None:
             q = q.limit(limit)
-        return q.execute().data
+        resp = q.execute()
+        return _safe_data(resp) if isinstance(_safe_data(resp), list) else []
     except Exception as e:
         logger.warning(
             "list_messages_for_conversation: no se pudo leer de public.messages. "
