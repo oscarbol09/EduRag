@@ -1,10 +1,24 @@
-from fastapi import HTTPException, Request, Depends
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi import HTTPException, Request
+from fastapi.security import HTTPBearer
 from jwt_token import verify_jwt_token
-from settings import settings
+from supabase_db import is_token_revoked
 
 
 security = HTTPBearer(auto_error=False)
+
+
+async def _verify_token(token: str) -> dict:
+    payload = verify_jwt_token(token)
+    if not payload:
+        return {"sub": None, "email": None, "role": "anonymous"}
+
+    jti = payload.get("jti")
+    if jti:
+        revoked = await is_token_revoked(jti)
+        if revoked:
+            return {"sub": None, "email": None, "role": "anonymous"}
+
+    return payload
 
 
 async def get_current_user_optional(request: Request) -> dict:
@@ -28,10 +42,3 @@ async def get_current_user(request: Request) -> dict:
         raise HTTPException(status_code=401, detail="Token inválido o expirado")
 
     return user
-
-
-async def _verify_token(token: str) -> dict:
-    payload = verify_jwt_token(token)
-    if payload:
-        return payload
-    return {"sub": None, "email": None, "role": "anonymous"}

@@ -1,14 +1,16 @@
 import pytest
 import uuid
 import asyncio
+from datetime import datetime, timedelta
 from fastapi.testclient import TestClient
 from unittest.mock import patch, AsyncMock
-from main import app, _persist_chat_turn
+from main import app, _persist_chat_turn, get_client_ip
 from security_utils import encrypt_api_key, decrypt_api_key
 from context_builder import build_context, MAX_CONTEXT_CHARS
 from supabase_db import create_user
 from password import hash_password
-from jwt_token import create_jwt_token
+from jwt_token import create_jwt_token, create_refresh_token, verify_jwt_token
+from document_uploader import extract_text_from_file
 
 client = TestClient(app)
 app.state.limiter.enabled = False
@@ -25,7 +27,7 @@ def _register_and_login(email: str, password: str) -> tuple[dict, str]:
     return data["user"], data["token"]
 
 
-def _create_chatbot(token: str, name: str) -> dict:
+def _create_chatbot(token: str, name: str, auto_publish: bool = True) -> dict:
     headers = {"Authorization": f"Bearer {token}"}
     resp = client.post("/chatbots", json={
         "name": name,
@@ -35,7 +37,10 @@ def _create_chatbot(token: str, name: str) -> dict:
         "restriction_level": "guided",
     }, headers=headers)
     assert resp.status_code == 200, resp.text
-    return resp.json()
+    bot = resp.json()
+    if auto_publish:
+        client.post(f"/chatbots/{bot['id']}/publish", headers=headers)
+    return bot
 
 
 # ─── Existentes ───────────────────────────────────────────────────────────────
@@ -116,8 +121,8 @@ def test_chatbot_ownership_isolation():
     _user_a, token_a = _register_and_login(f"user_a_{uid_a}@example.com", "Password123!")
     _user_b, token_b = _register_and_login(f"user_b_{uid_b}@example.com", "Password123!")
 
-    # A crea un chatbot (no publicado por defecto)
-    bot = _create_chatbot(token_a, f"Bot privado {uid_a}")
+    # A crea un chatbot (no publicado)
+    bot = _create_chatbot(token_a, f"Bot privado {uid_a}", auto_publish=False)
     bot_id = bot["id"]
 
     # B no debería poder acceder al chatbot no publicado de A
@@ -549,3 +554,103 @@ def test_admin_cannot_delete_nonexistent_teacher():
     token = _create_admin_and_token()
     resp = client.delete(f"/admin/teachers/{uuid.uuid4()}", headers={"Authorization": f"Bearer {token}"})
     assert resp.status_code == 404
+
+
+# ─── Get Client IP ─────────────────────────────────────────────────────────
+
+def test_get_client_ip_forwarded_for():
+    """get_client_ip debe extraer la IP real de X-Forwarded-For."""
+    from fastapi import Request
+    scope = {
+        "type": "http",
+        "headers": [
+            (b"x-forwarded-for", b"203.0.113.42, 10.0.0.1"),
+        ],
+    }
+    request = Request(scope)
+    assert get_client_ip(request) == "203.0.113.42"
+
+
+def test_get_client_ip_fallback_to_host():
+    """Sin X-Forwarded-For, debe usar request.client.host."""
+    from fastapi import Request
+    scope = {
+        "type": "http",
+        "client": ("192.168.1.100", 50000),
+        "headers": [],
+    }
+    request = Request(scope)
+    assert get_client_ip(request) == "192.168.1.100"
+
+
+# ─── Refresh Token / JWT ────────────────────────────────────────────────────
+
+def test_create_and_verify_refresh_token():
+    """create_refresh_token debe generar tokens válidos con jti único."""
+    token, jti, expires = create_refresh_token("user-1", "test@test.com", "teacher")
+    assert token
+    assert jti
+    assert expires > datetime.utcnow()
+
+    payload = verify_jwt_token(token)
+    assert payload is not None
+    assert payload["sub"] == "user-1"
+    assert payload["jti"] == jti
+
+
+def test_access_token_has_jti():
+    """create_jwt_token debe incluir un jti único."""
+    token = create_jwt_token("user-1", "test@test.com", "teacher")
+    payload = verify_jwt_token(token)
+    assert payload is not None
+    assert payload["jti"] is not None
+    assert len(payload["jti"]) > 0
+
+
+def test_refresh_login_response_includes_refresh_token():
+    """POST /auth/login debe devolver refresh_token."""
+    uid = str(uuid.uuid4())[:8]
+    email = f"refresh_test_{uid}@example.com"
+    client.post("/auth/register", json={"email": email, "password": "Password123!"})
+    resp = client.post("/auth/login", json={"email": email, "password": "Password123!"})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "token" in data
+    assert "refresh_token" in data
+    assert data["refresh_token"] != data["token"]
+
+
+# ─── document_uploader — extract_text_from_file ─────────────────────────────
+
+def test_extract_text_from_md():
+    """MD debe extraerse como texto plano."""
+    content = "# T\u00edtulo\n\nEsto es un *test*.".encode("utf-8")
+    result = extract_text_from_file(content, "test.md", "text/markdown")
+    assert "T\u00edtulo" in result
+    assert "test" in result
+
+
+def test_extract_text_from_txt():
+    """TXT debe extraerse como texto plano."""
+    content = b"Hola mundo"
+    result = extract_text_from_file(content, "test.txt", "text/plain")
+    assert result == "Hola mundo"
+
+
+def test_extract_text_unknown_extension():
+    """Extensiones desconocidas deben tratarse como UTF-8."""
+    content = b"Texto arbitrario"
+    result = extract_text_from_file(content, "test.unknown", None)
+    assert result == "Texto arbitrario"
+
+
+def test_extract_text_pdf_invalid_raises():
+    """PDF inválido debe lanzar ValueError."""
+    with pytest.raises(ValueError, match="Error al extraer texto del PDF"):
+        extract_text_from_file(b"not a pdf", "test.pdf", "application/pdf")
+
+
+def test_extract_text_docx_invalid_raises():
+    """DOCX inválido debe lanzar ValueError."""
+    with pytest.raises(ValueError, match="Error al extraer texto del archivo DOCX"):
+        extract_text_from_file(b"not a docx", "test.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document")

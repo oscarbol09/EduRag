@@ -39,7 +39,7 @@ export function StatusBadge({
   const colorClass = defaultColors[status] || "bg-gray-100 text-gray-600";
 
   return (
-    <span className={`rounded ${sizeClasses} ${colorClass}`}>
+    <span className={`rounded-full ${sizeClasses} ${colorClass}`}>
       {defaultLabels[status] || status}
     </span>
   );

@@ -343,3 +343,37 @@ async def list_messages_for_conversation(
             "Fallback a JSONB activo. Error: %s", e
         )
         return []
+
+
+# ── Revoked Tokens ─────────────────────────────────────
+
+async def revoke_token(jti: str, token_type: str, user_id: str, expires_at) -> None:
+    """Revoca un token JWT por su jti."""
+    try:
+        get_client().table("revoked_tokens").insert({
+            "jti": jti,
+            "token_type": token_type,
+            "user_id": user_id,
+            "expires_at": expires_at.isoformat() if hasattr(expires_at, 'isoformat') else expires_at,
+        }).execute()
+    except Exception as e:
+        logger.warning("revoke_token(%s) failed: %s", jti, e)
+
+
+async def is_token_revoked(jti: str) -> bool:
+    """Verifica si un jti está en la blacklist de tokens revocados."""
+    if not jti:
+        return False
+    try:
+        resp = (
+            get_client()
+            .table("revoked_tokens")
+            .select("jti")
+            .eq("jti", jti)
+            .maybe_single()
+            .execute()
+        )
+        return _safe_data(resp) is not None
+    except Exception as e:
+        logger.warning("is_token_revoked(%s) failed: %s", jti, e)
+        return False

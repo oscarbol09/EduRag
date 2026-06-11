@@ -77,11 +77,13 @@ Las migraciones están en `supabase/migrations/` y se aplican con `supabase db p
 
 Sistema **JWT propio** HS256 firmado por `JWT_SECRET` (obligatorio, sin default).
 
-- Login: `POST /auth/login` (10/min) → verifica bcrypt → JWT con `{ sub, email, role, exp }`.
+- Login: `POST /auth/login` (10/min) → verifica bcrypt → JWT con `{ sub, email, role, exp, jti }`.
+- Refresh: `POST /auth/refresh` (20/min, [JWT]) → nuevo par access+refresh con rotación y revocación del anterior.
 - Registro público: `POST /auth/register` (5/min) → fuerza `role: student`.
 - Creación de docentes: `POST /admin/teachers` (solo admin).
-- Token persiste en **`sessionStorage`** (se borra al cerrar la pestaña — menor exposición XSS).
+- Token persiste en **`localStorage`** (se comparte entre pestañas — riesgo mitigado por expiración 24h + revocación backend).
 - Validación: `get_current_user(request)` y `get_current_user_optional(request)` en `backend/auth.py`.
+- Revocación: tabla `revoked_tokens` — JWT se invalida al refrescar o cerrar sesión (seguimiento por `jti` único).
 
 ---
 
@@ -93,7 +95,7 @@ Sistema **JWT propio** HS256 firmado por `JWT_SECRET` (obligatorio, sin default)
 | Rate limiting | `slowapi`: `/auth/login` 10/min, `/auth/register` 5/min, `/chat/{id}` 100/min por IP |
 | Aislamiento multi-tenant | `owner_id` / `chatbot_id` validados en todas las operaciones |
 | Passwords filtrados | `map_user_response()` hace `res.pop("password", None)` en toda respuesta |
-| CSP + headers | `vercel.json`: CSP con `connect-src` Railway + Supabase, `X-Frame-Options: DENY`, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy` |
+| CSP + headers | `next.config.ts`: CSP con `connect-src` Railway + Supabase, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`; `frame-ancestors *` en embed |
 | Historial protegido | `GET /chat/{id}/history` — requiere JWT y valida owner / admin / estudiante asociado |
 | system_prompt limitado | `MAX_SYSTEM_PROMPT_LENGTH = 2000` chars — validado en POST y PUT `/chatbots` |
 | CORS | `CORS_ORIGINS` incluye frontend Vercel y backend Railway |
@@ -109,6 +111,7 @@ GET  /platform/stats                  → estadísticas públicas (landing)
 
 POST /auth/login                      → { token, user } — 10/min
 POST /auth/register                   → { token, user } — 5/min, role=student forzado
+POST /auth/refresh                    → { token, user } — 20/min [JWT]
 GET  /auth/me                         → usuario actual [JWT]
 PUT  /auth/me/profile                 → actualizar perfil + OpenRouter key [JWT]
 
@@ -118,7 +121,7 @@ GET  /chatbots/{id}                   → detalle (system_prompt_override oculta
 PUT  /chatbots/{id}                   → actualizar [JWT owner]
 DELETE /chatbots/{id}                 → eliminar + document_contents [JWT owner]
 POST /chatbots/{id}/publish           → publicar [JWT owner]
-GET  /chatbots/{id}/embed             → embed_code + public_url
+GET  /chatbots/{id}/embed             → embed_code + public_url (requiere auth si no publicado)
 
 POST /documents/upload                → subir MD/TXT/PDF/DOCX [JWT owner]
 GET  /documents?chatbot_id=           → listar (limit, offset) [JWT owner]
@@ -153,7 +156,7 @@ DELETE /admin/teachers/{id}           → eliminar docente [JWT admin]
 
 ```bash
 cd backend
-pytest -v          # 26 tests — auth, seguridad, chat, admin, context_builder, security_utils
+pytest -v          # 44 tests — auth, seguridad, chat, admin, document_upload, refresh_token, context_builder, security_utils
 
 cd frontend
 npm run build      # verifica TypeScript y build de producción
@@ -195,6 +198,7 @@ fix/nombre
 | `OPENROUTER_API_KEY` | backend | — | Fallback para whitelist |
 | `CORS_ORIGINS` | backend | ✅ | URLs permitidas (Vercel + Railway + localhost) |
 | `NEXT_PUBLIC_API_URL` | frontend | ✅ | URL base del backend |
+| `NEXT_PUBLIC_SUPPORT_WHATSAPP` | frontend | — | Número WhatsApp para soporte (support widget) |
 
 ---
 

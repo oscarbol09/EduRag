@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+import { api } from "@/lib/api";
 
 interface PlatformStats {
   totalChatbots: number;
@@ -29,9 +28,8 @@ export function StatsSection() {
   const [stats, setStats] = useState<PlatformStats | null>(null);
 
   useEffect(() => {
-    fetch(`${API_URL}/platform/stats`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => { if (data) setStats(data); })
+    api.system.platformStats()
+      .then((data) => setStats(data))
       .catch(() => null);
   }, []);
 

@@ -27,7 +27,7 @@ backend/
 ├── llm_client.py           # Cliente async httpx → OpenRouter (generate + generate_stream)
 ├── document_uploader.py    # Upload Supabase Storage + extracción texto (MD/TXT/PDF/DOCX con tablas)
 ├── railway.toml            # Config deploy Railway (Uvicorn --timeout-keep-alive 120)
-├── test_main.py            # Suite pytest — 26 tests
+├── test_main.py            # Suite pytest — 44 tests
 ├── requirements.txt        # Dependencias Python
 ├── .env                    # Variables locales (NO commitear)
 └── .env.example            # Plantilla completa
@@ -70,13 +70,15 @@ encrypt_api_key(api_key: str) -> str   # Fernet — lanza excepción si falla (s
 decrypt_api_key(encrypted: str) -> str # Fernet — warning + retorna crudo si es dato legacy
 ```
 `ENCRYPTION_KEY` puede ser una Fernet key válida (44 bytes base64url) o un string arbitrario (derivado con SHA-256).
+Si se usa SHA-256 (key inválida), se registra un `logger.warning` para alertar al administrador.
 
 ### `auth.py`
 ```python
 user = await get_current_user(request)          # requiere JWT válido — 401 si falta
 user = await get_current_user_optional(request) # acepta sin token — retorna role: "anonymous"
 ```
-Payload JWT: `{ sub, email, role }`.
+Payload JWT: `{ sub, email, role, exp, jti }`.
+Revocación: tabla `revoked_tokens` — `_verify_token()` chequea `jti` antes de aceptar el token.
 
 ### `supabase_db.py`
 CRUD sobre 6 tablas. Todas las funciones son `async`. Cliente Supabase con singleton thread-safe (`threading.Lock`).
@@ -168,19 +170,20 @@ Mismo pipeline hasta paso 3. Luego:
 ## Tests — Cobertura Actual
 
 ```bash
-cd backend && pytest -v   # 26 tests
+cd backend && pytest -v   # 44 tests
 ```
 
 | Grupo | Tests |
-|---|---|
+|---|---|---|
 | Sistema | `test_health`, `test_readiness` |
-| Auth | `test_auth_flow_and_chatbot_creation`, `test_register_forces_student_role`, `test_password_hash_not_exposed_in_login`, `test_login_wrong_password_returns_401` |
-| Seguridad multi-tenant | `test_chatbot_ownership_isolation`, `test_document_upload_rejects_wrong_owner`, `test_persist_rejects_cross_chatbot_conversation_id`, `test_chat_history_requires_auth` |
+| Auth | `test_auth_flow_and_chatbot_creation`, `test_register_forces_student_role`, `test_password_hash_not_exposed_in_login`, `test_login_wrong_password_returns_401`, `test_refresh_token_rotation`, `test_refresh_token_requires_valid_token` |
+| Seguridad multi-tenant | `test_chatbot_ownership_isolation`, `test_document_upload_rejects_wrong_owner`, `test_persist_rejects_cross_chatbot_conversation_id`, `test_chat_history_requires_auth`, `test_unpublished_chatbot_rejected_in_chat` |
 | Chat | `test_chat_returns_response_for_published_chatbot`, `test_chat_unknown_chatbot_returns_404`, `test_chat_preserves_conversation_id_across_turns`, `test_chat_rejects_cross_chatbot_conversation`, `test_chat_history_returns_messages`, `test_chat_stream_returns_sse_events` |
 | Validación | `test_system_prompt_override_too_long_rejected`, `test_system_prompt_override_at_limit_accepted`, `test_chat_message_too_long_rejected`, `test_chatbots_listing_with_limit` |
 | Admin | `test_admin_create_teacher`, `test_admin_create_teacher_rejects_duplicate_email`, `test_admin_list_teachers`, `test_admin_update_teacher`, `test_admin_delete_teacher`, `test_non_admin_cannot_access_admin_endpoints`, `test_admin_cannot_delete_nonexistent_teacher` |
-| security_utils | `test_encrypt_decrypt_roundtrip`, `test_encrypt_empty_key_returns_empty`, `test_decrypt_empty_key_returns_empty` |
-| context_builder | `test_context_builder_respects_budget`, `test_context_builder_no_docs_returns_message`, `test_context_builder_scores_relevant_chunks_first` |
+| Document Upload | `test_document_upload_pdf`, `test_document_upload_docx`, `test_document_upload_txt`, `test_document_upload_rejects_invalid_type` |
+| security_utils | `test_encrypt_decrypt_roundtrip`, `test_encrypt_empty_key_returns_empty`, `test_decrypt_empty_key_returns_empty`, `test_sha256_fallback_logs_warning` |
+| context_builder | `test_context_builder_respects_budget`, `test_context_builder_no_docs_returns_message`, `test_context_builder_scores_relevant_chunks_first`, `test_context_builder_budget_edge_cases` |
 
 ---
 

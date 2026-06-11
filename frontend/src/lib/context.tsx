@@ -32,9 +32,7 @@ const AppContext = createContext<AppContextType | null>(null);
 export function AppProvider({ children }: { children: ReactNode }) {
   const [auth, setAuth] = useState<AuthState>({
     user: null,
-    // Seguridad: sessionStorage limita el token al ciclo de vida de la pestaña.
-    // A diferencia de localStorage, se borra automáticamente al cerrar la pestaña/navegador.
-    token: typeof window !== "undefined" ? sessionStorage.getItem("token") : null,
+    token: typeof window !== "undefined" ? localStorage.getItem("token") : null,
     isLoading: false,
   });
 
@@ -52,7 +50,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           setAuth({ user: currentUser, token, isLoading: false });
         } catch (error) {
           console.error("Failed to auto-load user from token:", error);
-          sessionStorage.removeItem("token");
+          localStorage.removeItem("token");
           setAuth({ user: null, token: null, isLoading: false });
         }
       }
@@ -64,7 +62,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setAuth((prev) => ({ ...prev, isLoading: true }));
     try {
       const result = await api.auth.login(email, password);
-      sessionStorage.setItem("token", result.token);
+      localStorage.setItem("token", result.token);
       setAuth({ user: result.user, token: result.token, isLoading: false });
       return result.user;
     } catch (error) {
@@ -77,7 +75,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setAuth((prev) => ({ ...prev, isLoading: true }));
     try {
       const result = await api.auth.register(email, password);
-      sessionStorage.setItem("token", result.token);
+      localStorage.setItem("token", result.token);
       setAuth({ user: result.user, token: result.token, isLoading: false });
       return result.user;
     } catch (error) {
@@ -87,7 +85,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const logout = useCallback(() => {
-    sessionStorage.removeItem("token");
+    localStorage.removeItem("token");
     setAuth({ user: null, token: null, isLoading: false });
     setChatbots([]);
     setCurrentChatbot(null);

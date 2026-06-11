@@ -10,12 +10,7 @@ export function SupportWidget() {
   const { auth } = useApp();
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<"whatsapp" | "email" | "message">("whatsapp");
-  const [messageText, setMessageText] = useState("");
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitStatus, setSubmitStatus] = useState<"idle" | "success" | "error">("idle");
+  const [activeTab, setActiveTab] = useState<"whatsapp" | "email">("whatsapp");
   const [chatbot, setChatbot] = useState<Chatbot | null>(null);
 
   useEffect(() => {
@@ -64,24 +59,6 @@ export function SupportWidget() {
       defaultPrefilledText = "Hola, soy un estudiante y necesito ayuda técnica.";
     }
   }
-
-  const handleSendInternalMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!messageText.trim()) return;
-    setIsSubmitting(true);
-    setSubmitStatus("idle");
-    try {
-      // TODO: conectar a /support/message cuando el endpoint esté disponible (IMP-04)
-      await new Promise((resolve) => setTimeout(resolve, 800));
-      setSubmitStatus("success");
-      setMessageText("");
-      setTimeout(() => setSubmitStatus("idle"), 3000);
-    } catch {
-      setSubmitStatus("error");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
 
   const getWhatsAppLink = () => {
     if (!whatsappNumber) return "#";
@@ -143,7 +120,7 @@ export function SupportWidget() {
 
           {/* Selector de Pestañas */}
           <div className="flex border-b border-gray-100 text-sm" role="tablist" aria-label="Opciones de contacto">
-            {(["whatsapp", "email", "message"] as const).map((tab) => (
+            {(["whatsapp", "email"] as const).map((tab) => (
               <button
                 key={tab}
                 role="tab"
@@ -202,61 +179,7 @@ export function SupportWidget() {
               </div>
             )}
 
-            {activeTab === "message" && (
-              <form onSubmit={handleSendInternalMessage} className="space-y-3">
-                <p className="text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded-xl p-2">
-                  ⚠️ Envío directo disponible próximamente. Usa WhatsApp o Email por ahora.
-                </p>
-                {isGuest && (
-                  <div className="grid grid-cols-2 gap-2">
-                    <input
-                      type="text"
-                      placeholder="Tu Nombre"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      aria-label="Tu nombre"
-                      className="w-full px-3 py-1.5 border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-brand-500 focus:border-transparent outline-none"
-                      required
-                    />
-                    <input
-                      type="email"
-                      placeholder="Tu Email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      aria-label="Tu correo electrónico"
-                      className="w-full px-3 py-1.5 border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-brand-500 focus:border-transparent outline-none"
-                      required
-                    />
-                  </div>
-                )}
-                <textarea
-                  placeholder="Escribe tu mensaje aquí..."
-                  value={messageText}
-                  onChange={(e) => setMessageText(e.target.value)}
-                  rows={4}
-                  aria-label="Mensaje de soporte"
-                  className="w-full p-3 border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-brand-500 focus:border-transparent outline-none resize-none"
-                  required
-                />
-                {submitStatus === "success" && (
-                  <div role="status" className="text-xs p-2 text-green-700 bg-green-50 border border-green-200 rounded-xl">
-                    ✓ Mensaje enviado. ¡Gracias!
-                  </div>
-                )}
-                {submitStatus === "error" && (
-                  <div role="alert" className="text-xs p-2 text-red-700 bg-red-50 border border-red-200 rounded-xl">
-                    No se pudo enviar. Inténtalo de nuevo.
-                  </div>
-                )}
-                <button
-                  type="submit"
-                  disabled={isSubmitting || !messageText.trim()}
-                  className="w-full py-2 bg-brand-600 hover:bg-brand-700 text-white font-medium rounded-xl text-xs disabled:opacity-50 transition-colors shadow"
-                >
-                  {isSubmitting ? "Enviando..." : "Enviar Mensaje"}
-                </button>
-              </form>
-            )}
+
           </div>
         </div>
       )}

@@ -1,6 +1,10 @@
+import logging
 from pydantic_settings import BaseSettings
 from typing import List
 import json
+import re
+
+logger = logging.getLogger(__name__)
 
 
 class Settings(BaseSettings):
@@ -24,7 +28,14 @@ class Settings(BaseSettings):
     @property
     def test_accounts_list(self) -> List[str]:
         """Devuelve la lista de emails autorizados para usar la API key del sistema."""
-        return [e.strip() for e in self.TEST_ACCOUNTS_WHITELIST.split(",") if e.strip()]
+        emails = [e.strip() for e in self.TEST_ACCOUNTS_WHITELIST.split(",") if e.strip()]
+        valid = []
+        for e in emails:
+            if re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", e):
+                valid.append(e)
+            else:
+                logger.warning("test_accounts_whitelist: email inválido ignorado — %r", e)
+        return valid
 
     # LLM por defecto (usado si el docente no tiene modelo configurado)
     DEFAULT_LLM_MODEL: str = "google/gemma-3-27b-it:free"

@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useApp } from "@/lib/context";
+import { useRequireRole } from "@/hooks/useRequireRole";
 import { api } from "@/lib/api";
 import { Navbar } from "@/components/Navbar";
 import { Spinner } from "@/components/Spinner";
@@ -44,6 +45,7 @@ const OPENROUTER_MODELS = [
 export default function TeacherSettingsPage() {
   const { auth, logout, updateUser } = useApp();
   const router = useRouter();
+  const { isAuthorized, isChecking } = useRequireRole("teacher");
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -58,51 +60,37 @@ export default function TeacherSettingsPage() {
   const [isError, setIsError] = useState(false);
 
   useEffect(() => {
-    if (!auth.isLoading) {
-      if (!auth.token) {
-        router.push("/login");
-      } else if (auth.user) {
-        if (auth.user.role !== "teacher") {
-          if (auth.user.role === "admin") {
-            router.push("/admin");
-          } else {
-            router.push("/marketplace");
-          }
-        } else {
-          // Parsear los datos del usuario actual, priorizando las columnas nativas devueltas por el backend
-          let firstName = auth.user.firstName || "";
-          let lastName = auth.user.lastName || "";
-          let institution = auth.user.institutionName || "";
-          let openrouterApiKey = auth.user.openrouterApiKey || "";
-          let openrouterModel = auth.user.openrouterModel || OPENROUTER_MODELS[0].id;
+    if (isAuthorized && auth.user) {
+      let firstName = auth.user.firstName || "";
+      let lastName = auth.user.lastName || "";
+      let institution = auth.user.institutionName || "";
+      let openrouterApiKey = auth.user.openrouterApiKey || "";
+      let openrouterModel = auth.user.openrouterModel || OPENROUTER_MODELS[0].id;
 
-          // Fallback heredado si las columnas nativas no se han cargado pero sí la cadena serializada
-          if (!firstName && !lastName && !institution && auth.user.institution && auth.user.institution.includes(" | ")) {
-            const parts = auth.user.institution.split(" | ");
-            const fullName = parts[0] || "";
-            institution = parts[1] || "";
-            openrouterApiKey = parts[2] || "";
-            openrouterModel = parts[3] || OPENROUTER_MODELS[0].id;
+      if (!firstName && !lastName && !institution && auth.user.institution && auth.user.institution.includes(" | ")) {
+        const parts = auth.user.institution.split(" | ");
+        const fullName = parts[0] || "";
+        institution = parts[1] || "";
+        openrouterApiKey = parts[2] || "";
+        openrouterModel = parts[3] || OPENROUTER_MODELS[0].id;
 
-            const nameParts = fullName.trim().split(" ");
-            firstName = nameParts[0] || "";
-            lastName = nameParts.slice(1).join(" ") || "";
-          }
-
-          setFormData({
-            firstName,
-            lastName,
-            institution,
-            country: auth.user.country || "",
-            openrouterApiKey,
-            openrouterModel: openrouterModel || OPENROUTER_MODELS[0].id,
-          });
-        }
+        const nameParts = fullName.trim().split(" ");
+        firstName = nameParts[0] || "";
+        lastName = nameParts.slice(1).join(" ") || "";
       }
-    }
-  }, [auth.user, auth.token, auth.isLoading]);
 
-  if (auth.isLoading || (auth.token && !auth.user) || !auth.user || auth.user.role !== "teacher") {
+      setFormData({
+        firstName,
+        lastName,
+        institution,
+        country: auth.user.country || "",
+        openrouterApiKey,
+        openrouterModel: openrouterModel || OPENROUTER_MODELS[0].id,
+      });
+    }
+  }, [isAuthorized, auth.user]);
+
+  if (isChecking || !isAuthorized) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <Spinner />
@@ -110,6 +98,7 @@ export default function TeacherSettingsPage() {
     );
   }
 
+  const user = auth.user!;
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
@@ -143,7 +132,7 @@ export default function TeacherSettingsPage() {
     }
   };
 
-  const isTestUser = auth.user.email.endsWith("@edurag.com");
+  const isTestUser = user.email.endsWith("@edurag.com");
   const selectedModelInfo = OPENROUTER_MODELS.find((m) => m.id === formData.openrouterModel);
 
   return (
@@ -185,7 +174,7 @@ export default function TeacherSettingsPage() {
               <div className="space-y-3 text-sm text-gray-600">
                 <div>
                   <span className="text-xs text-gray-400 block">Correo de Acceso</span>
-                  <strong className="text-gray-900">{auth.user.email}</strong>
+                    <strong className="text-gray-900">{user.email}</strong>
                 </div>
                 <div>
                   <span className="text-xs text-gray-400 block">Rol en el Sistema</span>
@@ -193,7 +182,7 @@ export default function TeacherSettingsPage() {
                 </div>
                 <div className="pt-2 border-t border-gray-50">
                   <span className="text-xs text-gray-400 block">Autenticación</span>
-                  <strong className="text-gray-950 capitalize">{auth.user.auth_method.replace("_", " ")}</strong>
+                    <strong className="text-gray-950 capitalize">{user.auth_method.replace("_", " ")}</strong>
                 </div>
               </div>
             </div>

@@ -18,6 +18,11 @@ def get_encryption_key() -> bytes:
         return key_env.encode()
     except Exception:
         # Si es un string arbitrario, derivarla de forma segura con SHA-256
+        logger.warning(
+            "ENCRYPTION_KEY no es una clave Fernet válida. "
+            "Derivando clave con SHA-256 — reemplázala con `Fernet.generate_key()` "
+            "para mayor seguridad."
+        )
         derived = hashlib.sha256(key_env.encode()).digest()
         return base64.urlsafe_b64encode(derived)
 

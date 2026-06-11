@@ -10,7 +10,7 @@ const sizeClasses = {
 
 export function Spinner({ size = "md" }: SpinnerProps) {
   return (
-    <div className="flex justify-center items-center py-12">
+    <div className="flex justify-center items-center py-12" role="status" aria-label="Cargando...">
       <div className={`animate-spin rounded-full border-b-2 border-brand-600 ${sizeClasses[size]}`}></div>
     </div>
   );

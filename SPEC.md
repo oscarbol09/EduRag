@@ -165,6 +165,7 @@ create index idx_users_role_active on users(role, is_active) where is_active = t
 ### Autenticación
 - `POST /auth/login` (10/min) — JWT sin hash de password en respuesta
 - `POST /auth/register` (5/min) — fuerza `role: student`
+- `POST /auth/refresh` (20/min) — rota access+refresh token, revoca el anterior [JWT]
 - `GET /auth/me` — usuario actual [JWT]
 - `PUT /auth/me/profile` — perfil + API key cifrada + modelo [JWT]
 
@@ -265,19 +266,19 @@ POST /chat/{chatbot_id}/stream
 | Rate limiting | `slowapi`: login 10/min, register 5/min, chat 100/min/IP |
 | Aislamiento multi-tenant | `owner_id` / `chatbot_id` validados en todas las queries y endpoints |
 | Passwords | bcrypt — filtrados de toda respuesta HTTP en `map_user_response()` |
-| JWT | HS256, `JWT_SECRET` requerido, sin defaults hardcodeados |
+| JWT | HS256 con `jti` único, refresh token con rotación, `revoked_tokens` para invalidación |
 | Rol forzado | Registro público siempre asigna `role: student` |
 | system_prompt | `MAX_SYSTEM_PROMPT_LENGTH = 2000` chars — validado en POST y PUT |
-| CSP + Headers | `vercel.json`: CSP con `connect-src` explícito, `X-Frame-Options: DENY`, etc. |
+| CSP + Headers | `next.config.ts`: CSP con `connect-src` explícito + `frame-ancestors *` para iframes en LMS |
 | Historial | `GET /chat/{id}/history` — requiere JWT + validación de rol |
-| Token frontend | `sessionStorage` — se borra al cerrar la pestaña |
+| Token frontend | `localStorage` — compartido entre pestañas, mitigado por expiración 24h + revocación |
 
 ---
 
 ## 8. Testing
 
 ```bash
-cd backend && pytest -v   # 26 tests
+cd backend && pytest -v   # 44 tests
 ```
 
 **Grupos:** sistema, auth, seguridad multi-tenant, chat (sync+stream), validaciones, admin CRUD, `security_utils`, `context_builder`.
@@ -305,3 +306,4 @@ Aplicar con `supabase db push` desde la raíz del proyecto:
 | `20260607153000_add_missing_indexes.sql` | 12 índices en 5 tablas |
 | `20260607154000_extract_messages_table.sql` | Crea tabla `messages` + migra datos desde JSONB |
 | `20260608120000_drop_messages_jsonb_legacy.sql` | Elimina `conversations.messages` (JSONB) |
+| `20260611120000_add_revoked_tokens.sql` | Crea tabla `revoked_tokens` para invalidación de JWT |

@@ -36,7 +36,7 @@ frontend/
 │   ├── lib/
 │   │   ├── api.ts                  # Cliente HTTP centralizado
 │   │   ├── types.ts                # Tipos TypeScript de dominio
-│   │   ├── context.tsx             # AuthContext (sessionStorage — se borra al cerrar pestaña)
+│   │   ├── context.tsx             # AuthContext (localStorage)
 │   │   └── utils.ts                # Helpers
 │   └── components/
 ├── test/                           # Vitest
@@ -52,7 +52,7 @@ frontend/
 
 ## Cliente API (`src/lib/api.ts`)
 
-Todos los llamados al backend pasan por `api.ts`. Usa `NEXT_PUBLIC_API_URL` + token JWT de `sessionStorage`.
+Todos los llamados al backend pasan por `api.ts`. Usa `NEXT_PUBLIC_API_URL` + token JWT de `localStorage`.
 
 ```typescript
 import { api } from '@/lib/api';
@@ -87,7 +87,7 @@ const docs = await api.documents.list(chatbotId);
 const { user, token, login, logout, isLoading } = useAuth();
 ```
 
-- Token persiste en **`sessionStorage`** (clave `token`) — se borra al cerrar la pestaña.
+- Token persiste en **`localStorage`** (clave `token`) — compartido entre pestañas, mitigado por expiración JWT 24h + revocación backend.
 - `user` expone: `{ id, email, role, firstName, lastName, institutionName, openrouterApiKey, openrouterModel }`.
 - El estado `conversations` fue eliminado (era dead state — nunca se actualizaba).
 
@@ -96,15 +96,15 @@ const { user, token, login, logout, isLoading } = useAuth();
 ## Seguridad Frontend
 
 | Control | Implementación |
-|---|---|
-| Token en sessionStorage | Menor exposición XSS que localStorage |
-| CSP | `vercel.json`: `connect-src` incluye `*.supabase.co`, `openrouter.ai`, `edurag-production.up.railway.app` |
-| X-Frame-Options | `DENY` — el chatbot embebible funciona por ruta específica, no como top-level |
+|---|---|---|
+| Token en localStorage | Compartido entre pestañas — riesgo mitigado por JWT expira 24h + revocación backend (tabla `revoked_tokens`) |
+| CSP | `next.config.ts`: `connect-src` incluye `*.supabase.co`, `openrouter.ai`, `edurag-production.up.railway.app` |
+| X-Frame-Options | Reemplazado por CSP `frame-ancestors *` en next.config.ts (necesario para iframes en Moodle) |
 | X-Content-Type-Options | `nosniff` |
 | Referrer-Policy | `strict-origin-when-cross-origin` |
 | Permissions-Policy | `camera=(), microphone=(), geolocation=()` |
 
-> **Nota sobre iframes:** `X-Frame-Options: DENY` aplica a todo el dominio. Para embeber `/chat/[botId]` en Moodle se necesita servir esa ruta desde un subdominio separado o usar una política CSP `frame-ancestors` más granular.
+> **Nota sobre iframes:** `frame-ancestors *` permite embeber el chatbot en cualquier LMS. Si se necesita restringir a dominios específicos en el futuro, se puede cambiar a `frame-ancestors moodle.miinstitucion.edu`.
 
 ---
 

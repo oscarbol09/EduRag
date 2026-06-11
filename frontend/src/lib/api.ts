@@ -24,7 +24,7 @@ async function fetchApi<T>(
   options: RequestInit = {},
   timeoutMs: number = LIGHT_TIMEOUT_MS
 ): Promise<T> {
-  const token = typeof window !== "undefined" ? sessionStorage.getItem("token") : null;
+  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
   const headers: HeadersInit = {
     "Content-Type": "application/json",
@@ -73,12 +73,12 @@ async function streamChat(
   message: ChatMessage,
   callbacks: StreamCallbacks
 ): Promise<void> {
-  const token = typeof window !== "undefined" ? sessionStorage.getItem("token") : null;
+  const tokenFromStorage = typeof window !== "undefined" ? localStorage.getItem("token") : null;
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     "Accept": "text/event-stream",
   };
-  if (token) headers["Authorization"] = `Bearer ${token}`;
+  if (tokenFromStorage) headers["Authorization"] = `Bearer ${tokenFromStorage}`;
 
   const response = await fetch(`${API_URL}/chat/${chatbotId}/stream`, {
     method: "POST",
@@ -193,7 +193,7 @@ export const api = {
       formData.append("file", file);
       formData.append("chatbot_id", chatbotId);
 
-      const token = typeof window !== "undefined" ? sessionStorage.getItem("token") : null;
+      const uploadToken = typeof window !== "undefined" ? localStorage.getItem("token") : null;
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
 
@@ -201,7 +201,7 @@ export const api = {
         const response = await fetch(`${API_URL}/documents/upload`, {
           method: "POST",
           headers: {
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            ...(uploadToken ? { Authorization: `Bearer ${uploadToken}` } : {}),
           },
           body: formData,
           signal: controller.signal,
@@ -279,6 +279,6 @@ export const api = {
     health: () => fetchApi<{ status: string }>("/health"),
     ready: () => fetchApi<{ status: string }>("/ready"),
     platformStats: () =>
-      fetchApi<{ totalChatbots: number; activeChatbots: number; totalTeachers: number; totalStudents: number }>("/platform/stats"),
+      fetchApi<{ totalChatbots: number; totalTeachers: number; totalMessages: number }>("/platform/stats"),
   },
 };

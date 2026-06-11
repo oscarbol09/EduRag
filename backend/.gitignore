@@ -26,3 +26,5 @@ build/
 dist/
 *.zip
 release.zip
+
+CLAUDE.md

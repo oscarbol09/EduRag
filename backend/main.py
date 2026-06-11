@@ -2,7 +2,6 @@ from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Request, Dep
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 import hashlib
 import json
@@ -23,6 +22,7 @@ from supabase_db import (
     create_document, get_document, update_document, list_documents, list_documents_for_chatbots, delete_document,
     create_conversation, get_conversation, save_conversation, list_conversations, list_conversations_for_chatbots,
     create_messages_batch, list_messages_for_conversation,
+    revoke_token,
     get_client
 )
 from document_content_store import (
@@ -37,14 +37,33 @@ from context_builder import build_context
 from document_uploader import upload_file_to_blob, extract_text_from_file
 from auth import get_current_user, get_current_user_optional
 from password import hash_password, verify_password
-from jwt_token import create_jwt_token
+from jwt_token import create_jwt_token, create_refresh_token, verify_jwt_token
 from security_utils import encrypt_api_key, decrypt_api_key
 
 logger = logging.getLogger(__name__)
 
+
+def get_client_ip(request: Request) -> str:
+    """Obtiene la IP real del cliente detrás de Railway proxy.
+    
+    Railway (y la mayoría de proxies) envía la IP real en X-Forwarded-For.
+    slowapi.util.get_remote_address solo usa request.client.host que
+    en un proxy inverso siempre devuelve la IP del proxy (10.x.x.x).
+    """
+    forwarded = request.headers.get("X-Forwarded-For", "")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    real_ip = request.headers.get("X-Real-IP", "")
+    if real_ip:
+        return real_ip.strip()
+    if request.client:
+        return request.client.host
+    return "127.0.0.1"
+
+
 app = FastAPI(title="EduRAG API", version="0.2.0")
 
-limiter = Limiter(key_func=get_remote_address)
+limiter = Limiter(key_func=get_client_ip)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
@@ -247,14 +266,16 @@ async def login(request: Request, body: LoginRequest):
     if not password_hash or not verify_password(body.password, password_hash):
         raise HTTPException(status_code=401, detail="Credenciales inválidas")
     
-    token = create_jwt_token(
-        user_id=user.get("id"),
-        email=user.get("email"),
-        role=user.get("role", "teacher")
-    )
+    user_id = user.get("id")
+    email = user.get("email")
+    role = user.get("role", "teacher")
+
+    token = create_jwt_token(user_id=user_id, email=email, role=role)
+    refresh_token, _, _ = create_refresh_token(user_id=user_id, email=email, role=role)
+
     # Parche de seguridad: Eliminar hash del password de la respuesta
     safe_user = {k: v for k, v in user.items() if k != "password"}
-    return {"token": token, "user": map_user_response(safe_user)}
+    return {"token": token, "refresh_token": refresh_token, "user": map_user_response(safe_user)}
 
 
 @app.post("/auth/register")
@@ -271,13 +292,13 @@ async def register(request: Request, body: RegisterRequest):
             
             # Recargar usuario para tener datos actualizados
             updated_user = await get_user_by_email(body.email)
-            token = create_jwt_token(
-                user_id=updated_user["id"],
-                email=updated_user["email"],
-                role=updated_user["role"]
-            )
+            user_id = updated_user["id"]
+            email = updated_user["email"]
+            role = updated_user["role"]
+            token = create_jwt_token(user_id=user_id, email=email, role=role)
+            refresh_token, _, _ = create_refresh_token(user_id=user_id, email=email, role=role)
             safe_user = {k: v for k, v in updated_user.items() if k != "password"}
-            return {"token": token, "user": map_user_response(safe_user)}
+            return {"token": token, "refresh_token": refresh_token, "user": map_user_response(safe_user)}
         else:
             raise HTTPException(status_code=400, detail="El email ya está registrado")
             
@@ -295,14 +316,47 @@ async def register(request: Request, body: RegisterRequest):
         "created_at": datetime.utcnow().isoformat()
     }
     await create_user(user)
-    token = create_jwt_token(
-        user_id=user_id,
-        email=body.email,
-        role="student"
-    )
+    token = create_jwt_token(user_id=user_id, email=body.email, role="student")
+    refresh_token, _, _ = create_refresh_token(user_id=user_id, email=body.email, role="student")
     # Parche de seguridad: Eliminar hash del password de la respuesta
     safe_user = {k: v for k, v in user.items() if k != "password"}
-    return {"token": token, "user": map_user_response(safe_user)}
+    return {"token": token, "refresh_token": refresh_token, "user": map_user_response(safe_user)}
+
+
+@app.post("/auth/refresh")
+@limiter.limit("20/minute")
+async def refresh_token(request: Request, body: RefreshRequest):
+    """Canjea un refresh token por un nuevo par access + refresh (rotación)."""
+    payload = verify_jwt_token(body.refresh_token)
+    if not payload or not payload.get("sub"):
+        raise HTTPException(status_code=401, detail="Refresh token inválido o expirado")
+
+    user_id = payload["sub"]
+    email = payload["email"]
+    role = payload["role"]
+
+    # Revocar el refresh token usado (rotación)
+    jti = payload.get("jti")
+    if jti:
+        expires_at = datetime.utcnow() + timedelta(days=7)
+        await revoke_token(jti, "refresh", user_id, expires_at)
+
+    new_token = create_jwt_token(user_id=user_id, email=email, role=role)
+    new_refresh_token, _, _ = create_refresh_token(user_id=user_id, email=email, role=role)
+
+    return {"token": new_token, "refresh_token": new_refresh_token}
+
+
+@app.post("/auth/logout")
+@limiter.limit("10/minute")
+async def logout(request: Request, current_user: dict = Depends(get_current_user)):
+    """Revoca el access token actual. El refresh token debe revocarse por separado."""
+    jti = current_user.get("jti")
+    user_id = current_user.get("sub")
+    if jti and user_id:
+        expires_at = datetime.utcnow() + timedelta(hours=24)
+        await revoke_token(jti, "access", user_id, expires_at)
+    return {"message": "Sesión cerrada exitosamente."}
 
 
 @app.get("/chatbots")
@@ -424,10 +478,17 @@ async def publish_chatbot(chatbot_id: str, request: Request):
 
 
 @app.get("/chatbots/{chatbot_id}/embed")
-async def get_chatbot_embed(chatbot_id: str):
+async def get_chatbot_embed(chatbot_id: str, request: Request):
     chatbot = await get_chatbot(chatbot_id)
     if not chatbot:
         raise HTTPException(status_code=404, detail="Chatbot no encontrado")
+
+    if not chatbot.get("is_published", False):
+        current_user = await get_current_user_optional(request)
+        is_owner = current_user and current_user.get("sub") == chatbot.get("owner_id")
+        if not is_owner:
+            raise HTTPException(status_code=403, detail="Chatbot no publicado")
+
     return {"embed_code": chatbot.get("embed_code"), "public_url": chatbot.get("public_url")}
 
 
@@ -591,6 +652,11 @@ async def chat_endpoint(request: Request, chatbot_id: str, body: ChatMessage):
         raise HTTPException(status_code=404, detail="Chatbot no encontrado")
 
     current_user = await get_current_user_optional(request)
+    if not chatbot.get("is_published", False):
+        is_owner = current_user and current_user.get("sub") == chatbot.get("owner_id")
+        if not is_owner:
+            raise HTTPException(status_code=403, detail="Este chatbot no está publicado")
+
     student_id = current_user.get("sub") if current_user and current_user.get("role") != "anonymous" else None
 
     msg_hash = hashlib.sha256(body.message.encode("utf-8")).hexdigest()
@@ -672,6 +738,11 @@ async def chat_stream_endpoint(request: Request, chatbot_id: str, body: ChatMess
         raise HTTPException(status_code=404, detail="Chatbot no encontrado")
 
     current_user = await get_current_user_optional(request)
+    if not chatbot.get("is_published", False):
+        is_owner = current_user and current_user.get("sub") == chatbot.get("owner_id")
+        if not is_owner:
+            raise HTTPException(status_code=403, detail="Este chatbot no está publicado")
+
     student_id = current_user.get("sub") if current_user and current_user.get("role") != "anonymous" else None
 
     msg_hash = hashlib.sha256(body.message.encode("utf-8")).hexdigest()

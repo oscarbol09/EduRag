@@ -14,8 +14,10 @@ export default function HomePage() {
         <div className="max-w-4xl mx-auto text-center relative z-10 space-y-6">
           {/* Badge de estado activo */}
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-800/80 backdrop-blur border border-slate-700/60 text-xs font-semibold text-accent-500 select-none shadow-inner">
-            <span className="w-2 h-2 rounded-full bg-accent-500 animate-ping"></span>
-            <span className="w-2 h-2 rounded-full bg-accent-500 absolute"></span>
+            <span className="relative flex h-3 w-3" aria-hidden="true">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent-500 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-accent-500"></span>
+            </span>
             Plataforma EduRAG Activa
           </div>
 
