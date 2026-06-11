@@ -24,7 +24,7 @@ def get_client() -> Client:
     return _client
 
 
-# ── Users ────────────────────────────────────────────────────────────
+# ── Users ────────────────────────────────────
 
 async def create_user(user_data: dict) -> dict:
     get_client().table("users").insert(user_data).execute()
@@ -45,7 +45,6 @@ async def list_users(role: Optional[str] = None, limit: Optional[int] = None, of
     q = get_client().table("users").select("*")
     if role:
         q = q.eq("role", role)
-    # Ordenar por fecha de creación descendente
     q = q.order("created_at", desc=True)
     if limit is not None:
         q = q.limit(limit)
@@ -76,7 +75,7 @@ async def delete_user(user_id: str) -> bool:
         return False
 
 
-# ── Chatbots ─────────────────────────────────────────────────────────
+# ── Chatbots ───────────────────────────────────────
 
 async def create_chatbot(chatbot_data: dict) -> dict:
     get_client().table("chatbots").insert(chatbot_data).execute()
@@ -134,7 +133,6 @@ async def list_chatbots(
         if published_only:
             q = q.eq("is_published", True)
     else:
-        # Parche de seguridad: Si no hay owner_id, forzar estrictamente que solo retorne publicados
         q = q.eq("is_published", True)
         
     q = q.order("created_at", desc=True)
@@ -145,7 +143,7 @@ async def list_chatbots(
     return q.execute().data
 
 
-# ── Documents ─────────────────────────────────────────────────────────
+# ── Documents ───────────────────────────────────────
 
 async def create_document(document_data: dict) -> dict:
     get_client().table("documents").insert(document_data).execute()
@@ -205,7 +203,7 @@ async def delete_document(document_id: str, chatbot_id: str) -> bool:
         return False
 
 
-# ── Conversations ─────────────────────────────────────────────────────
+# ── Conversations ─────────────────────────────────────
 
 async def create_conversation(conversation_data: dict) -> dict:
     get_client().table("conversations").insert(conversation_data).execute()
@@ -254,7 +252,7 @@ async def list_conversations_for_chatbots(chatbot_ids: List[str]) -> List[dict]:
     )
 
 
-# ── Messages (tabla normalizada, reemplaza conversations.messages JSONB) ───────
+# ── Messages (tabla normalizada, reemplaza conversations.messages JSONB) ───────────
 
 async def create_message(message_data: dict) -> dict:
     """Inserta un mensaje individual en la tabla messages."""
