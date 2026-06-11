@@ -8,7 +8,8 @@ import type {
   CreateChatbotData,
   CreateTeacherData,
   UpdateTeacherData,
-  UpdateProfileData
+  UpdateProfileData,
+  UpdateChatbotPayload,
 } from "./types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -171,7 +172,7 @@ export const api = {
         method: "POST",
         body: JSON.stringify(data),
       }),
-    update: (id: string, data: Partial<Chatbot>) =>
+    update: (id: string, data: UpdateChatbotPayload) =>
       fetchApi<Chatbot>(`/chatbots/${id}`, {
         method: "PUT",
         body: JSON.stringify(data),
@@ -277,5 +278,7 @@ export const api = {
   system: {
     health: () => fetchApi<{ status: string }>("/health"),
     ready: () => fetchApi<{ status: string }>("/ready"),
+    platformStats: () =>
+      fetchApi<{ totalChatbots: number; activeChatbots: number; totalTeachers: number; totalStudents: number }>("/platform/stats"),
   },
 };

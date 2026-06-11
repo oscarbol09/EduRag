@@ -42,13 +42,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [currentChatbot, setCurrentChatbot] = useState<Chatbot | null>(null);
   // conversations state removed — setConversations was never called outside logout (dead state)
 
+  const { token, user } = auth;
   useEffect(() => {
     async function loadUser() {
-      if (auth.token && !auth.user) {
+      if (token && !user) {
         setAuth((prev) => ({ ...prev, isLoading: true }));
         try {
-          const user = await api.auth.me();
-          setAuth({ user, token: auth.token, isLoading: false });
+          const currentUser = await api.auth.me();
+          setAuth({ user: currentUser, token, isLoading: false });
         } catch (error) {
           console.error("Failed to auto-load user from token:", error);
           sessionStorage.removeItem("token");
@@ -57,7 +58,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
     }
     loadUser();
-  }, [auth.token]);
+  }, [token, user]);
 
   const login = useCallback(async (email: string, password: string) => {
     setAuth((prev) => ({ ...prev, isLoading: true }));

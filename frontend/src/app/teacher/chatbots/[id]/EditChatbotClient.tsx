@@ -93,7 +93,7 @@ export default function EditChatbotClient() {
         restriction_level: formData.restriction_level,
         llm_provider: formData.llm_provider,
       };
-      const updated = await api.chatbots.update(chatbotId, payload as Partial<Chatbot>);
+      const updated = await api.chatbots.update(chatbotId, payload);
       setChatbot(updated);
       toast.success("Chatbot actualizado correctamente");
     } catch {

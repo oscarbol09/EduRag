@@ -83,4 +83,6 @@ logs_new.zip
 EduRAG_Auditoria_Tecnica.md
 EduRAG_Checklist_Auditoria.md
 apply_migrations.sh
-deploy.ps1
+deploy.ps14
+FRONTEND_AUDIT.md
+EduRAG_Frontend_Auditoria.md
