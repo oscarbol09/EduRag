@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
+import asyncio
 import hashlib
 import html
 import json
@@ -18,7 +19,17 @@ import warnings
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 from settings import settings
-from models import *
+from models import (
+    ChatbotCreate,
+    ChatMessage,
+    ChatResponse,
+    LoginRequest,
+    ProfileUpdateRequest,
+    RefreshRequest,
+    RegisterRequest,
+    TeacherCreate,
+    TeacherUpdate,
+)
 from supabase_db import (
     create_user, get_user, get_user_by_email, list_users, update_user, update_user_auth_claim, delete_user,
     create_chatbot, get_chatbot, get_chatbot_by_id_and_owner, update_chatbot, delete_chatbot, list_chatbots,
@@ -542,8 +553,8 @@ async def upload_document(
 
     content_bytes = await file.read()
 
-    # Extract text from the uploaded file
-    text_content = extract_text_from_file(content_bytes, filename, file.content_type)
+    # Extraer texto del archivo subido en un thread para evitar bloquear el event loop
+    text_content = await asyncio.to_thread(extract_text_from_file, content_bytes, filename, file.content_type)
 
     if not text_content or not text_content.strip():
         raise HTTPException(status_code=400, detail="No se pudo extraer texto del archivo.")
@@ -573,7 +584,7 @@ async def upload_document(
     blob_path = f"documents/{chatbot_id}/{document_id}/{safe_filename}"
     blob_url = await upload_file_to_blob(content_bytes, blob_path, file.content_type or "application/octet-stream")
 
-    # Store extracted text in Cosmos DB
+    # Guardar contenido del texto extraído en document_contents (Supabase)
     await store_document_content(
         document_id=document_id,
         chatbot_id=chatbot_id,
