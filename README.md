@@ -1,37 +1,47 @@
-# EduRAG — Plataforma SaaS Educativa
+# EduRAG — Plataforma SaaS Educativa con RAG
 
-> Plataforma multi-tenant donde los docentes crean agentes conversacionales entrenados con sus propios documentos (MD, TXT, PDF, DOCX), y los estudiantes los consumen a través de un marketplace centralizado o integrados en LMS externos (Moodle) vía `<iframe>`.
+Plataforma multi-tenant orientada a instituciones educativas y docentes independientes. Permite transformar materiales de clase estructurados (Markdown, TXT, PDF digital y DOCX) en tutores conversacionales especializados para estudiantes, consumibles vía catálogo web o integrables directamente en Entornos Virtuales de Aprendizaje (LMS como Moodle o Canvas) mediante `<iframe>`.
 
 ---
 
 ## Tabla de Contenidos
 
-- [Visión General](#visión-general)
+- [Por qué existe EduRAG](#por-qué-existe-edurag)
+- [Principios de Arquitectura](#principios-de-arquitectura)
 - [Arquitectura del Sistema](#arquitectura-del-sistema)
 - [Stack Tecnológico](#stack-tecnológico)
 - [Estructura del Repositorio](#estructura-del-repositorio)
 - [Modelo de Datos](#modelo-de-datos)
-- [Pipeline de Documentos](#pipeline-de-documentos)
+- [Pipeline de Documentos e Inferencia](#pipeline-de-documentos-e-inferencia)
 - [API Reference](#api-reference)
-- [Configuración de Entorno](#configuración-de-entorno)
-- [Testing](#testing)
-- [Seguridad](#seguridad)
-- [Estado del Proyecto](#estado-del-proyecto)
-- [Autores](#autores)
+- [Límites y Decisiones de Diseño (Trade-offs)](#límites-y-decisiones-de-diseño-trade-offs)
+- [Configuración del Entorno Local](#configuración-del-entorno-local)
+- [Testing y Verificación](#testing-y-verificación)
+- [Integración Continua (CI/CD)](#integración-continua-cicd)
+- [Seguridad y Aislamiento Multi-tenant](#seguridad-y-aislamiento-multi-tenant)
+- [Autor](#autor)
 
 ---
 
-## Visión General
+## Por qué existe EduRAG
 
-EduRAG resuelve un problema concreto en la educación digital: los materiales de clase (apuntes, guías, lecturas) están fragmentados y son difíciles de consultar. La plataforma permite a cualquier docente convertir sus documentos en un asistente conversacional inteligente, sin conocimientos de programación, y ponerlo a disposición de sus estudiantes en minutos.
+En la mayoría de los cursos universitarios y de secundaria, el material pedagógico (guías de laboratorio, lecturas complementarias, apuntes de cátedra) permanece fragmentado en repositorios de archivos que los estudiantes rara vez consultan de manera interactiva. Las soluciones comerciales de chatbot presentan tres fricciones críticas:
 
-**Principios de diseño:**
+1. **Costos recurrentes elevados:** Tarifas por usuario o suscripciones mensuales que las instituciones públicas o docentes individuales no pueden sostener.
+2. **Riesgo de alucinación y falta de contexto:** Modelos generalistas responden con información externa no validada por el docente a cargo del curso.
+3. **Complejidad de despliegue:** Exigencia de infraestructura compleja (servidores de bases de datos vectoriales dedicados, GPUs, pipelines de embedding de pago).
 
-- **Costo cero post-primer mes** — toda la infraestructura opera sobre Supabase Free Tier y APIs gratuitas.
-- **Aislamiento multi-tenant estricto** — los datos de cada docente están completamente separados por `owner_id` / `chatbot_id`.
-- **Extensibilidad LLM** — el proveedor de IA se intercambia en `llm_client.py` sin cambios en la lógica de negocio. Actualmente usa **OpenRouter** (acceso unificado a múltiples modelos gratuitos).
-- **Arquitectura sin vector store** — el contenido se almacena como texto en Supabase PostgreSQL y se pasa directamente al context window del modelo, eliminando dependencias pesadas (~500 MB venv de ChromaDB).
-- **BYOK (Bring Your Own Key)** — cada docente configura su propia API Key de OpenRouter. Las cuentas en la whitelist usan la key del sistema como fallback.
+EduRAG resuelve esto mediante un pipeline RAG léxico ligero ejecutado en contenedores de bajo consumo sobre el Free Tier permanente de Supabase y modelos de lenguaje vía OpenRouter (BYOK), garantizando aislamiento estricto por docente y costo operativo \$0/mes.
+
+---
+
+## Principios de Arquitectura
+
+- **Costo Operativo \$0/mes Permanente:** Infraestructura basada exclusivamente en capas gratuitas (Supabase PostgreSQL + Storage, Vercel para frontend, Railway para backend con bajo consumo de memoria).
+- **Aislamiento Multi-tenant Riguroso:** Toda consulta a base de datos y almacenamiento de archivos valida la tupla `(owner_id, chatbot_id)`. Ningún tenant puede leer o indexar documentos de otro.
+- **RAG Léxico sin Vector Store Pesado:** Eliminación de motores vectoriales locales (como ChromaDB, que requería ~500 MB de venv y provocaba `ContainerTimeout` en entornos serverless). El texto se almacena en PostgreSQL y se clasifica al vuelo mediante chunking semántico y solapamiento léxico de tokens.
+- **BYOK (Bring Your Own Key) con Cifrado Fuerte:** Los docentes configuran su propia clave de API de OpenRouter. Las claves se almacenan cifradas mediante Fernet (AES-128-CBC + HMAC-SHA256).
+- **Streaming de Respuestas (SSE):** Respuestas token-a-token mediante `Server-Sent Events` para latencia percibida inferior a 300ms.
 
 ---
 
@@ -43,362 +53,293 @@ EduRAG resuelve un problema concreto en la educación digital: los materiales de
 │                                                                 │
 │  ┌──────────────────┐           ┌──────────────────┐            │
 │  │    Frontend       │           │     Backend       │            │
-│  │  Next.js 16       │──────────▶│  FastAPI 0.2.0   │            │
-│  │  Vercel           │           │  Railway          │            │
+│  │  Next.js 16       │──────────▶│  FastAPI          │            │
+│  │  (Vercel)         │           │  (Railway)        │            │
 │  └──────────────────┘           └────────┬─────────┘            │
 │                                          │                      │
 │                 ┌────────────────────────┴───────────────┐      │
 │                 ▼                                        ▼      │
 │  ┌───────────────────────────┐        ┌────────────────────┐    │
 │  │   Supabase PostgreSQL     │        │  Supabase Storage  │    │
-│  │   6 tablas SQL            │        │  Bucket: documents │    │
+│  │   6 tablas + RLS          │        │  Bucket: documents │    │
 │  └───────────────────────────┘        └────────────────────┘    │
 └─────────────────────────────────────────────────────────────────┘
                                │
                    ┌───────────▼────────────┐
                    │   OpenRouter API        │
-                   │   (modelos gratuitos)   │
+                   │   (Modelos Gratuitos)   │
                    └────────────────────────┘
 ```
-
-> **Nota:** El texto completo de cada documento se extrae al momento del upload y se almacena en Supabase (`document_contents`). Al chatear, el backend reconstruye el contexto con `context_builder.build_context()` (chunking léxico de 1500 chars con overlap 200, ranking por overlap de tokens, presupuesto máximo de 60 000 chars).
 
 ---
 
 ## Stack Tecnológico
 
-| Capa | Tecnología | Proveedor | Tier |
-|---|---|---|---|
-| Frontend SPA | Next.js 16 + Tailwind CSS + Radix UI | Vercel | Free |
-| API Backend | FastAPI (Python 3.11) + Uvicorn | Railway | Free / Económico |
-| Base de datos | Supabase PostgreSQL | Supabase | Free Tier permanente |
-| Almacenamiento | Supabase Storage (`documents` bucket) | Supabase | Free (1 GB) |
-| Autenticación | JWT propio (PyJWT + bcrypt) | — | Free |
-| LLM | OpenRouter (múltiples modelos free tier) | OpenRouter API | Free (BYOK) |
+| Capa | Tecnología | Justificación de Elección |
+|---|---|---|
+| **Frontend** | Next.js 16 (App Router) + Tailwind CSS | Renderizado híbrido (SSR para catálogo público, estático para embeds de chat), tipografía editorial y micro-interacciones sin dependencias pesadas. |
+| **Backend** | FastAPI (Python 3.11/3.12) + Uvicorn | Framework asíncrono de alto rendimiento con validación estricta Pydantic v2 y soporte nativo de streaming SSE. |
+| **Base de Datos** | Supabase PostgreSQL 15 | Relacional ACID, índices B-tree optimizados, funciones SQL y retención persistente en free tier. |
+| **Almacenamiento** | Supabase Storage (`documents` bucket) | Almacenamiento seguro de archivos binarios originales (PDF, DOCX) con URLs firmadas. |
+| **Autenticación** | JWT HS256 + bcrypt | Tokens con rotación, identificador `jti` y tabla de revocación para invalidación inmediata de sesiones. |
+| **Cifrado** | Fernet (`cryptography`) | Cifrado simétrico autenticado para credenciales BYOK en reposo. |
+| **Inferencia LLM** | OpenRouter Client (`httpx.AsyncClient`) | Acceso unificado a múltiples proveedores (Google Gemma, Meta Llama, etc.) con streaming async sin bloqueos de event loop. |
 
 ---
 
 ## Estructura del Repositorio
 
 ```
-/
+.
+├── .github/
+│   └── workflows/
+│       └── ci.yml                  # Matriz de CI (Python 3.11/3.12 + Node 20/22)
 ├── backend/
-│   ├── main.py                     # App FastAPI, endpoints, caché TTL, rate limiting
-│   ├── settings.py                 # Variables de entorno (Pydantic Settings, sin defaults inseguros)
-│   ├── models.py                   # Modelos Pydantic (request/response)
-│   ├── auth.py                     # Middleware JWT (get_current_user / opcional)
-│   ├── jwt_token.py                # create/verify JWT (PyJWT HS256)
-│   ├── password.py                 # hash_password / verify_password (bcrypt)
-│   ├── security_utils.py           # Cifrado Fernet para API keys de docentes
-│   ├── supabase_db.py              # CRUD — 6 tablas Postgres en Supabase
-│   ├── document_content_store.py   # Almacén de texto en Supabase (document_contents)
-│   ├── context_builder.py          # Chunking léxico + ranking + presupuesto 60k chars
-│   ├── llm_client.py               # Cliente async OpenRouter (generate + generate_stream)
-│   ├── document_uploader.py        # Upload Supabase Storage + extracción texto (MD/TXT/PDF/DOCX)
-│   ├── railway.toml                # Config deploy Railway
-│   ├── test_main.py                # Suite pytest (26 tests)
-│   ├── requirements.txt            # Dependencias Python
-│   ├── .env.example                # Plantilla de variables de entorno
-│   └── AGENTS.md                   # Guía para agentes IA — backend
-│
+│   ├── main.py                     # API REST, endpoints, rate limiting y streaming SSE
+│   ├── settings.py                 # Validación de variables de entorno con Pydantic Settings v2
+│   ├── models.py                   # Schemas de request/response
+│   ├── auth.py                     # Dependencias de autenticación y verificación de roles
+│   ├── jwt_token.py                # Emisión, decodificación y verificación de JWT + refresh tokens
+│   ├── password.py                 # Hashing de contraseñas con bcrypt
+│   ├── security_utils.py           # Cifrado y descifrado simétrico Fernet
+│   ├── supabase_db.py              # Capa de persistencia en Supabase PostgreSQL
+│   ├── document_content_store.py   # Gestión del almacén de contenido de texto plano
+│   ├── context_builder.py          # Chunking léxico (1500c / overlap 200c) y ranking de contexto
+│   ├── llm_client.py               # Cliente HTTP asíncrono para OpenRouter
+│   ├── document_uploader.py        # Extracción de texto (PyMuPDF, python-docx, UTF-8) y upload
+│   ├── conftest.py                 # Arnés de pruebas con dobles herméticos de Supabase y Storage
+│   ├── test_main.py                # Suite de pruebas unitarias y de integración (61 tests)
+│   ├── requirements.txt            # Dependencias fijadas del backend
+│   └── railway.toml                # Configuración de despliegue en Railway
 ├── frontend/
 │   ├── src/
-│   │   ├── app/                    # Next.js App Router
-│   │   │   ├── page.tsx            # Landing (stats en vivo desde /platform/stats)
-│   │   │   ├── login/              # Login
-│   │   │   ├── teacher/            # Dashboard del docente
-│   │   │   ├── marketplace/        # Marketplace público
-│   │   │   └── chat/[botId]/       # Interfaz de chat (embebible vía iframe)
-│   │   ├── lib/
-│   │   │   ├── api.ts              # Cliente HTTP centralizado
-│   │   │   ├── types.ts            # Tipos TypeScript
-│   │   │   ├── context.tsx         # Auth context (sessionStorage)
-│   │   │   └── utils.ts            # Helpers
-│   │   └── components/
-│   ├── vercel.json                 # Framework + 5 security headers (CSP, X-Frame-Options, etc.)
-│   └── AGENTS.md                   # Guía para agentes IA — frontend
-│
+│   │   ├── app/                    # Rutas de Next.js App Router (Landing, Chat, Docente, Admin)
+│   │   ├── components/             # Componentes de UI accesibles (Navbar, Modales, Toast, etc.)
+│   │   └── lib/                    # Cliente de API centralizado, contexto de auth y utilidades
+│   ├── test/                       # Suite de pruebas unitarias con Vitest y JSDOM (82 tests)
+│   ├── vitest.config.ts            # Configuración de Vitest con runner multi-hilo
+│   └── next.config.ts              # Configuración de seguridad, CSP y headers de iframe
 ├── supabase/
-│   └── migrations/                 # Migraciones SQL ordenadas cronológicamente
-│       ├── 20260607152000_harden_core_tables.sql
-│       ├── 20260607153000_add_missing_indexes.sql
-│       ├── 20260607154000_extract_messages_table.sql
-│       └── 20260608120000_drop_messages_jsonb_legacy.sql
-│
-├── AGENTS.md                       # Guía global para agentes IA
-├── SPEC.md                         # Especificación técnica detallada
-└── README.md                       # Este archivo
+│   └── migrations/                 # Migraciones SQL reproducibles
+├── AGENTS.md                       # Guía de contexto para asistentes y agentes
+├── SPEC.md                         # Especificación técnica formal del sistema
+└── README.md                       # Documentación principal del proyecto
 ```
 
 ---
 
 ## Modelo de Datos
 
-Todas las entidades persisten en **Supabase (PostgreSQL)**. 6 tablas activas.
+Persistencia relacional estructurada en 6 tablas:
 
-### `users`
-| Campo | Tipo | Descripción |
-|---|---|---|
-| `id` | text PK | ID único |
-| `email` | text unique | Correo electrónico |
-| `password` | text | Hash bcrypt |
-| `role` | text | `teacher | student | admin` |
-| `auth_method` | text | `pre_created | email_password` |
-| `first_name` | text | Nombre |
-| `last_name` | text | Apellido |
-| `institution_name` | text | Institución |
-| `openrouter_api_key` | text | API Key cifrada con Fernet |
-| `openrouter_model` | text | Modelo preferido |
-| `is_test_account` | boolean | Whitelist del sistema |
-| `country` | text | País |
-| `is_active` | boolean | default true |
-| `created_at` | timestamptz | — |
-
-### `chatbots`
-| Campo | Tipo | Descripción |
-|---|---|---|
-| `id` | text PK | — |
-| `owner_id` | text FK → users | Creador |
-| `name` | text | Nombre del chatbot |
-| `subject_area` | text | Área de estudio |
-| `education_level` | text | `secondary | university` |
-| `tone` | text | `formal | friendly | technical` |
-| `welcome_message` | text | — |
-| `system_prompt_override` | text | Máx 2000 chars |
-| `restriction_level` | text | `strict | guided | open` |
-| `is_published` | boolean | default false |
-| `public_url` | text | `/chat/{id}` |
-| `embed_code` | text | `<iframe>` para LMS |
-| `created_at / updated_at` | timestamptz | — |
-
-### `documents`
-| Campo | Tipo | Descripción |
-|---|---|---|
-| `id` | text PK | — |
-| `chatbot_id` | text FK → chatbots | — |
-| `filename` | text | Nombre original |
-| `mime_type` | text | `text/markdown | text/plain | application/pdf | ...docx` |
-| `blob_url` | text | Ruta en Supabase Storage |
-| `content_hash` | text | SHA-256 del texto (deduplicación) |
-| `status` | text | `indexed | error` |
-| `chunk_count` | int | — |
-| `created_at / processed_at` | timestamptz | — |
-
-### `document_contents`
-| Campo | Tipo | Descripción |
-|---|---|---|
-| `id` | text PK | = `document_id` |
-| `chatbot_id` | text FK → chatbots | — |
-| `filename` | text | — |
-| `content` | text | Texto completo extraído |
-| `content_hash` | text | SHA-256 (índice único por chatbot) |
-
-### `conversations`
-| Campo | Tipo | Descripción |
-|---|---|---|
-| `id` | text PK | — |
-| `chatbot_id` | text FK → chatbots | — |
-| `student_id` | uuid | Estudiante autenticado (opcional) |
-| `created_at / updated_at` | timestamptz | — |
-
-> El campo `messages` (JSONB) fue eliminado por la migración `20260608120000`. Los mensajes viven ahora en la tabla `messages`.
-
-### `messages` (tabla normalizada)
-| Campo | Tipo | Descripción |
-|---|---|---|
-| `id` | uuid PK | gen_random_uuid() |
-| `conversation_id` | uuid FK → conversations | ON DELETE CASCADE |
-| `role` | text | `user | assistant | system` |
-| `content` | text | Contenido del mensaje |
-| `created_at` | timestamptz | default now() |
+1. **`users`:** Cuentas de docentes, estudiantes y administradores (`id`, `email`, `password` bcrypt, `role`, `openrouter_api_key` Fernet, `openrouter_model`, `is_test_account`).
+2. **`chatbots`:** Configuración pedagógica del agente (`owner_id`, `name`, `subject_area`, `education_level`, `tone`, `restriction_level`, `system_prompt_override`, `is_published`).
+3. **`documents`:** Metadatos de los archivos adjuntos a cada chatbot (`chatbot_id`, `filename`, `mime_type`, `blob_url`, `content_hash` SHA-256, `status`).
+4. **`document_contents`:** Texto completo extraído de cada documento para construcción de contexto (`chatbot_id`, `filename`, `content`, `content_hash`).
+5. **`conversations`:** Registro de sesiones de chat (`id`, `chatbot_id`, `student_id`).
+6. **`messages`:** Historial de mensajes normalizado (`id`, `conversation_id`, `role`, `content`, `created_at`).
+7. **`revoked_tokens`:** Lista negra de `jti` para invalidación instantánea de tokens JWT al cerrar sesión o rotar credenciales.
 
 ---
 
-## Pipeline de Documentos
+## Pipeline de Documentos e Inferencia
 
-### Upload (síncrono)
-```
-POST /documents/upload
-  → Valida JWT + propiedad del chatbot (owner_id == sub)
-  → Valida tamaño (máx 20 MB) y extensión (.md, .txt, .pdf, .docx)
-  → Extrae texto en memoria (UTF-8 / PyMuPDF / python-docx con tablas)
-  → Deduplica por SHA-256 del texto extraído
-  → Sube original → Supabase Storage (documents bucket)
-  → Guarda texto → Supabase (document_contents)
-  → Crea metadatos → Supabase (documents, status: "indexed")
-```
+### 1. Ingesta y Extracción de Documentos (`POST /documents/upload`)
+- Validación de identidad del docente y titularidad del chatbot.
+- Límite de tamaño: 20 MB por archivo.
+- Extracción según formato:
+  - **Markdown / TXT:** Decodificación UTF-8 directa.
+  - **DOCX:** Extracción estructurada de párrafos y celdas de tablas con `python-docx`.
+  - **PDF Digital:** Extracción de capas de texto con `PyMuPDF` (`fitz`). *Nota: PDFs escaneados sin OCR devuelven HTTP 400 informativo.*
+- Cálculo de hash SHA-256 para prevenir indexación duplicada.
+- Guardado asíncrono en Supabase Storage (`documents`) y en `document_contents`.
 
-### Chat síncrono (`POST /chat/{id}`)
-```
-  → Verifica caché TTL (5 min)
-  → Recupera document_contents del chatbot desde Supabase
-  → build_context() — chunking léxico + ranking + ≤ 60 000 chars
-  → Recupera historial de messages (tabla normalizada, últimos 20)
-  → Valida API key del docente (Fernet decrypt)
-  → Llama OpenRouter vía httpx.AsyncClient
-  → Persiste turno en tabla messages (create_messages_batch)
-  → Retorna { response, conversation_id, sources }
-```
+### 2. Construcción de Contexto (`context_builder.py`)
+- Segmentación en chunks de 1,500 caracteres con un solapamiento (overlap) de 200 caracteres.
+- Puntuación léxica contra los términos de la consulta del estudiante.
+- Selección codiciosa (greedy) hasta alcanzar el presupuesto estricto de **60,000 caracteres**.
 
-### Chat streaming (`POST /chat/{id}/stream`)
-```
-  Mismo pipeline, pero la respuesta se emite como SSE:
-    event: token  → { "content": "fragmento" }
-    event: done   → { "conversation_id": "...", "sources": [...] }
-    event: error  → { "message": "..." }
-  Headers: X-Accel-Buffering: no, Cache-Control: no-cache
-```
+### 3. Generación y Streaming (`POST /chat/{id}/stream`)
+- Recuperación del historial conversacional reciente (últimos 20 turnos).
+- Inyección del prompt de sistema según el tono (`formal`, `friendly`, `technical`) y nivel de restricción (`strict`, `guided`, `open`).
+- Streaming mediante Server-Sent Events (`event: token`, `event: done`, `event: error`).
 
 ---
 
 ## API Reference
 
-### Sistema
+### Sistema y Diagnóstico
+- `GET /health` — Verificación de disponibilidad del servicio.
+- `GET /ready` — Comprobación de conectividad con Supabase.
+- `GET /platform/stats` — Estadísticas públicas en vivo (chatbots publicados, docentes activos, mensajes).
 
-| Método | Ruta | Auth | Descripción |
-|---|---|---|---|
-| `GET` | `/health` | — | Health check |
-| `GET` | `/ready` | — | Readiness (verifica Supabase) |
-| `GET` | `/platform/stats` | — | Estadísticas públicas (chatbots publicados, docentes activos, total mensajes) |
+### Autenticación y Perfil
+- `POST /auth/login` — Autenticación con email/contraseña (límite: 10 req/min). Retorna access token, refresh token y datos de usuario (sin hash).
+- `POST /auth/register` — Registro público (fuerza rol `student`, límite: 5 req/min).
+- `POST /auth/refresh` — Rotación de par access/refresh token e invalidación del token anterior.
+- `POST /auth/logout` — Revocación inmediata del token actual.
+- `GET /auth/me` — Consulta de la sesión activa `[JWT]`.
+- `PUT /auth/me/profile` — Actualización de perfil y credenciales OpenRouter `[JWT]`.
 
-### Autenticación
-
-| Método | Ruta | Auth | Descripción |
-|---|---|---|---|
-| `POST` | `/auth/login` | — | Login (10 req/min por IP) |
-| `POST` | `/auth/register` | — | Registro público — fuerza `role: student` (5 req/min) |
-| `GET` | `/auth/me` | JWT | Datos del usuario actual |
-| `PUT` | `/auth/me/profile` | JWT | Actualizar perfil + OpenRouter key + modelo |
-
-### Chatbots
-
-| Método | Ruta | Auth | Descripción |
-|---|---|---|---|
-| `GET` | `/chatbots` | opcional | Lista — soporta `owner_id`, `published_only`, `limit`, `offset` |
-| `POST` | `/chatbots` | JWT | Crear chatbot |
-| `GET` | `/chatbots/{id}` | opcional | Detalle (oculta `system_prompt_override` a terceros) |
-| `PUT` | `/chatbots/{id}` | JWT owner | Actualizar |
-| `DELETE` | `/chatbots/{id}` | JWT owner | Eliminar + `document_contents` asociados |
-| `POST` | `/chatbots/{id}/publish` | JWT owner | Publicar |
-| `GET` | `/chatbots/{id}/embed` | — | `embed_code` + `public_url` |
+### Gestión de Chatbots
+- `GET /chatbots` — Listado con filtros (`owner_id`, `published_only`, paginación).
+- `POST /chatbots` — Creación de nuevo chatbot con validación de prompt (máx. 2,000 chars) `[JWT Teacher]`.
+- `GET /chatbots/{id}` — Detalle del chatbot (el prompt de sistema se oculta a terceros).
+- `PUT /chatbots/{id}` — Edición de configuración pedagógica `[JWT Owner]`.
+- `DELETE /chatbots/{id}` — Eliminación en cascada del chatbot, documentos y contenidos `[JWT Owner]`.
+- `POST /chatbots/{id}/publish` — Publicación al marketplace `[JWT Owner]`.
+- `GET /chatbots/{id}/embed` — Código `<iframe>` y URL pública para LMS.
 
 ### Documentos
+- `POST /documents/upload` — Carga y procesamiento síncrono de documentos `[JWT Owner]`.
+- `GET /documents?chatbot_id=` — Listado de documentos asociados `[JWT Owner]`.
+- `GET /documents/{id}` — Metadatos de un documento `[JWT Owner]`.
+- `DELETE /documents/{id}?chatbot_id=` — Eliminación de archivo y texto indexado `[JWT Owner]`.
 
-| Método | Ruta | Auth | Descripción |
-|---|---|---|---|
-| `POST` | `/documents/upload` | JWT owner | Subir MD/TXT/PDF/DOCX — valida propiedad + deduplica por hash |
-| `GET` | `/documents` | JWT owner | Listar — `?chatbot_id=` + `limit` / `offset` |
-| `GET` | `/documents/{id}` | JWT owner | Detalle |
-| `DELETE` | `/documents/{id}` | JWT owner | Eliminar metadatos + contenido |
+### Chat e Inferencia
+- `POST /chat/{id}` — Consulta síncrona con memoria (límite: 100 req/min/IP).
+- `POST /chat/{id}/stream` — Consulta con streaming token a token vía SSE.
+- `GET /chat/{id}/history` — Historial de mensajes `[JWT: Docente dueño, Admin o Estudiante participante]`.
 
-### Chat
-
-| Método | Ruta | Auth | Descripción |
-|---|---|---|---|
-| `POST` | `/chat/{id}` | opcional | Mensaje síncrono (100 req/min/IP) |
-| `POST` | `/chat/{id}/stream` | opcional | Mensaje SSE token-a-token |
-| `GET` | `/chat/{id}/history` | JWT | Historial — solo owner, admin o estudiante asociado |
-
-### Admin
-
-| Método | Ruta | Auth | Descripción |
-|---|---|---|---|
-| `POST` | `/admin/teachers` | JWT admin | Crear docente |
-| `GET` | `/admin/teachers` | JWT admin | Listar docentes (sin passwords) |
-| `PUT` | `/admin/teachers/{id}` | JWT admin | Editar docente |
-| `DELETE` | `/admin/teachers/{id}` | JWT admin | Eliminar docente |
-
-### Docente
-
-| Método | Ruta | Auth | Descripción |
-|---|---|---|---|
-| `GET` | `/teacher/metrics` | JWT teacher | Métricas: chatbots, documentos, conversaciones semanales |
+### Métricas y Administración
+- `GET /teacher/metrics` — Métricas del docente (chatbots, documentos indexados, conversaciones) `[JWT Teacher]`.
+- `POST /admin/teachers` — Creación administrativa de cuentas docentes `[JWT Admin]`.
+- `GET /admin/teachers` — Listado de docentes registrados `[JWT Admin]`.
+- `PUT /admin/teachers/{id}` — Modificación de docente `[JWT Admin]`.
+- `DELETE /admin/teachers/{id}` — Baja de docente `[JWT Admin]`.
 
 ---
 
-## Configuración de Entorno
+## Límites y Decisiones de Diseño (Trade-offs)
 
-### Backend — `backend/.env`
+Para garantizar estabilidad operativa y coste cero, el sistema asume de forma consciente las siguientes decisiones:
 
-```env
-# Supabase
-SUPABASE_URL=https://xxxxxxxxxxxx.supabase.co
-SUPABASE_KEY=eyJ...  # service_role key
-
-# JWT (mín. 32 chars)
-JWT_SECRET=your-jwt-secret-min-32-chars
-
-# Cifrado de API keys (generar con Fernet.generate_key())
-ENCRYPTION_KEY=your-fernet-key
-
-# OpenRouter (fallback para cuentas en whitelist)
-OPENROUTER_API_KEY=sk-or-v1-...
-DEFAULT_LLM_MODEL=google/gemma-3-27b-it:free
-TEST_ACCOUNTS_WHITELIST=admin@edurag.com,test@edurag.com
-
-# App
-APP_HOST=0.0.0.0
-APP_PORT=8000
-CORS_ORIGINS=http://localhost:3000,https://edu-rag-red.vercel.app,https://edurag-production.up.railway.app
-MAX_FILE_SIZE_MB=20
-MAX_EXTRACTED_TEXT_CHARS=1000000
-MAX_CACHE_SIZE=1000
-```
-
-### Frontend — `frontend/.env.local`
-
-```env
-NEXT_PUBLIC_API_URL=https://edurag-production.up.railway.app
-```
+1. **RAG Léxico vs. Embeddings Vectoriales:**
+   - *Decisión:* No se utiliza una base de datos vectorial (como pgvector o ChromaDB) para evitar sobrecarga de memoria y cuotas de API de embeddings.
+   - *Compromiso:* Para colecciones documentales gigantescas (>200 páginas por chatbot), la selección de fragmentos se basa en solapamiento léxico de términos en lugar de similitud semántica latente.
+2. **Documentos Escaneados sin OCR Integrado:**
+   - *Decisión:* El extractor de PDF (`PyMuPDF`) solo lee PDFs con capa de texto digital.
+   - *Compromiso:* Documentos escaneados o basados exclusivamente en imágenes deben ser procesados previamente mediante OCR antes de subirse.
+3. **Caché en Memoria Monoproceso:**
+   - *Decisión:* La caché TTL (5 minutos) opera en la memoria del proceso FastAPI (`RLock` + diccionario LRU).
+   - *Compromiso:* La caché es local a cada instancia del backend. En un despliegue multi-instancia horizontal requeriría Redis.
+4. **Almacenamiento de Tokens en Frontend:**
+   - *Decisión:* El access token se almacena en `localStorage` para permitir sincronización entre pestañas y sesiones embebidas en iframe.
+   - *Mitigación:* Expiración de corta duración (24 horas) y tabla de revocación backend (`revoked_tokens`) con validación de `jti`.
 
 ---
 
-## Testing
+## Configuración del Entorno Local
+
+### Requisitos
+- Python 3.11 o 3.12
+- Node.js 20+ y npm 10+
+- Proyecto Supabase configurado (o instancia local de Supabase CLI)
+
+### 1. Configuración del Backend
 
 ```bash
 cd backend
-pytest -v          # 26 tests automatizados
+python -m venv venv
+
+# En Windows:
+.\venv\Scripts\activate
+# En Linux/macOS:
+# source venv/bin/activate
+
+pip install -r requirements.txt
+cp .env.example .env
 ```
 
-Cobertura de la suite:
-- Auth: login, registro, roles, passwords no expuestos
-- Seguridad multi-tenant: aislamiento de chatbots, documentos y conversaciones
-- `security_utils`: cifrado/descifrado Fernet
-- `context_builder`: presupuesto, scoring por relevancia
-- Chat: síncrono, streaming SSE, persistencia de `conversation_id`, aislamiento cross-chatbot, historial
-- Admin CRUD: crear, listar, actualizar, eliminar docentes; control de acceso 403/404
+Configurar las siguientes variables en `backend/.env`:
+```env
+SUPABASE_URL=https://tu-proyecto.supabase.co
+SUPABASE_KEY=tu-service-role-key
+JWT_SECRET=tu-secreto-jwt-minimo-32-caracteres
+ENCRYPTION_KEY=tu-clave-fernet-generada
+OPENROUTER_API_KEY=sk-or-v1-opcional-para-whitelist
+TEST_ACCOUNTS_WHITELIST=admin@edurag.com,test@edurag.com
+CORS_ORIGINS=http://localhost:3000,https://edu-rag-red.vercel.app
+```
 
----
+Iniciar el servidor backend:
+```bash
+uvicorn main:app --reload --port 8000
+```
 
-## Seguridad
-
-| Control | Implementación |
-|---|---|
-| Cifrado de API keys | Fernet (`security_utils.py`) — sin fallback a texto plano |
-| Rate limiting | `slowapi`: login 10/min, register 5/min, chat 100/min por IP |
-| Aislamiento multi-tenant | `owner_id` / `chatbot_id` validados en todas las queries |
-| JWT sin fallbacks | `JWT_SECRET` requerido, sin valor por defecto |
-| Passwords no expuestos | `map_user_response()` elimina el campo `password` de toda respuesta |
-| CSP + Security Headers | `vercel.json`: CSP, X-Frame-Options: DENY, X-Content-Type-Options, Referrer-Policy, Permissions-Policy |
-| Historial protegido | `/chat/{id}/history` — solo owner, admin o estudiante asociado |
-| system_prompt limitado | `MAX_SYSTEM_PROMPT_LENGTH = 2000` chars |
-| Token en sessionStorage | Se borra al cerrar la pestaña (menor exposición XSS que localStorage) |
-
----
-
-## Estado del Proyecto
-
-**Auditoría técnica completada — junio 2026.** 27 de 30 ítems resueltos. Acciones manuales pendientes:
+### 2. Configuración del Frontend
 
 ```bash
-# Aplicar migraciones a Supabase (desde la raíz del proyecto)
-supabase db push
+cd frontend
+npm install
+cp .env.local.example .env.local
 ```
 
-Las migraciones crean la tabla `messages`, 12 índices de rendimiento y eliminan el campo `messages` JSONB legacy de `conversations`. El backend incluye fallback gracioso si las migraciones aún no están aplicadas.
+Configurar en `frontend/.env.local`:
+```env
+NEXT_PUBLIC_API_URL=http://localhost:8000
+```
+
+Iniciar el servidor de desarrollo:
+```bash
+npm run dev
+```
+Acceder a [http://localhost:3000](http://localhost:3000).
+
+---
+
+## Testing y Verificación
+
+El proyecto cuenta con suites de pruebas automatizadas y herméticas en ambas capas:
+
+### Backend (Pytest — 61 pruebas)
+Pruebas unitarias y de integración que utilizan dobles de prueba para Supabase y Storage, garantizando ejecución sin dependencias de red externas:
+
+```bash
+cd backend
+pytest -v
+```
+
+### Frontend (Vitest — 82 pruebas)
+Pruebas de componentes, validaciones de formularios, manejo de autenticación y cliente HTTP con JSDOM:
+
+```bash
+cd frontend
+npm test
+```
+
+### Verificación de Compilación de Producción
+```bash
+cd frontend
+npm run build
+```
+
+---
+
+## Integración Continua (CI/CD)
+
+El repositorio cuenta con un pipeline automatizado de GitHub Actions configurado en `.github/workflows/ci.yml`:
+
+- **Matriz de Entornos:**
+  - Python: `3.11`, `3.12`
+  - Node.js: `20.x`, `22.x`
+- **Puertas de Calidad (Quality Gates):**
+  - Ejecución completa de la suite de backend (`pytest -v`).
+  - Linter y análisis estático de frontend (`npm run lint`).
+  - Suite de pruebas unitarias de frontend (`npm test`).
+  - Compilación estricta de producción Next.js (`npm run build`).
+
+---
+
+## Seguridad y Aislamiento Multi-tenant
+
+- **Cifrado en Reposo:** Las claves de API de OpenRouter se almacenan cifradas en la base de datos con Fernet.
+- **Control de Fugas de Información:** La función `map_user_response()` en el backend elimina sistemáticamente cualquier referencia al campo `password` antes de serializar respuestas JSON.
+- **Políticas de Cabeceras HTTP:** Cabeceras CSP estrictas con permisos explícitos de orígenes para Railway y Supabase, además de permitir `frame-ancestors *` exclusivamente para la visualización del chatbot embebido en LMS.
+- **Rate Limiting:** Control de ráfagas con `slowapi` en endpoints de autenticación y chat para mitigar ataques de fuerza bruta y abusos de cuota.
 
 ---
 
 ## Autor
 
-Oscar Madera — [@oscarbol09](https://github.com/oscarbol09)
+**Oscar Madera** — [@oscarbol09](https://github.com/oscarbol09)

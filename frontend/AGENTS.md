@@ -6,11 +6,12 @@ Guía técnica para agentes de IA y desarrolladores que trabajen en `frontend/`.
 
 ## Propósito del Módulo
 
-SPA con **Next.js 16 (App Router)** + **Tailwind CSS** + **Radix UI**. Desplegada en **Vercel** (`edu-rag-red`). Tres superficies:
+SPA construida con **Next.js 16 (App Router)** + **Tailwind CSS**. Desplegada en **Vercel** (`https://edu-rag-red.vercel.app`).
 
-- **Dashboard del docente** — crear y gestionar chatbots, subir documentos.
-- **Marketplace público** — estudiantes descubren chatbots publicados.
-- **Interfaz de chat** (`/chat/[botId]`) — embebible vía `<iframe>` en Moodle u otros LMS.
+Comprende tres áreas funcionales principales:
+1. **Panel Docente (`/teacher`):** Creación y edición de chatbots, subida de materiales pedagógicos, configuración de claves BYOK y código de inserción para LMS.
+2. **Catálogo Público (`/marketplace`):** Exploración y búsqueda de chatbots publicados para estudiantes.
+3. **Interfaz de Chat (`/chat/[botId]`):** Experiencia de diálogo en tiempo real (streaming SSE) con citas documentales, embebible en Moodle o Canvas mediante `<iframe>`.
 
 ---
 
@@ -20,39 +21,57 @@ SPA con **Next.js 16 (App Router)** + **Tailwind CSS** + **Radix UI**. Desplegad
 frontend/
 ├── src/
 │   ├── app/
-│   │   ├── layout.tsx              # Root layout — providers globales
-│   │   ├── page.tsx                # Landing — stats en vivo desde GET /platform/stats
-│   │   ├── login/page.tsx          # Login email + password
+│   │   ├── layout.tsx              # Root layout — tipografía editorial y providers globales
+│   │   ├── globals.css             # Tokens CSS de elevación, cuadrícula y micro-interacciones (.btn-press)
+│   │   ├── page.tsx                # Landing editorial con métricas en vivo (/platform/stats)
+│   │   ├── login/page.tsx          # Autenticación de usuarios
+│   │   ├── register/page.tsx       # Registro público de estudiantes
 │   │   ├── teacher/
-│   │   │   ├── page.tsx            # Dashboard del docente
+│   │   │   ├── page.tsx            # Dashboard del docente con métricas tabulares y lista de chatbots
+│   │   │   ├── settings/page.tsx   # Configuración de perfil y API keys OpenRouter (BYOK)
 │   │   │   └── chatbots/
-│   │   │       ├── new/page.tsx    # Crear chatbot
-│   │   │       └── [id]/           # Editar chatbot + gestión de documentos
-│   │   │           └── EditChatbotClient.tsx  # Aviso PDFs escaneados, accept .md/.txt/.pdf/.docx
-│   │   ├── marketplace/page.tsx    # Marketplace público
+│   │   │       ├── new/page.tsx    # Asistente de creación de nuevo chatbot
+│   │   │       └── [id]/           # Editor y gestor de documentos (EditChatbotClient.tsx)
+│   │   ├── marketplace/page.tsx    # Catálogo público con filtros y búsqueda
 │   │   └── chat/[botId]/
-│   │       ├── page.tsx            # Server component — carga datos del chatbot
-│   │       └── ChatClient.tsx      # Client — interfaz de chat con streaming SSE
+│   │       ├── page.tsx            # Server component
+│   │       └── ChatClient.tsx      # Cliente de chat con SSE, formato de citas y renderizado Markdown
 │   ├── lib/
-│   │   ├── api.ts                  # Cliente HTTP centralizado
-│   │   ├── types.ts                # Tipos TypeScript de dominio
-│   │   ├── context.tsx             # AuthContext (localStorage)
-│   │   └── utils.ts                # Helpers
+│   │   ├── api.ts                  # Cliente HTTP centralizado y tipado
+│   │   ├── types.ts                # Modelos y contratos de TypeScript
+│   │   ├── context.tsx             # AuthContext (almacenamiento en localStorage)
+│   │   └── utils.ts                # Funciones auxiliares de formateo y validación
 │   └── components/
-├── test/                           # Vitest
-├── vercel.json                     # Framework nextjs + 5 security headers
-├── next.config.ts
-├── package.json
-├── tsconfig.json
-├── vitest.config.ts
-└── .env.local                      # NO commitear
+│       ├── Navbar.tsx              # Navegación con isotipo vectorial y roles
+│       ├── StatusBadge.tsx         # Badges de estado con contrastes accesibles
+│       ├── EmptyState.tsx          # Estados vacíos con ilustraciones SVG vectoriales
+│       ├── ConfirmModal.tsx        # Diálogo modal accesible con focus trap
+│       ├── Toast.tsx               # Notificaciones de retroalimentación
+│       ├── HelpTooltip.tsx         # Tooltips explicativos de parámetros pedagógicos
+│       └── SupportWidget.tsx       # Widget flotante de soporte y canal institucional
+├── test/                           # Suite de pruebas unitarias Vitest (82 tests)
+├── vitest.config.ts                # Configuración de Vitest con runner multi-hilo
+├── next.config.ts                  # Configuración de CSP y headers de iframe
+└── package.json                    # Dependencias y scripts
 ```
 
 ---
 
-## Cliente API (`src/lib/api.ts`)
+## Sistema de Diseño y Artesanía UI (Anti-AI Craftsmanship)
 
-Todos los llamados al backend pasan por `api.ts`. Usa `NEXT_PUBLIC_API_URL` + token JWT de `localStorage`.
+El frontend sigue un estándar riguroso de artesanía de software humano (`senior-frontend-craftsmanship`), eliminando los clichés visuales de plantillas automáticas:
+
+- **Elevación Natural de 3 Capas:** En lugar de resplandores o gradientes púrpuras, se utiliza `--shadow-card` (sombras sutiles con capas difusas) y bordes neutrales `border-gray-200`.
+- **Micro-interacciones Físicas:** Retroalimentación háptica visual mediante `.btn-press:active { transform: scale(0.98); }` con tiempos de respuesta ágiles (150ms).
+- **Tipografía Editorial y Numerales Estables:** Uso de `font-mono tabular-nums` en todas las métricas, tarjetas numéricas y marcas de tiempo para evitar vibraciones o saltos de layout durante la renderización.
+- **Iconografía Vectorial Accesible:** Cero emojis decorativos en botones o encabezados. Todos los iconos son SVG semánticos con `aria-hidden="true"` y texto accesible para lectores de pantalla.
+- **Radio de Esquinas Coherente:** `rounded-lg` para botones, inputs y controles interactivos; `rounded-xl` para tarjetas y contenedores principales.
+
+---
+
+## Cliente de API (`src/lib/api.ts`)
+
+Toda comunicación HTTP con el backend FastAPI está centralizada en `api.ts`. Utiliza `NEXT_PUBLIC_API_URL` e inyecta el token Bearer desde `localStorage`.
 
 ```typescript
 import { api } from '@/lib/api';
@@ -61,156 +80,70 @@ import { api } from '@/lib/api';
 const chatbots = await api.chatbots.list();
 const chatbot  = await api.chatbots.create(payload);
 
-// Chat síncrono
+// Chat Síncrono
 const res = await api.chat.send(botId, { message: '...', conversation_id: '...' });
 
-// Chat streaming SSE
+// Chat Streaming SSE
 await api.chat.sendStream(botId, { message: '...' }, {
-  onToken: (chunk) => { /* acumular en UI */ },
+  onToken: (chunk) => { /* Actualización progresiva en UI */ },
   onDone:  (meta)  => { /* meta.conversation_id, meta.sources */ },
-  onError: (err)   => { /* mostrar error */ },
+  onError: (err)   => { /* Manejo de contingencia */ },
 });
 
 // Documentos
 const docs = await api.documents.list(chatbotId);
 ```
 
-**Regla:** nunca usar `fetch` directo en componentes. Centralizar toda la lógica HTTP en `api.ts`.
-
-**Timeouts:** `AbortController` — 30s para CRUD ligero, 120s para chat y upload.
+**Regla obligatoria:** Nunca invocar `fetch()` directamente dentro de los componentes. Centralizar los endpoints y contratos en `api.ts`.
 
 ---
 
-## AuthContext (`src/lib/context.tsx`)
+## Gestión de Sesión (`src/lib/context.tsx`)
 
 ```typescript
-const { user, token, login, logout, isLoading } = useAuth();
+const { auth, login, logout } = useApp();
 ```
 
-- Token persiste en **`localStorage`** (clave `token`) — compartido entre pestañas, mitigado por expiración JWT 24h + revocación backend.
-- `user` expone: `{ id, email, role, firstName, lastName, institutionName, openrouterApiKey, openrouterModel }`.
-- El estado `conversations` fue eliminado (era dead state — nunca se actualizaba).
+- El token JWT y los datos de perfil residen en **`localStorage`**, permitiendo sincronización entre pestañas y sesiones embebidas en iframe.
+- La expiración corta (24 horas) y la tabla de revocación backend (`revoked_tokens`) mitigan los riesgos asociados a almacenamiento local.
 
 ---
 
-## Seguridad Frontend
+## Seguridad Frontend y Cabeceras HTTP
 
-| Control | Implementación |
-|---|---|---|
-| Token en localStorage | Compartido entre pestañas — riesgo mitigado por JWT expira 24h + revocación backend (tabla `revoked_tokens`) |
-| CSP | `next.config.ts`: `connect-src` incluye `*.supabase.co`, `openrouter.ai`, `edurag-production.up.railway.app` |
-| X-Frame-Options | Reemplazado por CSP `frame-ancestors *` en next.config.ts (necesario para iframes en Moodle) |
-| X-Content-Type-Options | `nosniff` |
-| Referrer-Policy | `strict-origin-when-cross-origin` |
-| Permissions-Policy | `camera=(), microphone=(), geolocation=()` |
-
-> **Nota sobre iframes:** `frame-ancestors *` permite embeber el chatbot en cualquier LMS. Si se necesita restringir a dominios específicos en el futuro, se puede cambiar a `frame-ancestors moodle.miinstitucion.edu`.
+| Cabecera / Control | Implementación |
+|---|---|
+| **Content-Security-Policy** | `next.config.ts`: `connect-src` restringido a Railway, Supabase y orígenes autorizados. |
+| **Iframe Embedding** | `frame-ancestors *` en `next.config.ts` para permitir la integración en plataformas LMS externas (Moodle, Canvas, Blackboard). |
+| **Protección MIME** | `X-Content-Type-Options: nosniff`. |
+| **Políticas de Referrer** | `Referrer-Policy: strict-origin-when-cross-origin`. |
 
 ---
 
-## Tipos Principales (`src/lib/types.ts`)
+## Testing y Calidad
 
-```typescript
-interface User {
-  id: string;
-  email: string;
-  role: 'teacher' | 'student' | 'admin';
-  firstName?: string;
-  lastName?: string;
-  institutionName?: string;
-  openrouterApiKey?: string;
-  openrouterModel?: string;
-  is_test_account?: boolean;
-}
-
-interface Chatbot {
-  id: string;
-  owner_id: string;
-  name: string;
-  subject_area: string;
-  education_level: 'secondary' | 'university';
-  tone: 'formal' | 'friendly' | 'technical';
-  welcome_message: string;
-  system_prompt_override?: string;  // máx 2000 chars
-  restriction_level: 'strict' | 'guided' | 'open';
-  public_url: string;
-  embed_code: string;
-  is_published: boolean;
-  created_at: string;
-  updated_at: string;
-}
-
-interface Document {
-  id: string;
-  chatbot_id: string;
-  filename: string;
-  mime_type: string;  // text/markdown | text/plain | application/pdf | ...docx
-  blob_url: string;
-  status: 'indexed' | 'error';
-  chunk_count: number;
-  created_at: string;
-  processed_at: string;
-}
-```
-
----
-
-## Rutas y Páginas
-
-| Ruta | Descripción | Auth |
-|---|---|---|
-| `/` | Landing — stats en vivo (`GET /platform/stats`) con fallback a "—" | No |
-| `/login` | Login email + password | No |
-| `/teacher` | Dashboard docente — lista de chatbots + `auth.user.firstName` | `role: teacher` |
-| `/teacher/chatbots/new` | Crear chatbot | `role: teacher` |
-| `/teacher/chatbots/[id]` | Editar chatbot + subir documentos | `role: teacher` |
-| `/marketplace` | Lista pública de chatbots publicados | No |
-| `/chat/[botId]` | Interfaz de chat embebible | No |
-
-### `/chat/[botId]` — `ChatClient.tsx`
-
-- `assistantMsgId` + `useRef` + `findIndex` — evita el race condition de React batching al actualizar el mensaje del asistente durante el stream.
-- Indicador de carga dentro de la burbuja del asistente mientras `content === ""`.
-- `renderMessageContent()` — procesa Markdown: code blocks, listas (`-`, `*`, `1.`), bold, italic, inline code.
-- `maxLength={4000}` en el input — validación en frontend (el backend también valida en el modelo Pydantic).
-- Fallback automático a `api.chat.send()` si el stream no entrega tokens.
-
-### `EditChatbotClient.tsx` — Subida de documentos
-
-- `accept=".md,.txt,.pdf,.docx"` — coincide con los tipos que el backend acepta.
-- Aviso visible: `⚠️ Solo PDFs digitales — los PDFs escaneados no son compatibles`.
-- PyMuPDF solo extrae texto de PDFs con capa de texto. PDFs escaneados (solo imagen) devuelven 400.
-
----
-
-## Variables de Entorno
-
-```env
-# frontend/.env.local (NO commitear)
-NEXT_PUBLIC_API_URL=https://edurag-production.up.railway.app
-
-# Desarrollo local
-NEXT_PUBLIC_API_URL=http://localhost:8000
-```
-
----
-
-## Scripts
+La suite de frontend cuenta con **82 pruebas unitarias** ejecutadas con Vitest y JSDOM:
 
 ```bash
-npm run dev       # http://localhost:3000
-npm run build     # build producción (verifica TypeScript)
-npm run start     # servidor producción local
-npm run lint      # ESLint
-npm run test      # Vitest
+# Ejecución de pruebas unitarias
+cd frontend
+npm test
+
+# Verificación estricta de compilación y tipos TypeScript
+npm run build
 ```
 
----
-
-## Convenciones
-
-- **Styling:** Tailwind CSS — no CSS modules ni styled-components.
-- **Estado:** React Context para auth, `useState`/`useEffect` para estado local. Sin Redux ni Zustand.
-- **TypeScript:** estricto. Sin `any` salvo casos documentados. Exportar tipos desde `types.ts`.
-- **Fetch:** siempre vía `api.ts`. Manejar siempre `loading` y `error`.
-- **Vercel:** deploy automático en cada push a `master`. URL: `https://edu-rag-red.vercel.app`.
+| Archivo de Prueba | Cobertura |
+|---|---|
+| `test/api.test.ts` | 24 pruebas sobre el cliente HTTP, manejo de tokens, endpoints y streaming SSE. |
+| `test/context.test.tsx` | 7 pruebas sobre autenticación, login, logout e invalidación de credenciales. |
+| `test/ConfirmModal.test.tsx` | 8 pruebas sobre accesibilidad, focus trap, confirmación y cancelación. |
+| `test/StatusBadge.test.tsx` | 5 pruebas sobre variantes de estado y clases visuales. |
+| `test/Toast.test.tsx` | 5 pruebas sobre alertas temporales y renderizado condicional. |
+| `test/EmptyState.test.tsx` | 4 pruebas sobre ilustraciones SVG y llamadas a la acción. |
+| `test/Navbar.test.tsx` | 4 pruebas sobre enlaces de navegación y badges de rol. |
+| `test/HelpTooltip.test.tsx` | 3 pruebas sobre accesibilidad de popovers. |
+| `test/Spinner.test.tsx` | 3 pruebas sobre tamaños y animación de carga. |
+| `test/AuthLayout.test.tsx` | 4 pruebas sobre estructura de layout de autenticación. |
+| `test/useRequireRole.test.tsx` | 2 pruebas sobre protección de rutas por rol. |
+| `test/utils.test.ts` | 13 pruebas sobre formateadores de fecha, tamaño de archivo y texto. |
