@@ -15,9 +15,16 @@ CREATE INDEX IF NOT EXISTS idx_revoked_tokens_jti ON public.revoked_tokens(jti);
 -- Índice para limpieza de tokens expirados
 CREATE INDEX IF NOT EXISTS idx_revoked_tokens_expires_at ON public.revoked_tokens(expires_at);
 
--- Auto-limpieza: eliminar tokens expirados mayores a 30 días
-SELECT cron.schedule(
-    'cleanup-revoked-tokens',
-    '0 3 * * 0',
-    $$DELETE FROM public.revoked_tokens WHERE expires_at < now() - INTERVAL '30 days'$$
-);
+-- Auto-limpieza: eliminar tokens expirados mayores a 30 días (si pg_cron está activo)
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM pg_extension WHERE extname = 'pg_cron'
+    ) THEN
+        PERFORM cron.schedule(
+            'cleanup-revoked-tokens',
+            '0 3 * * 0',
+            'DELETE FROM public.revoked_tokens WHERE expires_at < now() - INTERVAL ''30 days'''
+        );
+    END IF;
+END $$;
