@@ -2,7 +2,7 @@ import logging
 import pytest
 import uuid
 import asyncio
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from fastapi.testclient import TestClient
 from unittest.mock import patch, AsyncMock
 from main import app, _persist_chat_turn, get_client_ip
@@ -590,7 +590,7 @@ def test_create_and_verify_refresh_token():
     token, jti, expires = create_refresh_token("user-1", "test@test.com", "teacher")
     assert token
     assert jti
-    assert expires > datetime.utcnow()
+    assert expires > datetime.now(timezone.utc)
 
     payload = verify_jwt_token(token)
     assert payload is not None
