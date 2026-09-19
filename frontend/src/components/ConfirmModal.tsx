@@ -53,7 +53,7 @@ export function ConfirmModal({
   const confirmStyles =
     variant === "danger"
       ? "bg-red-600 hover:bg-red-700 text-white focus:ring-red-500"
-      : "bg-amber-500 hover:bg-amber-600 text-white focus:ring-amber-400";
+      : "bg-amber-600 hover:bg-amber-700 text-white focus:ring-amber-500";
 
   return (
     <div
@@ -61,49 +61,57 @@ export function ConfirmModal({
       aria-modal="true"
       aria-labelledby="confirm-modal-title"
       aria-describedby={description ? "confirm-modal-desc" : undefined}
-      className="fixed inset-0 z-[200] flex items-center justify-center px-4"
+      className="fixed inset-0 z-50 flex items-center justify-center px-4"
     >
       {/* Overlay */}
       <div
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+        className="absolute inset-0 bg-zinc-900/40 backdrop-blur-sm animate-in fade-in duration-150"
         onClick={onCancel}
         aria-hidden="true"
       />
 
       {/* Panel */}
-      <div className="relative bg-white rounded-2xl shadow-2xl border border-gray-100 p-6 max-w-sm w-full space-y-4">
-        <div className="flex items-start gap-3">
+      <div className="relative bg-white rounded-xl shadow-xl border border-zinc-200 p-6 max-w-sm w-full space-y-4 animate-in zoom-in-95 duration-150">
+        <div className="flex items-start gap-3.5">
           <div
-            className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-lg ${
-              variant === "danger" ? "bg-red-100" : "bg-amber-100"
+            className={`flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center ${
+              variant === "danger" ? "bg-red-50 text-red-600 border border-red-100" : "bg-amber-50 text-amber-600 border border-amber-100"
             }`}
             aria-hidden="true"
           >
-            {variant === "danger" ? "🗑️" : "⚠️"}
+            {variant === "danger" ? (
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            ) : (
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            )}
           </div>
-          <div>
-            <h2 id="confirm-modal-title" className="font-bold text-gray-900 text-base leading-snug">
+          <div className="flex-1">
+            <h2 id="confirm-modal-title" className="font-bold text-zinc-900 text-sm leading-snug">
               {title}
             </h2>
             {description && (
-              <p id="confirm-modal-desc" className="text-sm text-gray-500 mt-1 leading-relaxed">
+              <p id="confirm-modal-desc" className="text-xs text-zinc-500 mt-1 leading-relaxed">
                 {description}
               </p>
             )}
           </div>
         </div>
 
-        <div className="flex gap-3 pt-1">
+        <div className="flex gap-2.5 pt-2">
           <button
             ref={cancelRef}
             onClick={onCancel}
-            className="flex-1 py-2.5 px-4 rounded-xl border border-gray-200 text-gray-700 font-semibold text-sm hover:bg-gray-50 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-300"
+            className="flex-1 py-2 px-3 rounded-lg border border-zinc-200 text-zinc-700 font-semibold text-xs hover:bg-zinc-50 transition-colors focus:outline-none focus:ring-2 focus:ring-zinc-300 btn-press"
           >
             {cancelLabel}
           </button>
           <button
             onClick={onConfirm}
-            className={`flex-1 py-2.5 px-4 rounded-xl font-semibold text-sm shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1 ${confirmStyles}`}
+            className={`flex-1 py-2 px-3 rounded-lg font-semibold text-xs shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1 btn-press ${confirmStyles}`}
           >
             {confirmLabel}
           </button>
@@ -112,3 +120,4 @@ export function ConfirmModal({
     </div>
   );
 }
+

@@ -9,10 +9,10 @@ import type { ChatMessage, ChatResponse, Message, Chatbot } from "@/lib/types";
 function renderMessageContent(content: string, isUser: boolean) {
   if (!content) return null;
 
-  const boldClass = isUser ? "font-extrabold text-white" : "font-extrabold text-gray-900";
+  const boldClass = isUser ? "font-bold text-white" : "font-semibold text-gray-900";
   const codeInlineClass = isUser
-    ? "bg-brand-700 px-1 py-0.5 rounded font-mono text-xs text-white"
-    : "bg-gray-100 px-1 py-0.5 rounded font-mono text-xs text-brand-700";
+    ? "bg-brand-700/80 px-1.5 py-0.5 rounded font-mono text-xs text-white border border-brand-500/40"
+    : "bg-gray-100 px-1.5 py-0.5 rounded font-mono text-xs text-brand-700 border border-gray-200";
 
   // Dividir por bloques de código triple backtick primero
   const codeBlockRegex = /```[\w]*\n?([\s\S]*?)```/g;
@@ -37,8 +37,8 @@ function renderMessageContent(content: string, isUser: boolean) {
       const listMatch = line.match(/^(\s*)([-*]|\d+\.)\s+(.*)$/);
       if (listMatch) {
         return (
-          <div key={`${segKey}-line-${lineIdx}`} className="flex gap-2 my-0.5">
-            <span className={isUser ? "text-brand-200" : "text-gray-400"}>{"•"}</span>
+          <div key={`${segKey}-line-${lineIdx}`} className="flex gap-2 my-1">
+            <span className={isUser ? "text-brand-200 select-none" : "text-gray-400 select-none"}>{"•"}</span>
             <span>{renderInline(listMatch[3], `${segKey}-li-${lineIdx}`)}</span>
           </div>
         );
@@ -75,9 +75,9 @@ function renderMessageContent(content: string, isUser: boolean) {
         seg.type === "code_block" ? (
           <pre
             key={i}
-            className="my-2 p-3 bg-gray-800 text-green-300 rounded-lg text-xs font-mono overflow-x-auto whitespace-pre"
+            className="my-2.5 p-3.5 bg-slate-900 text-slate-100 border border-slate-800 rounded-lg text-xs font-mono overflow-x-auto whitespace-pre leading-normal"
           >
-            {seg.content}
+            <code>{seg.content}</code>
           </pre>
         ) : (
           <span key={i}>{renderTextSegment(seg.content, i)}</span>
@@ -235,19 +235,19 @@ export default function ChatClient() {
   const chatbotName = chatbot?.name || "Chatbot Educativo";
 
   return (
-    <div className="min-h-screen bg-gray-50 bg-dot-grid flex flex-col">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Header con navegación */}
-      <header className="bg-white shadow-sm py-3 px-6 sticky top-0 z-10">
+      <header className="bg-white border-b border-gray-200 py-3 px-6 sticky top-0 z-10">
         <div className="max-w-4xl mx-auto flex items-center justify-between gap-4">
           {/* Botón volver */}
           <button
             onClick={() => router.back()}
-            className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 font-medium px-3 py-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+            className="btn-press flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 font-medium px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
             aria-label="Volver a la página anterior"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              className="w-4 h-4"
+              className="w-4 h-4 text-gray-500"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -260,10 +260,10 @@ export default function ChatClient() {
           </button>
 
           {/* Nombre del chatbot */}
-          <div className="flex-1 text-center">
+          <div className="flex-1 text-center min-w-0">
             <h1 className="text-base font-semibold text-gray-900 truncate">{chatbotName}</h1>
             {chatbot?.subject_area && (
-              <p className="text-xs text-gray-400">{chatbot.subject_area}</p>
+              <p className="text-xs text-gray-500 truncate">{chatbot.subject_area}</p>
             )}
           </div>
 
@@ -275,15 +275,15 @@ export default function ChatClient() {
               }}
               disabled={chatbot.is_published}
               aria-label={chatbot.is_published ? "Chatbot ya publicado" : "Publicar este chatbot"}
-              className={`flex items-center gap-1.5 text-sm font-medium px-4 py-1.5 rounded-lg transition-colors ${
+              className={`btn-press flex items-center gap-1.5 text-sm font-medium px-3.5 py-1.5 rounded-lg transition-colors ${
                 chatbot.is_published
                   ? "bg-green-50 text-green-700 border border-green-200 cursor-default"
-                  : "bg-brand-600 text-white hover:bg-brand-700"
+                  : "bg-brand-600 text-white hover:bg-brand-700 shadow-sm"
               }`}
             >
               {chatbot.is_published ? (
                 <>
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                  <svg className="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                   </svg>
                   Publicado
@@ -305,22 +305,34 @@ export default function ChatClient() {
       </header>
 
       <main className="flex-1 max-w-4xl w-full mx-auto p-4 sm:p-6 overflow-auto">
-        <div className="bg-white rounded-xl shadow h-full flex flex-col" style={{ minHeight: "calc(100vh - 120px)" }}>
+        <div className="bg-white rounded-xl border border-gray-200 shadow-card h-full flex flex-col" style={{ minHeight: "calc(100vh - 120px)" }}>
           {/* Mensaje de bienvenida */}
           {chatbot?.welcome_message && messages.length === 0 && (
             <div className="px-6 pt-6 pb-2">
-              <div className="bg-brand-50 border border-brand-100 rounded-xl p-4 text-sm text-brand-800">
-                {chatbot.welcome_message}
+              <div className="bg-brand-50/60 border border-brand-200/70 rounded-lg p-4 text-sm text-brand-900 flex items-start gap-3">
+                <svg className="w-5 h-5 text-brand-600 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div className="leading-relaxed">
+                  <p className="font-semibold text-brand-950 mb-0.5">Mensaje del Docente</p>
+                  <p>{chatbot.welcome_message}</p>
+                </div>
               </div>
             </div>
           )}
 
           <div className="flex-1 overflow-auto p-6 space-y-4" role="log" aria-label="Mensajes del chat" aria-live="polite">
             {messages.length === 0 ? (
-              <div className="text-center text-gray-400 py-16">
-                <div className="text-5xl mb-4" aria-hidden="true">💬</div>
-                <p className="text-base font-semibold text-gray-600">Envía un mensaje para comenzar</p>
-                <p className="text-sm text-gray-400 mt-1.5">El asistente responderá basándose en los documentos cargados por tu docente</p>
+              <div className="text-center py-16 px-4">
+                <div className="w-12 h-12 rounded-xl bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-500 mx-auto mb-4">
+                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75} aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                  </svg>
+                </div>
+                <h2 className="text-base font-semibold text-gray-900">Inicia la consulta académica</h2>
+                <p className="text-sm text-gray-500 mt-1 max-w-md mx-auto">
+                  Formula tus dudas sobre el material de estudio. Las respuestas se generan estrictamente a partir de los documentos provistos.
+                </p>
               </div>
             ) : (
               messages.map((msg, index) => (
@@ -329,40 +341,43 @@ export default function ChatClient() {
                   className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
                 >
                   <div
-                    className={`max-w-[80%] rounded-2xl px-4 py-3 shadow-sm ${
+                    className={`max-w-[82%] rounded-xl px-4 py-3 ${
                       msg.role === "user"
-                        ? "bg-brand-600 text-white rounded-br-sm"
-                        : "bg-gray-100 text-gray-800 rounded-bl-sm border border-gray-200/40"
+                        ? "bg-brand-600 text-white rounded-br-xs shadow-sm"
+                        : "bg-gray-50 text-gray-900 rounded-bl-xs border border-gray-200/80 shadow-xs"
                     }`}
                   >
                     {msg.role === "assistant" && !msg.content ? (
-                      <div className="flex gap-1.5 items-center h-4" aria-label="El asistente está escribiendo">
-                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                      <div className="flex gap-1.5 items-center h-4 py-1" aria-label="El asistente está escribiendo">
+                        <div className="w-1.5 h-1.5 bg-brand-500 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                        <div className="w-1.5 h-1.5 bg-brand-500 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                        <div className="w-1.5 h-1.5 bg-brand-500 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
                       </div>
                     ) : (
                       renderMessageContent(msg.content, msg.role === "user")
                     )}
                     {msg.role === "assistant" && msg.sources && msg.sources.length > 0 && (
-                      <div className="mt-2.5 flex flex-wrap gap-1.5 border-t border-gray-200/50 pt-2" aria-label="Fuentes citadas">
+                      <div className="mt-2.5 flex flex-wrap gap-1.5 border-t border-gray-200 pt-2" aria-label="Fuentes citadas">
                         {msg.sources.map((src, idx) => (
                           <span
                             key={idx}
-                            className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-brand-50 text-brand-700 border border-brand-100/50 select-none shadow-sm hover:shadow transition-shadow"
+                            className="inline-flex items-center gap-1 text-[11px] font-mono px-2 py-0.5 rounded-md bg-brand-50 text-brand-800 border border-brand-200/60 select-none"
                           >
-                            <span aria-hidden="true">📄</span> {src}
+                            <svg className="w-3 h-3 text-brand-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            <span className="truncate max-w-[200px]">{src}</span>
                           </span>
                         ))}
                       </div>
                     )}
                     <p
-                      className={`text-[10px] mt-1.5 ${
+                      className={`text-[10px] font-mono tabular-nums mt-1.5 ${
                         msg.role === "user" ? "text-brand-200" : "text-gray-400"
                       }`}
-                      aria-label={`Enviado a las ${new Date(msg.timestamp).toLocaleTimeString()}`}
+                      aria-label={`Enviado a las ${new Date(msg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`}
                     >
-                      {new Date(msg.timestamp).toLocaleTimeString()}
+                      {new Date(msg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                     </p>
                   </div>
                 </div>
@@ -371,15 +386,15 @@ export default function ChatClient() {
             <div ref={messagesEndRef} />
           </div>
 
-          <form onSubmit={handleSend} className="border-t p-4 flex gap-3">
+          <form onSubmit={handleSend} className="border-t border-gray-200 p-4 flex gap-3 bg-gray-50/50 rounded-b-xl">
             <label htmlFor="chat-input" className="sr-only">Escribe tu mensaje</label>
             <input
               id="chat-input"
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Escribe tu mensaje..."
-              className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none text-sm transition-all"
+              placeholder="Escribe tu consulta académica..."
+              className="flex-1 px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none text-sm transition-all bg-white text-gray-900 placeholder:text-gray-400"
               disabled={isLoading}
               maxLength={4000}
               autoComplete="off"
@@ -387,10 +402,13 @@ export default function ChatClient() {
             <button
               type="submit"
               disabled={isLoading || !input.trim()}
-              className="px-5 py-2.5 bg-brand-600 text-white rounded-xl hover:bg-brand-700 disabled:opacity-40 disabled:cursor-not-allowed font-semibold text-sm transition-colors shadow-sm"
+              className="btn-press px-4 py-2.5 bg-brand-600 text-white rounded-lg hover:bg-brand-700 disabled:opacity-40 disabled:cursor-not-allowed font-semibold text-sm transition-colors shadow-sm inline-flex items-center gap-1.5 shrink-0"
               aria-label="Enviar mensaje"
             >
-              Enviar
+              <span>Enviar</span>
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+              </svg>
             </button>
           </form>
         </div>

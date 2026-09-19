@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { api } from "@/lib/api";
 import { Navbar } from "@/components/Navbar";
 import { HelpTooltip } from "@/components/HelpTooltip";
@@ -35,7 +34,6 @@ export default function NewChatbotPage() {
       router.push(`/teacher/chatbots/${chatbot.id}`);
     } catch (error) {
       console.error("Error creating chatbot:", error);
-      // Reemplaza alert() nativo — CRIT-02
       toast.error(
         error instanceof Error
           ? error.message
@@ -47,18 +45,23 @@ export default function NewChatbotPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col font-sans selection:bg-brand-500 selection:text-white">
+    <div className="min-h-screen bg-slate-50 flex flex-col font-sans selection:bg-brand-600 selection:text-white">
       <Navbar
         variant="teacher"
         backTo="/teacher"
         backLabel="Volver al panel"
-        title="Nuevo Chatbot"
+        title="Crear Nuevo Chatbot"
       />
 
       <main className="max-w-3xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 flex-1">
-        <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-gray-100 p-8 space-y-6 shadow-sm">
+        <div className="mb-6">
+          <h1 className="text-2xl font-extrabold text-zinc-950 font-display tracking-tight">Nuevo Tutor Pedagógico</h1>
+          <p className="text-zinc-500 text-xs sm:text-sm mt-1">Configura las directivas de comportamiento y el nivel de rigor didáctico</p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-zinc-200 p-6 sm:p-8 space-y-6 shadow-sm">
           <div>
-            <label htmlFor="name" className="block text-sm font-semibold text-gray-700 mb-1.5 flex items-center">
+            <label htmlFor="name" className="block text-xs font-semibold text-zinc-700 mb-1 flex items-center">
               Nombre del chatbot *
               <HelpTooltip text="Nombre descriptivo con el que tus estudiantes identificarán a este tutor. Ej: Tutor de Matemáticas 101." />
             </label>
@@ -68,16 +71,16 @@ export default function NewChatbotPage() {
               type="text"
               value={formData.name}
               onChange={handleChange}
-              className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none text-sm transition-all"
-              placeholder="Ej: Tutor de Matemáticas"
+              className="w-full px-3.5 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-zinc-900 focus:border-zinc-900 outline-none text-xs sm:text-sm text-zinc-900 transition-all"
+              placeholder="Ej: Tutor de Cálculo I"
               required
             />
           </div>
 
           <div>
-            <label htmlFor="subject_area" className="block text-sm font-semibold text-gray-700 mb-1.5 flex items-center">
-              Área temática *
-              <HelpTooltip text="Tema principal del conocimiento. Ej: Álgebra Lineal, Geografía, etc." />
+            <label htmlFor="subject_area" className="block text-xs font-semibold text-zinc-700 mb-1 flex items-center">
+              Área temática o materia *
+              <HelpTooltip text="Materia o disciplina académica principal. Ej: Cálculo Diferencial, Química Orgánica." />
             </label>
             <input
               id="subject_area"
@@ -85,22 +88,22 @@ export default function NewChatbotPage() {
               type="text"
               value={formData.subject_area}
               onChange={handleChange}
-              className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none text-sm transition-all"
-              placeholder="Ej: Cálculo Diferencial"
+              className="w-full px-3.5 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-zinc-900 focus:border-zinc-900 outline-none text-xs sm:text-sm text-zinc-900 transition-all"
+              placeholder="Ej: Matemáticas Universitarias"
               required
             />
           </div>
 
           <div className="grid md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
+              <label className="block text-xs font-semibold text-zinc-700 mb-2 flex items-center">
                 Nivel educativo
-                <HelpTooltip text="Elige el nivel de complejidad didáctica del tutor. 'Secundaria' usará analogías sencillas y lenguaje claro. 'Universidad' abordará tecnicismos y rigor académico." />
+                <HelpTooltip text="Secundaria prioriza analogías didácticas; Universidad profundiza en rigor conceptual y demostraciones." />
               </label>
               <div className="grid grid-cols-2 gap-3" role="radiogroup" aria-label="Nivel educativo">
                 {([
-                  { value: "secondary", label: "Secundaria", desc: "didáctica y motivadora", emoji: "🏫" },
-                  { value: "university", label: "Universidad", desc: "rigor conceptual y académico", emoji: "🎓" },
+                  { value: "secondary", label: "Secundaria", desc: "Didáctica y lenguaje claro" },
+                  { value: "university", label: "Universidad", desc: "Rigor conceptual y técnico" },
                 ] as const).map((opt) => (
                   <button
                     key={opt.value}
@@ -108,32 +111,31 @@ export default function NewChatbotPage() {
                     role="radio"
                     aria-checked={formData.education_level === opt.value}
                     onClick={() => setFormData((prev) => ({ ...prev, education_level: opt.value }))}
-                    className={`p-4 rounded-xl border text-left transition-all flex flex-col gap-1.5 cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-1 ${
+                    className={`p-3 rounded-lg border text-left transition-all flex flex-col gap-1 cursor-pointer focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:ring-offset-1 ${
                       formData.education_level === opt.value
-                        ? "border-brand-600 bg-brand-50/40 shadow-sm"
-                        : "border-gray-200 hover:bg-gray-50/50"
+                        ? "border-zinc-900 bg-zinc-900 text-white shadow-sm"
+                        : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50"
                     }`}
                   >
-                    <span className="text-xl" aria-hidden="true">{opt.emoji}</span>
-                    <div>
-                      <h4 className="font-bold text-xs text-gray-900 leading-none">{opt.label}</h4>
-                      <p className="text-[10px] text-gray-400 mt-1">{opt.desc}</p>
-                    </div>
+                    <h4 className="font-bold text-xs leading-none">{opt.label}</h4>
+                    <p className={`text-[10px] mt-0.5 leading-tight ${formData.education_level === opt.value ? "text-zinc-300" : "text-zinc-400"}`}>
+                      {opt.desc}
+                    </p>
                   </button>
                 ))}
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
-                Tono de comunicación
-                <HelpTooltip text="El tono influye en la empatía y relación del tutor con el estudiante. 'Amigable' es motivador; 'Formal' es respetuoso; 'Técnico' es preciso y directo." />
+              <label className="block text-xs font-semibold text-zinc-700 mb-2 flex items-center">
+                Tono pedagógico
+                <HelpTooltip text="Define la actitud del asistente hacia los estudiantes durante las explicaciones." />
               </label>
-              <div className="grid grid-cols-3 gap-2.5" role="radiogroup" aria-label="Tono de comunicación">
+              <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Tono pedagógico">
                 {([
-                  { value: "friendly", label: "Amigable", desc: "Empático", emoji: "😊" },
-                  { value: "formal", label: "Formal", desc: "Respetuoso", emoji: "👔" },
-                  { value: "technical", label: "Técnico", desc: "Preciso", emoji: "🔬" },
+                  { value: "friendly", label: "Amigable", desc: "Empático" },
+                  { value: "formal", label: "Formal", desc: "Respetuoso" },
+                  { value: "technical", label: "Técnico", desc: "Preciso" },
                 ] as const).map((t) => (
                   <button
                     key={t.value}
@@ -141,17 +143,14 @@ export default function NewChatbotPage() {
                     role="radio"
                     aria-checked={formData.tone === t.value}
                     onClick={() => setFormData((prev) => ({ ...prev, tone: t.value }))}
-                    className={`p-3 rounded-xl border text-left transition-all flex flex-col gap-1.5 cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-1 ${
+                    className={`p-2.5 rounded-lg border text-left transition-all flex flex-col cursor-pointer focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:ring-offset-1 ${
                       formData.tone === t.value
-                        ? "border-brand-600 bg-brand-50/40 shadow-sm"
-                        : "border-gray-200 hover:bg-gray-50/50"
+                        ? "border-zinc-900 bg-zinc-900 text-white shadow-sm"
+                        : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50"
                     }`}
                   >
-                    <span className="text-lg" aria-hidden="true">{t.emoji}</span>
-                    <div>
-                      <h4 className="font-bold text-xs text-gray-900 leading-none">{t.label}</h4>
-                      <p className="text-[9px] text-gray-400 mt-0.5">{t.desc}</p>
-                    </div>
+                    <h4 className="font-bold text-xs leading-none">{t.label}</h4>
+                    <p className={`text-[10px] mt-1 ${formData.tone === t.value ? "text-zinc-300" : "text-zinc-400"}`}>{t.desc}</p>
                   </button>
                 ))}
               </div>
@@ -160,15 +159,15 @@ export default function NewChatbotPage() {
 
           <div className="grid md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
+              <label className="block text-xs font-semibold text-zinc-700 mb-2 flex items-center">
                 Nivel de restricción
-                <HelpTooltip text="'Estricto' responderá SOLO con tus documentos (0 alucinaciones). 'Guiado' usará tus documentos e introducirá explicaciones didácticas. 'Abierto' responderá de manera libre combinando tus documentos con conocimiento global." />
+                <HelpTooltip text="'Estricto' responderá SOLO con el contenido subido. 'Guiado' complementa con explicaciones. 'Abierto' expande temas." />
               </label>
-              <div className="grid grid-cols-3 gap-2.5" role="radiogroup" aria-label="Nivel de restricción">
+              <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Nivel de restricción">
                 {([
-                  { value: "strict", label: "Estricto", desc: "Solo contexto", emoji: "🔒" },
-                  { value: "guided", label: "Guiado", desc: "Complementa", emoji: "🧭" },
-                  { value: "open", label: "Abierto", desc: "Expansivo", emoji: "🌐" },
+                  { value: "strict", label: "Estricto", desc: "Solo contexto" },
+                  { value: "guided", label: "Guiado", desc: "Complementa" },
+                  { value: "open", label: "Abierto", desc: "Expansivo" },
                 ] as const).map((r) => (
                   <button
                     key={r.value}
@@ -176,115 +175,106 @@ export default function NewChatbotPage() {
                     role="radio"
                     aria-checked={formData.restriction_level === r.value}
                     onClick={() => setFormData((prev) => ({ ...prev, restriction_level: r.value }))}
-                    className={`p-3 rounded-xl border text-left transition-all flex flex-col gap-1.5 cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-1 ${
+                    className={`p-2.5 rounded-lg border text-left transition-all flex flex-col cursor-pointer focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:ring-offset-1 ${
                       formData.restriction_level === r.value
-                        ? "border-brand-600 bg-brand-50/40 shadow-sm"
-                        : "border-gray-200 hover:bg-gray-50/50"
+                        ? "border-zinc-900 bg-zinc-900 text-white shadow-sm"
+                        : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50"
                     }`}
                   >
-                    <span className="text-lg" aria-hidden="true">{r.emoji}</span>
-                    <div>
-                      <h4 className="font-bold text-xs text-gray-900 leading-none">{r.label}</h4>
-                      <p className="text-[9px] text-gray-400 mt-0.5">{r.desc}</p>
-                    </div>
+                    <h4 className="font-bold text-xs leading-none">{r.label}</h4>
+                    <p className={`text-[10px] mt-1 ${formData.restriction_level === r.value ? "text-zinc-300" : "text-zinc-400"}`}>{r.desc}</p>
                   </button>
                 ))}
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center">
-                Proveedor LLM
-                <HelpTooltip text="Motor de inteligencia artificial activo. OpenRouter es el proveedor unificado de modelos (Gemini, Llama, Nemotron, etc.) usado por EduRAG. Los modelos free soportan hasta 1M tokens de context window." />
+              <label className="block text-xs font-semibold text-zinc-700 mb-2 flex items-center">
+                Motor LLM
+                <HelpTooltip text="Inferencia unificada vía OpenRouter. Soporta hasta 1M tokens de context window." />
               </label>
-              <div className="grid grid-cols-2 gap-3" role="radiogroup" aria-label="Proveedor LLM">
+              <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Motor LLM">
                 <button
                   type="button"
                   role="radio"
                   aria-checked={formData.llm_provider === "openrouter"}
                   onClick={() => setFormData((prev) => ({ ...prev, llm_provider: "openrouter" }))}
-                  className={`p-4 rounded-xl border text-left transition-all flex flex-col gap-1.5 cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-1 ${
+                  className={`p-2.5 rounded-lg border text-left transition-all flex flex-col cursor-pointer focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:ring-offset-1 ${
                     formData.llm_provider === "openrouter"
-                      ? "border-brand-600 bg-brand-50/40 shadow-sm"
-                      : "border-gray-200 hover:bg-gray-50/50"
+                      ? "border-zinc-900 bg-zinc-900 text-white shadow-sm"
+                      : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50"
                   }`}
                 >
-                  <span className="text-xl" aria-hidden="true">✨</span>
-                  <div>
-                    <h4 className="font-bold text-xs text-gray-900 leading-none">OpenRouter</h4>
-                    <p className="text-[10px] text-gray-400 mt-1">~1M tokens · Modelos free</p>
-                  </div>
+                  <h4 className="font-bold text-xs leading-none">OpenRouter</h4>
+                  <p className={`text-[10px] mt-1 ${formData.llm_provider === "openrouter" ? "text-zinc-300" : "text-zinc-400"}`}>~1M tokens · Free</p>
                 </button>
                 <button
                   type="button"
                   disabled
                   aria-disabled="true"
                   title="Próximamente disponible"
-                  className="p-4 rounded-xl border text-left flex flex-col gap-1.5 opacity-50 cursor-not-allowed border-gray-100 bg-gray-50/20"
+                  className="p-2.5 rounded-lg border text-left flex flex-col opacity-40 cursor-not-allowed border-zinc-200 bg-zinc-50"
                 >
-                  <span className="text-xl" aria-hidden="true">🔒</span>
-                  <div>
-                    <h4 className="font-bold text-xs text-gray-400 leading-none">Claude</h4>
-                    <p className="text-[10px] text-gray-400 mt-1">Próximamente</p>
-                  </div>
+                  <h4 className="font-bold text-xs text-zinc-400 leading-none">Claude</h4>
+                  <p className="text-[10px] text-zinc-400 mt-1">Próximamente</p>
                 </button>
               </div>
             </div>
           </div>
 
           <div>
-            <label htmlFor="welcome_message" className="block text-sm font-semibold text-gray-700 mb-1.5 flex items-center">
+            <label htmlFor="welcome_message" className="block text-xs font-semibold text-zinc-700 mb-1 flex items-center">
               Mensaje de bienvenida (opcional)
-              <HelpTooltip text="Mensaje que enviará el tutor al abrirse la conversación por primera vez." />
+              <HelpTooltip text="Primer mensaje que verá el estudiante al iniciar la conversación." />
             </label>
             <textarea
               id="welcome_message"
               name="welcome_message"
               value={formData.welcome_message || ""}
               onChange={handleChange}
-              rows={3}
-              className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none text-sm transition-all resize-none"
-              placeholder="Ej: ¡Hola! Soy tu tutor virtual para la clase de Cálculo. ¿En qué duda puedo ayudarte hoy?"
+              rows={2}
+              className="w-full px-3.5 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-zinc-900 focus:border-zinc-900 outline-none text-xs sm:text-sm text-zinc-900 transition-all resize-none"
+              placeholder="Ej: ¡Hola! Soy el asistente de Cálculo. ¿Qué concepto o ejercicio te gustaría revisar?"
             />
           </div>
 
           <div>
-            <label htmlFor="system_prompt_override" className="block text-sm font-semibold text-gray-700 mb-1.5 flex items-center">
-              Instrucciones personalizadas (opcional)
-              <HelpTooltip text="Instrucciones directas de comportamiento pedagógico que el bot debe seguir obligatoriamente." />
+            <label htmlFor="system_prompt_override" className="block text-xs font-semibold text-zinc-700 mb-1 flex items-center">
+              Instrucciones pedagógicas personalizadas (opcional)
+              <HelpTooltip text="Directivas adicionales que el modelo seguirá obligatoriamente en cada respuesta." />
             </label>
             <textarea
               id="system_prompt_override"
               name="system_prompt_override"
               value={formData.system_prompt_override || ""}
               onChange={handleChange}
-              rows={4}
-              className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none text-sm transition-all resize-none"
-              placeholder="Ej: Fomenta el método socrático. Nunca les des las respuestas de forma directa; en su lugar, guíalos paso a paso haciéndoles preguntas analíticas."
+              rows={3}
+              className="w-full px-3.5 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-zinc-900 focus:border-zinc-900 outline-none text-xs sm:text-sm text-zinc-900 transition-all resize-none"
+              placeholder="Ej: Emplea preguntas socráticas. No proporciones el resultado final inmediatamente; guía al estudiante paso a paso."
             />
           </div>
 
-          <div className="flex gap-4 pt-6 border-t border-gray-100 mt-8">
+          <div className="flex gap-3 pt-4 border-t border-zinc-100">
             <button
               type="button"
               onClick={() => router.back()}
-              className="px-6 py-2.5 border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 font-bold text-sm shadow-sm transition-all"
+              className="px-4 py-2 border border-zinc-300 text-zinc-700 hover:bg-zinc-50 rounded-lg font-semibold text-xs transition-colors btn-press"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="flex-1 px-6 py-2.5 bg-brand-600 text-white hover:bg-brand-700 rounded-xl font-bold text-sm shadow transition-all disabled:opacity-50"
+              className="flex-1 px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-lg font-semibold text-xs shadow-sm btn-press transition-colors disabled:opacity-50"
             >
-              {isSubmitting ? "Creando..." : "Crear Chatbot"}
+              {isSubmitting ? "Creando tutor..." : "Crear Chatbot"}
             </button>
           </div>
         </form>
       </main>
 
-      {/* Sistema de toasts — reemplaza alert() nativo (CRIT-02) */}
       <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
   );
 }
+

@@ -10,23 +10,23 @@ export function HelpTooltip({ text }: HelpTooltipProps) {
   const [isVisible, setIsVisible] = useState(false);
 
   return (
-    <div className="relative inline-flex items-center ml-1.5 group select-none">
+    <div className="relative inline-flex items-center ml-1.5 select-none">
       <button
         type="button"
         onMouseEnter={() => setIsVisible(true)}
         onMouseLeave={() => setIsVisible(false)}
         onFocus={() => setIsVisible(true)}
         onBlur={() => setIsVisible(false)}
-        className="text-gray-400 hover:text-brand-600 transition-colors focus:outline-none"
+        className="text-zinc-400 hover:text-zinc-700 transition-colors focus:outline-none"
         aria-label="Ayuda"
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
-          className="w-4 h-4 cursor-help"
+          className="w-3.5 h-3.5 cursor-help"
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
-          strokeWidth={2.5}
+          strokeWidth={2}
         >
           <path
             strokeLinecap="round"
@@ -37,13 +37,14 @@ export function HelpTooltip({ text }: HelpTooltipProps) {
       </button>
 
       {isVisible && (
-        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 bg-slate-900/95 backdrop-blur-sm text-white text-[11px] rounded-xl p-3 shadow-xl border border-slate-800 z-50 pointer-events-none leading-relaxed font-medium">
+        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 bg-zinc-900 text-zinc-100 text-[11px] rounded-lg p-3 shadow-xl border border-zinc-800 z-50 pointer-events-none leading-relaxed font-normal">
           <div className="relative">
             {text}
-            <div className="absolute top-full left-1/2 -translate-x-1/2 w-2 h-2 bg-slate-900 rotate-45 mt-1 border-r border-b border-slate-800"></div>
+            <div className="absolute top-full left-1/2 -translate-x-1/2 w-2 h-2 bg-zinc-900 rotate-45 mt-0.5 border-r border-b border-zinc-800" />
           </div>
         </div>
       )}
     </div>
   );
 }
+

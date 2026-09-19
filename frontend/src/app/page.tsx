@@ -4,94 +4,118 @@ import { StatsSection } from "./_components/StatsSection";
 
 export default function HomePage() {
   return (
-    <main className="min-h-screen bg-gray-50 flex flex-col font-sans selection:bg-brand-500 selection:text-white">
-      {/* Hero oscuro premium con dot-grid */}
-      <section className="bg-slate-900 bg-dot-grid text-white py-24 px-4 relative overflow-hidden flex flex-col items-center justify-center min-h-[85vh]">
-        {/* Glowing background blobs */}
-        <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-brand-500/20 rounded-full blur-3xl -z-10 animate-pulse" style={{ animationDuration: "8s" }}></div>
-        <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-accent-500/20 rounded-full blur-3xl -z-10 animate-pulse" style={{ animationDuration: "12s" }}></div>
-
-        <div className="max-w-4xl mx-auto text-center relative z-10 space-y-6">
-          {/* Badge de estado activo */}
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-800/80 backdrop-blur border border-slate-700/60 text-xs font-semibold text-accent-500 select-none shadow-inner">
-            <span className="relative flex h-3 w-3" aria-hidden="true">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent-500 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-3 w-3 bg-accent-500"></span>
+    <main className="min-h-screen bg-slate-50 flex flex-col font-sans selection:bg-brand-600 selection:text-white">
+      {/* Navigation Header */}
+      <header className="bg-white/90 backdrop-blur-md border-b border-zinc-200/80 sticky top-0 z-40">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-2 group">
+            <span className="text-xl font-bold text-zinc-950 font-display tracking-tight">
+              EduRAG
             </span>
-            Plataforma EduRAG Activa
-          </div>
-
-          <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight leading-[1.1] font-display">
-            Enseña de forma inteligente.<br />
-            <span className="bg-gradient-to-r from-brand-500 via-indigo-400 to-accent-500 bg-clip-text text-transparent">
-              Explica de forma directa.
+            <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-md bg-zinc-100 text-zinc-700 border border-zinc-200">
+              SaaS Educativo
             </span>
-          </h1>
-
-          <p className="text-base sm:text-xl text-slate-300 max-w-2xl mx-auto leading-relaxed font-sans">
-            EduRAG es la plataforma SaaS educativa multi-tenant que te permite crear chatbots especializados a partir de tus propios documentos de clase. Respuestas confiables 24/7 con trazabilidad de fuentes.
-          </p>
-
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
+          </Link>
+          <nav className="flex items-center gap-4 text-sm font-medium">
+            <Link
+              href="/marketplace"
+              className="text-zinc-600 hover:text-zinc-900 transition-colors px-3 py-1.5"
+            >
+              Marketplace
+            </Link>
+            <Link
+              href="/login"
+              className="text-zinc-600 hover:text-zinc-900 transition-colors px-3 py-1.5"
+            >
+              Iniciar sesión
+            </Link>
             <Link
               href="/register"
-              className="w-full sm:w-auto inline-flex items-center justify-center px-8 py-3.5 text-base font-bold text-white bg-brand-600 rounded-xl hover:bg-brand-700 transition-all shadow-lg shadow-brand-500/25 hover:shadow-brand-500/45 duration-200"
+              className="px-4 py-2 bg-zinc-900 hover:bg-zinc-800 text-white rounded-lg text-xs font-semibold btn-press shadow-sm"
             >
-              Comenzar Gratis →
+              Comenzar gratis
+            </Link>
+          </nav>
+        </div>
+      </header>
+
+      {/* Hero Section */}
+      <section className="bg-white border-b border-zinc-200/80 py-20 px-4 sm:px-6 lg:px-8 relative overflow-hidden flex flex-col items-center justify-center">
+        <div className="max-w-4xl mx-auto text-center space-y-6">
+          {/* Badge institucional */}
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-100 border border-zinc-200 text-xs font-medium text-zinc-700 select-none">
+            <span className="w-2 h-2 rounded-full bg-emerald-500" aria-hidden="true" />
+            Aislamiento multi-tenant · 0% alucinaciones fuera de temario
+          </div>
+
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-zinc-950 leading-[1.12] font-display">
+            Asistentes pedagógicos basados en tus documentos de clase
+          </h1>
+
+          <p className="text-base sm:text-lg text-zinc-600 max-w-2xl mx-auto leading-relaxed">
+            EduRAG permite a los docentes crear chatbots especializados a partir de sus apuntes, guías y sílabos en PDF, Word o Markdown. Respuestas guiadas para estudiantes con trazabilidad de fuentes y embebible en Moodle.
+          </p>
+
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-4">
+            <Link
+              href="/register"
+              className="w-full sm:w-auto px-6 py-3 text-sm font-semibold text-white bg-brand-600 hover:bg-brand-700 rounded-lg shadow-sm btn-press transition-colors"
+            >
+              Crear cuenta de estudiante
             </Link>
             <Link
               href="/marketplace"
-              className="w-full sm:w-auto inline-flex items-center justify-center px-8 py-3.5 text-base font-bold text-slate-300 hover:text-white bg-slate-800/80 hover:bg-slate-800 rounded-xl border border-slate-700/60 transition-all duration-200"
+              className="w-full sm:w-auto px-6 py-3 text-sm font-semibold text-zinc-700 hover:text-zinc-950 bg-white hover:bg-zinc-50 rounded-lg border border-zinc-300 shadow-sm btn-press transition-colors"
             >
-              Explorar Marketplace
+              Explorar tutores públicos
             </Link>
           </div>
         </div>
       </section>
 
-      {/* Estadísticas — Client Component aislado para no romper SSG (CRIT-01) */}
+      {/* Estadísticas de Plataforma */}
       <StatsSection />
 
       {/* Sección "Cómo Funciona" en 3 Pasos */}
-      <section className="py-24 px-4 bg-gray-50">
+      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-slate-50">
         <div className="max-w-6xl mx-auto">
-          <div className="text-center max-w-2xl mx-auto mb-16 space-y-3">
-            <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight font-display">
-              ¿Cómo funciona EduRAG?
+          <div className="text-center max-w-2xl mx-auto mb-16 space-y-2">
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-zinc-950 tracking-tight font-display">
+              Arquitectura pedagógica en 3 pasos
             </h2>
-            <p className="text-gray-500 text-base font-sans">
-              Configura tu primer asistente inteligente en tres sencillos pasos sin tocar una sola línea de código.
+            <p className="text-zinc-600 text-sm">
+              Implementa un tutor inteligente para tu curso en minutos sin requerir infraestructura técnica.
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8 relative">
+          <div className="grid md:grid-cols-3 gap-6">
             <StepCard
               step="1"
-              title="Sube tus Documentos"
-              description="Sube apuntes de clase, guías, silabus o lecturas académicas (PDF, Word, TXT). La plataforma los indexa de forma aislada y segura."
+              title="Indexación de Documentos"
+              description="Sube apuntes, guías de laboratorio o lecturas en PDF, DOCX, TXT o MD. El contenido se almacena de forma segura con estricto aislamiento por docente."
               icon={
-                <svg className="w-6 h-6 text-brand-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                <svg className="w-5 h-5 text-brand-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
               }
             />
             <StepCard
               step="2"
-              title="Personaliza tu Tutor"
-              description="Define el nivel académico, el tono del chatbot y las restricciones de respuesta para un aprendizaje guiado."
+              title="Calibración Didáctica"
+              description="Define el nivel académico (Secundaria o Universidad), el tono de respuesta y las restricciones pedagógicas: método socrático o respuestas directas."
               icon={
-                <svg className="w-6 h-6 text-brand-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                <svg className="w-5 h-5 text-brand-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
                 </svg>
               }
             />
             <StepCard
               step="3"
-              title="Comparte y Enseña"
-              description="Publica tu chatbot con un clic. Genera enlaces directos o copia el iframe para embeberlo en Moodle u otros LMS."
+              title="Distribución e Integración"
+              description="Publica en el marketplace educativo o copia el snippet iframe seguro para incrustar el tutor directamente en cursos de Moodle o Canvas."
               icon={
-                <svg className="w-6 h-6 text-brand-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 10.742l4.684-2.342m0 0l-4.684-2.342m4.684 2.342l4.684 2.342m0 0l-4.684 2.342m0-4.684h-4.684m0 0v4.684" />
+                <svg className="w-5 h-5 text-brand-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
                 </svg>
               }
             />
@@ -100,19 +124,19 @@ export default function HomePage() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-slate-900 text-slate-400 py-12 px-4 border-t border-slate-800 text-sm mt-auto relative z-10">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
+      <footer className="bg-white border-t border-zinc-200/80 py-10 px-4 text-xs text-zinc-500 mt-auto">
+        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <span className="text-lg font-bold text-white font-display bg-gradient-to-r from-brand-500 to-accent-500 bg-clip-text text-transparent">
+            <span className="font-bold text-zinc-900 font-display text-sm">
               EduRAG
             </span>
-            <span className="text-slate-600">|</span>
-            <p>© 2026 EduRAG Platform. Todos los derechos reservados.</p>
+            <span className="text-zinc-300">|</span>
+            <p>© 2026 EduRAG Platform. Diseñado para educación superior y secundaria.</p>
           </div>
-          <nav className="flex items-center gap-6 font-semibold" aria-label="Footer">
-            <Link href="/login" className="hover:text-white transition-colors">Docentes</Link>
-            <Link href="/marketplace" className="hover:text-white transition-colors">Marketplace</Link>
-            <Link href="/admin" className="hover:text-white transition-colors">Administradores</Link>
+          <nav className="flex items-center gap-6 font-medium" aria-label="Navegación inferior">
+            <Link href="/login" className="hover:text-zinc-900 transition-colors">Acceso Docentes</Link>
+            <Link href="/marketplace" className="hover:text-zinc-900 transition-colors">Marketplace</Link>
+            <Link href="/admin" className="hover:text-zinc-900 transition-colors">Administración</Link>
           </nav>
         </div>
       </footer>
@@ -132,15 +156,18 @@ function StepCard({
   icon: React.ReactNode;
 }) {
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 p-8 shadow-sm relative glow-card flex flex-col h-full">
-      <div className="absolute top-[-18px] left-[32px] w-[36px] h-[36px] bg-brand-600 text-white rounded-full flex items-center justify-center font-bold text-sm select-none shadow" aria-hidden="true">
-        {step}
+    <div className="bg-white rounded-xl border border-zinc-200 p-6 craft-card flex flex-col h-full">
+      <div className="flex items-center justify-between mb-4">
+        <div className="w-10 h-10 rounded-lg bg-brand-50 border border-brand-100 flex items-center justify-center">
+          {icon}
+        </div>
+        <span className="text-xs font-bold text-zinc-400 font-mono tracking-wider" aria-label={`Paso ${step}`}>
+          0{step}
+        </span>
       </div>
-      <div className="w-12 h-12 rounded-xl bg-brand-50 border border-brand-100 flex items-center justify-center mb-5 mt-2">
-        {icon}
-      </div>
-      <h3 className="text-lg font-bold text-gray-900 mb-3">{title}</h3>
-      <p className="text-sm text-gray-500 leading-relaxed flex-1 font-sans">{description}</p>
+      <h3 className="text-base font-bold text-zinc-900 mb-2">{title}</h3>
+      <p className="text-xs sm:text-sm text-zinc-600 leading-relaxed flex-1">{description}</p>
     </div>
   );
 }
+

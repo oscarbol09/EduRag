@@ -33,30 +33,48 @@ export function useToast() {
   return { toasts, toast, removeToast };
 }
 
-// ────────────────────────────────────────────────────
-// Componente visual de un toast individual
-// ────────────────────────────────────────────────────
-
-const ICONS: Record<ToastVariant, string> = {
-  success: "✓",
-  error: "✕",
-  warning: "⚠",
-  info: "ℹ",
-};
-
 const STYLES: Record<ToastVariant, string> = {
-  success: "bg-green-50 border-green-200 text-green-800",
-  error:   "bg-red-50 border-red-200 text-red-800",
-  warning: "bg-amber-50 border-amber-200 text-amber-800",
-  info:    "bg-brand-50 border-brand-100 text-brand-800",
+  success: "bg-white border-zinc-200 text-zinc-900 shadow-lg",
+  error:   "bg-white border-red-200 text-zinc-900 shadow-lg",
+  warning: "bg-white border-amber-200 text-zinc-900 shadow-lg",
+  info:    "bg-white border-zinc-200 text-zinc-900 shadow-lg",
 };
 
 const ICON_STYLES: Record<ToastVariant, string> = {
-  success: "bg-green-100 text-green-700",
-  error:   "bg-red-100 text-red-700",
-  warning: "bg-amber-100 text-amber-700",
-  info:    "bg-brand-100 text-brand-700",
+  success: "bg-emerald-50 text-emerald-600 border border-emerald-200",
+  error:   "bg-red-50 text-red-600 border border-red-200",
+  warning: "bg-amber-50 text-amber-600 border border-amber-200",
+  info:    "bg-brand-50 text-brand-600 border border-brand-200",
 };
+
+function ToastIcon({ variant }: { variant: ToastVariant }) {
+  if (variant === "success") {
+    return (
+      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+      </svg>
+    );
+  }
+  if (variant === "error") {
+    return (
+      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+      </svg>
+    );
+  }
+  if (variant === "warning") {
+    return (
+      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+      </svg>
+    );
+  }
+  return (
+    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  );
+}
 
 function ToastItem({ toast, onRemove }: { toast: Toast; onRemove: (id: string) => void }) {
   useEffect(() => {
@@ -68,26 +86,24 @@ function ToastItem({ toast, onRemove }: { toast: Toast; onRemove: (id: string) =
     <div
       role="alert"
       aria-live="assertive"
-      className={`flex items-start gap-3 px-4 py-3 rounded-xl border shadow-lg text-sm font-medium max-w-sm w-full animate-in slide-in-from-right-5 ${STYLES[toast.variant]}`}
+      className={`flex items-start gap-3 px-3.5 py-3 rounded-xl border text-xs font-medium max-w-sm w-full animate-in slide-in-from-bottom-2 duration-150 ${STYLES[toast.variant]}`}
     >
-      <span className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${ICON_STYLES[toast.variant]}`}>
-        {ICONS[toast.variant]}
+      <span className={`flex-shrink-0 w-6 h-6 rounded-lg flex items-center justify-center ${ICON_STYLES[toast.variant]}`}>
+        <ToastIcon variant={toast.variant} />
       </span>
-      <span className="flex-1 leading-snug pt-0.5">{toast.message}</span>
+      <span className="flex-1 leading-snug pt-0.5 text-zinc-800">{toast.message}</span>
       <button
         onClick={() => onRemove(toast.id)}
         aria-label="Cerrar notificación"
-        className="flex-shrink-0 opacity-50 hover:opacity-100 transition-opacity text-lg leading-none mt-0.5"
+        className="flex-shrink-0 text-zinc-400 hover:text-zinc-700 transition-colors p-0.5 rounded"
       >
-        ×
+        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>
       </button>
     </div>
   );
 }
-
-// ────────────────────────────────────────────────────
-// Contenedor de toasts — montar en layout.tsx
-// ────────────────────────────────────────────────────
 
 export function ToastContainer({ toasts, onRemove }: { toasts: Toast[]; onRemove: (id: string) => void }) {
   if (toasts.length === 0) return null;
@@ -95,7 +111,7 @@ export function ToastContainer({ toasts, onRemove }: { toasts: Toast[]; onRemove
   return (
     <div
       aria-label="Notificaciones"
-      className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] flex flex-col items-center gap-2 pointer-events-none"
+      className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-2 pointer-events-none"
     >
       {toasts.map((t) => (
         <div key={t.id} className="pointer-events-auto">
@@ -105,3 +121,4 @@ export function ToastContainer({ toasts, onRemove }: { toasts: Toast[]; onRemove
     </div>
   );
 }
+

@@ -43,13 +43,14 @@ export default function RegisterPage() {
 
   return (
     <AuthLayout title="Crea tu cuenta de Estudiante">
-      <div className="bg-brand-50 border border-brand-100 text-brand-800 text-sm rounded-xl p-4 mb-4">
-        💡 <strong>Atención Docentes:</strong> El registro público es exclusivo para estudiantes. Si eres docente, tu cuenta debe ser creada por el administrador de tu institución.
+      <div className="bg-zinc-50 border border-zinc-200 text-zinc-700 text-xs rounded-lg p-3.5 mb-4 leading-relaxed">
+        <span className="font-semibold text-zinc-900 block mb-0.5">Atención Docentes:</span>
+        El registro público es exclusivo para estudiantes. Las cuentas docentes son habilitadas por el administrador de tu institución educativa.
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6" noValidate>
+      <form onSubmit={handleSubmit} className="space-y-4" noValidate>
         <div>
-          <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="email" className="block text-xs font-semibold text-zinc-700 mb-1">
             Correo electrónico
           </label>
           <input
@@ -57,15 +58,15 @@ export default function RegisterPage() {
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-all"
-            placeholder="tu@email.com"
+            className="w-full px-3.5 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-zinc-900 focus:border-zinc-900 outline-none text-xs sm:text-sm transition-all text-zinc-900"
+            placeholder="estudiante@universidad.edu"
             required
             autoComplete="email"
           />
         </div>
 
         <div>
-          <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="password" className="block text-xs font-semibold text-zinc-700 mb-1">
             Contraseña
           </label>
           <input
@@ -73,7 +74,7 @@ export default function RegisterPage() {
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-all"
+            className="w-full px-3.5 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-zinc-900 focus:border-zinc-900 outline-none text-xs sm:text-sm transition-all text-zinc-900"
             placeholder="••••••••"
             required
             minLength={6}
@@ -82,7 +83,7 @@ export default function RegisterPage() {
         </div>
 
         <div>
-          <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="confirmPassword" className="block text-xs font-semibold text-zinc-700 mb-1">
             Confirmar contraseña
           </label>
           <input
@@ -90,7 +91,7 @@ export default function RegisterPage() {
             type="password"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
-            className="w-full px-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-all"
+            className="w-full px-3.5 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-zinc-900 focus:border-zinc-900 outline-none text-xs sm:text-sm transition-all text-zinc-900"
             placeholder="••••••••"
             required
             autoComplete="new-password"
@@ -98,7 +99,7 @@ export default function RegisterPage() {
         </div>
 
         {error && (
-          <div role="alert" className="text-red-700 text-sm bg-red-50 border border-red-200 p-3 rounded-xl">
+          <div role="alert" className="text-red-700 text-xs bg-red-50 border border-red-200 p-3 rounded-lg">
             {error}
           </div>
         )}
@@ -106,14 +107,14 @@ export default function RegisterPage() {
         <button
           type="submit"
           disabled={isLoading}
-          className="w-full py-3 bg-brand-600 text-white font-bold rounded-xl hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
+          className="w-full py-2.5 bg-zinc-900 hover:bg-zinc-800 text-white font-semibold rounded-lg disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm btn-press shadow-sm transition-colors"
         >
-          {isLoading ? "Creando cuenta..." : "Crear cuenta"}
+          {isLoading ? "Creando cuenta..." : "Crear cuenta de estudiante"}
         </button>
       </form>
 
       <div className="mt-6 text-center">
-        <p className="text-sm text-gray-600">
+        <p className="text-xs text-zinc-600">
           ¿Ya tienes cuenta?{" "}
           <Link href="/login" className="text-brand-600 hover:text-brand-700 font-semibold hover:underline transition-colors">
             Inicia sesión
@@ -123,3 +124,4 @@ export default function RegisterPage() {
     </AuthLayout>
   );
 }
+

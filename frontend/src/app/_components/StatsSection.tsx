@@ -11,11 +11,13 @@ interface PlatformStats {
 
 function StatItem({ value, label }: { value: string; label: string }) {
   return (
-    <div className="text-center space-y-1">
-      <div className="text-3xl sm:text-4xl font-extrabold bg-gradient-to-r from-brand-600 to-accent-600 bg-clip-text text-transparent font-display">
+    <div className="flex flex-col items-center justify-center p-4">
+      <span className="text-3xl sm:text-4xl font-extrabold text-zinc-900 tracking-tight tabular-nums">
         {value}
-      </div>
-      <div className="text-xs sm:text-sm font-semibold text-gray-500 uppercase tracking-wider">{label}</div>
+      </span>
+      <span className="text-xs font-semibold text-zinc-500 tracking-wide uppercase mt-1">
+        {label}
+      </span>
     </div>
   );
 }
@@ -34,13 +36,14 @@ export function StatsSection() {
   }, []);
 
   return (
-    <section className="bg-white border-y border-gray-100 py-12 px-4 shadow-sm relative z-20">
-      <div className="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-8">
+    <section className="bg-white border-y border-zinc-200/80 py-10 px-4 relative z-20">
+      <div className="max-w-6xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-6 divide-y md:divide-y-0 md:divide-x divide-zinc-100">
         <StatItem value={stats ? `${stats.totalChatbots}+` : "—"} label="Chatbots Creados" />
         <StatItem value={stats ? `${stats.totalTeachers}+` : "—"} label="Docentes Activos" />
-        <StatItem value={stats ? `${stats.totalMessages.toLocaleString()}+` : "—"} label="Mensajes Educativos" />
-        <StatItem value="99.9%" label="Uptime en la Nube" />
+        <StatItem value={stats ? `${stats.totalMessages.toLocaleString()}+` : "—"} label="Consultas Académicas" />
+        <StatItem value="99.9%" label="Disponibilidad Cloud" />
       </div>
     </section>
   );
 }
+
