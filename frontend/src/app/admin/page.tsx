@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/lib/api";
@@ -24,15 +24,11 @@ export default function AdminPage() {
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
   const router = useRouter();
-  const { auth, logout } = useApp();
+  const { logout } = useApp();
   const { isChecking, isAuthorized } = useRequireRole("admin");
   const { toasts, toast, removeToast } = useToast();
 
-  useEffect(() => {
-    if (isAuthorized) loadTeachers();
-  }, [isAuthorized]);
-
-  const loadTeachers = async () => {
+  const loadTeachers = useCallback(async () => {
     try {
       const list = await api.admin.listTeachers();
       setTeachers(list);
@@ -41,7 +37,13 @@ export default function AdminPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [toast]);
+
+  useEffect(() => {
+    if (isAuthorized) {
+      loadTeachers();
+    }
+  }, [isAuthorized, loadTeachers]);
 
   if (isChecking || !isAuthorized) {
     return (

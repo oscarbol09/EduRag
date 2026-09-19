@@ -40,27 +40,6 @@ export default function EditChatbotClient() {
     llm_provider: "openrouter",
   });
 
-  const loadChatbot = useCallback(async () => {
-    try {
-      const cb = await api.chatbots.get(chatbotId);
-      setChatbot(cb);
-      setFormData({
-        name: cb.name,
-        subject_area: cb.subject_area,
-        education_level: cb.education_level,
-        tone: cb.tone,
-        welcome_message: cb.welcome_message,
-        system_prompt_override: cb.system_prompt_override,
-        restriction_level: cb.restriction_level,
-        llm_provider: cb.llm_provider,
-      });
-    } catch {
-      toast.error("No se pudo cargar el chatbot");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [chatbotId]);
-
   const loadDocuments = useCallback(async () => {
     try {
       const docs = await api.documents.list(chatbotId);
@@ -71,9 +50,38 @@ export default function EditChatbotClient() {
   }, [chatbotId]);
 
   useEffect(() => {
-    loadChatbot();
-    loadDocuments();
-  }, [loadChatbot, loadDocuments]);
+    let ignore = false;
+    const fetchInitialData = async () => {
+      try {
+        const [cb, docs] = await Promise.all([
+          api.chatbots.get(chatbotId),
+          api.documents.list(chatbotId).catch(() => []),
+        ]);
+        if (!ignore) {
+          setChatbot(cb);
+          setFormData({
+            name: cb.name,
+            subject_area: cb.subject_area,
+            education_level: cb.education_level,
+            tone: cb.tone,
+            welcome_message: cb.welcome_message,
+            system_prompt_override: cb.system_prompt_override,
+            restriction_level: cb.restriction_level,
+            llm_provider: cb.llm_provider,
+          });
+          setDocuments(docs);
+        }
+      } catch {
+        if (!ignore) toast.error("No se pudo cargar el chatbot");
+      } finally {
+        if (!ignore) setIsLoading(false);
+      }
+    };
+    fetchInitialData();
+    return () => {
+      ignore = true;
+    };
+  }, [chatbotId, toast]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));

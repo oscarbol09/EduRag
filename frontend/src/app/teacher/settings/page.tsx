@@ -1,13 +1,13 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { useApp } from "@/lib/context";
 import { useRequireRole } from "@/hooks/useRequireRole";
 import { api } from "@/lib/api";
 import { Navbar } from "@/components/Navbar";
 import { Spinner } from "@/components/Spinner";
+import type { User } from "@/lib/types";
 
 const OPENROUTER_MODELS = [
   {
@@ -42,53 +42,60 @@ const OPENROUTER_MODELS = [
   },
 ];
 
+function extractUserData(user: User | null) {
+  if (!user) {
+    return {
+      firstName: "",
+      lastName: "",
+      institution: "",
+      country: "",
+      openrouterApiKey: "",
+      openrouterModel: OPENROUTER_MODELS[0].id,
+    };
+  }
+  let firstName = user.firstName || "";
+  let lastName = user.lastName || "";
+  let institution = user.institutionName || "";
+  let openrouterApiKey = user.openrouterApiKey || "";
+  let openrouterModel = user.openrouterModel || OPENROUTER_MODELS[0].id;
+
+  if (!firstName && !lastName && !institution && user.institution && user.institution.includes(" | ")) {
+    const parts = user.institution.split(" | ");
+    const fullName = parts[0] || "";
+    institution = parts[1] || "";
+    openrouterApiKey = parts[2] || "";
+    openrouterModel = parts[3] || OPENROUTER_MODELS[0].id;
+
+    const nameParts = fullName.trim().split(" ");
+    firstName = nameParts[0] || "";
+    lastName = nameParts.slice(1).join(" ") || "";
+  }
+
+  return {
+    firstName,
+    lastName,
+    institution,
+    country: user.country || "",
+    openrouterApiKey,
+    openrouterModel: openrouterModel || OPENROUTER_MODELS[0].id,
+  };
+}
+
 export default function TeacherSettingsPage() {
   const { auth, logout, updateUser } = useApp();
   const router = useRouter();
   const { isAuthorized, isChecking } = useRequireRole("teacher");
-  const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
-    institution: "",
-    country: "",
-    openrouterApiKey: "",
-    openrouterModel: OPENROUTER_MODELS[0].id,
-  });
+  const [formData, setFormData] = useState(() => extractUserData(auth.user));
+  const [loadedUserId, setLoadedUserId] = useState<string | null>(() => auth.user?.id ?? null);
   const [showApiKey, setShowApiKey] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState("");
   const [isError, setIsError] = useState(false);
 
-  useEffect(() => {
-    if (isAuthorized && auth.user) {
-      let firstName = auth.user.firstName || "";
-      let lastName = auth.user.lastName || "";
-      let institution = auth.user.institutionName || "";
-      let openrouterApiKey = auth.user.openrouterApiKey || "";
-      let openrouterModel = auth.user.openrouterModel || OPENROUTER_MODELS[0].id;
-
-      if (!firstName && !lastName && !institution && auth.user.institution && auth.user.institution.includes(" | ")) {
-        const parts = auth.user.institution.split(" | ");
-        const fullName = parts[0] || "";
-        institution = parts[1] || "";
-        openrouterApiKey = parts[2] || "";
-        openrouterModel = parts[3] || OPENROUTER_MODELS[0].id;
-
-        const nameParts = fullName.trim().split(" ");
-        firstName = nameParts[0] || "";
-        lastName = nameParts.slice(1).join(" ") || "";
-      }
-
-      setFormData({
-        firstName,
-        lastName,
-        institution,
-        country: auth.user.country || "",
-        openrouterApiKey,
-        openrouterModel: openrouterModel || OPENROUTER_MODELS[0].id,
-      });
-    }
-  }, [isAuthorized, auth.user]);
+  if (auth.user && auth.user.id !== loadedUserId) {
+    setLoadedUserId(auth.user.id);
+    setFormData(extractUserData(auth.user));
+  }
 
   if (isChecking || !isAuthorized) {
     return (

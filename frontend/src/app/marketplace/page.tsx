@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/lib/api";
@@ -17,11 +17,7 @@ export default function MarketplacePage() {
   const router = useRouter();
   const { auth, logout } = useApp();
 
-  useEffect(() => {
-    loadChatbots();
-  }, []);
-
-  const loadChatbots = async () => {
+  const loadChatbots = useCallback(async () => {
     try {
       const list = await api.chatbots.list();
       setChatbots(list.filter((cb) => cb.is_published));
@@ -30,7 +26,11 @@ export default function MarketplacePage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadChatbots();
+  }, [loadChatbots]);
 
   const filteredChatbots = chatbots.filter(
     (cb) =>

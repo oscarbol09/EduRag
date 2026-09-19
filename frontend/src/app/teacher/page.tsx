@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { api } from "@/lib/api";
@@ -31,11 +31,7 @@ export default function TeacherDashboard() {
   const { isChecking, isAuthorized } = useRequireRole("teacher");
   const { toasts, toast, removeToast } = useToast();
 
-  useEffect(() => {
-    if (isAuthorized) loadChatbots();
-  }, [isAuthorized]);
-
-  const loadChatbots = async () => {
+  const loadChatbots = useCallback(async () => {
     try {
       const list = await api.chatbots.list(auth.user?.id ?? undefined);
       setChatbots(list);
@@ -50,7 +46,13 @@ export default function TeacherDashboard() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [auth.user?.id, toast]);
+
+  useEffect(() => {
+    if (isAuthorized) {
+      loadChatbots();
+    }
+  }, [isAuthorized, loadChatbots]);
 
   if (isChecking || !isAuthorized) {
     return (

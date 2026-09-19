@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { useApp } from "@/lib/context";
-import type { ChatMessage, ChatResponse, Message, Chatbot } from "@/lib/types";
+import type { ChatResponse, Message, Chatbot } from "@/lib/types";
 
 function renderMessageContent(content: string, isUser: boolean) {
   if (!content) return null;

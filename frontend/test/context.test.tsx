@@ -1,13 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, act, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { AppProvider, useApp } from "@/lib/context";
 import type { User } from "@/lib/types";
 
 const mockFetch = vi.fn();
 vi.stubGlobal("fetch", mockFetch);
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 function mockJsonResponse(data: unknown, status = 200) {
   return {
@@ -21,7 +19,6 @@ function mockJsonResponse(data: unknown, status = 200) {
 }
 
 // Test component that consumes useApp
-let lastLoginError: unknown = null;
 function TestConsumer() {
   const { auth, login, register, logout, chatbots } = useApp();
   return (
@@ -31,10 +28,10 @@ function TestConsumer() {
       <span data-testid="loading">{String(auth.isLoading)}</span>
       <span data-testid="email">{auth.user?.email ?? ""}</span>
       <span data-testid="chatbots">{chatbots.length}</span>
-      <button data-testid="btn-login" onClick={async () => { try { await login("a@b.com", "pass"); } catch (e) { lastLoginError = e; } }}>
+      <button data-testid="btn-login" onClick={async () => { try { await login("a@b.com", "pass"); } catch {} }}>
         Login
       </button>
-      <button data-testid="btn-register" onClick={async () => { try { await register("new@b.com", "pass"); } catch (e) { lastLoginError = e; } }}>
+      <button data-testid="btn-register" onClick={async () => { try { await register("new@b.com", "pass"); } catch {} }}>
         Register
       </button>
       <button data-testid="btn-logout" onClick={() => logout()}>
@@ -56,7 +53,6 @@ describe("AppProvider", () => {
   beforeEach(() => {
     mockFetch.mockReset();
     localStorage.clear();
-    lastLoginError = null;
   });
 
   it("starts with no user and no token", () => {

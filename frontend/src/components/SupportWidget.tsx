@@ -14,15 +14,22 @@ export function SupportWidget() {
   const [chatbot, setChatbot] = useState<Chatbot | null>(null);
 
   useEffect(() => {
-    if (!pathname) { setChatbot(null); return; }
-    const chatMatch = pathname.match(/\/chat\/([a-zA-Z0-9-]+)/);
+    let ignore = false;
+    const chatMatch = pathname ? pathname.match(/\/chat\/([a-zA-Z0-9-]+)/) : null;
     if (chatMatch?.[1]) {
       api.chatbots.get(chatMatch[1])
-        .then((cb) => setChatbot(cb))
-        .catch(() => setChatbot(null));
+        .then((cb) => {
+          if (!ignore) setChatbot(cb);
+        })
+        .catch(() => {
+          if (!ignore) setChatbot(null);
+        });
     } else {
       setChatbot(null);
     }
+    return () => {
+      ignore = true;
+    };
   }, [pathname]);
 
   const ADMIN_EMAIL = "admin@edurag.com";
@@ -37,7 +44,7 @@ export function SupportWidget() {
 
   let recipientTitle = "Administrador";
   let recipientContactEmail = ADMIN_EMAIL;
-  let whatsappNumber = ADMIN_WHATSAPP;
+  const whatsappNumber = ADMIN_WHATSAPP;
   let defaultPrefilledText = "Hola, me gustaría obtener más información sobre la plataforma EduRAG.";
 
   if (isGuest) {
@@ -143,7 +150,7 @@ export function SupportWidget() {
                 <p className="text-xs text-zinc-600">Respuesta ágil por canal institucional de WhatsApp.</p>
                 <div className="bg-zinc-50 p-3 rounded-lg text-xs text-zinc-600 text-left border border-zinc-200/80">
                   <span className="font-semibold text-zinc-800 block mb-1">Mensaje sugerido:</span>
-                  "{defaultPrefilledText}"
+                  &ldquo;{defaultPrefilledText}&rdquo;
                 </div>
                 {!ADMIN_WHATSAPP ? (
                   <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-2.5">
