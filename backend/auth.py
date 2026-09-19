@@ -21,21 +21,29 @@ async def _verify_token(token: str) -> dict:
     return payload
 
 
-async def get_current_user_optional(request: Request) -> dict:
+def _extract_bearer_token(request: Request) -> str | None:
     auth_header = request.headers.get("Authorization")
-    if not auth_header or not auth_header.startswith("Bearer "):
+    if not auth_header:
+        return None
+    parts = auth_header.strip().split(" ", 1)
+    if len(parts) == 2 and parts[0].lower() == "bearer":
+        return parts[1].strip()
+    return None
+
+
+async def get_current_user_optional(request: Request) -> dict:
+    token = _extract_bearer_token(request)
+    if not token:
         return {"sub": None, "email": None, "role": "anonymous"}
 
-    token = auth_header.replace("Bearer ", "")
     return await _verify_token(token)
 
 
 async def get_current_user(request: Request) -> dict:
-    auth_header = request.headers.get("Authorization")
-    if not auth_header or not auth_header.startswith("Bearer "):
+    token = _extract_bearer_token(request)
+    if not token:
         raise HTTPException(status_code=401, detail="Token de autenticación requerido")
 
-    token = auth_header.replace("Bearer ", "")
     user = await _verify_token(token)
 
     if not user.get("sub"):

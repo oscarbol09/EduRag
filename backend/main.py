@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
@@ -13,7 +14,8 @@ import threading
 import unicodedata
 import uvicorn
 import uuid
-from datetime import datetime, timedelta
+import warnings
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 from settings import settings
 from models import *
@@ -62,7 +64,18 @@ def get_client_ip(request: Request) -> str:
     return "127.0.0.1"
 
 
-app = FastAPI(title="EduRAG API", version="0.2.0")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    if not settings.JWT_SECRET or len(settings.JWT_SECRET) < 32:
+        warnings.warn(
+            "JWT_SECRET no está configurado o tiene menos de 32 caracteres. "
+            "Esto representa un riesgo de seguridad en producción.",
+            UserWarning
+        )
+    yield
+
+
+app = FastAPI(title="EduRAG API", version="0.2.0", lifespan=lifespan)
 
 limiter = Limiter(key_func=get_client_ip)
 app.state.limiter = limiter
@@ -76,17 +89,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.on_event("startup")
-async def startup_event():
-    import warnings
-    if not settings.JWT_SECRET or len(settings.JWT_SECRET) < 32:
-        warnings.warn(
-            "JWT_SECRET no está configurado o tiene menos de 32 caracteres. "
-            "Esto representa un riesgo de seguridad en producción.",
-            UserWarning
-        )
-
-
 
 @app.middleware("http")
 async def add_security_headers(request: Request, call_next):
@@ -98,10 +100,7 @@ async def add_security_headers(request: Request, call_next):
 
 response_cache: dict = {}
 response_cache_lock = threading.RLock()
-# Caché TTL de 5 minutos. NOTA: este caché es en memoria y local al worker.
-# En deploys multi-worker (Gunicorn con varios procesos) cada worker tiene su propio caché.
-# La migraçión a Redis (Upstash Free) requeriría una variable de entorno REDIS_URL
-# y el paquete `redis`. Postergada hasta que el tráfico justifique el costo operativo.
+# Caché TTL de 5 minutos en memoria local al worker.
 CACHE_TTL_SECONDS = 300  # 5 minutos
 
 RESTRICTION_TEMPERATURES = {
@@ -117,7 +116,11 @@ def _get_cached_response(cache_key: str) -> Optional[dict]:
         cached = response_cache.get(cache_key)
         if not cached:
             return None
-        if (datetime.utcnow() - cached["timestamp"]).total_seconds() < CACHE_TTL_SECONDS:
+        now = datetime.now(timezone.utc)
+        cached_ts = cached["timestamp"]
+        if cached_ts.tzinfo is None:
+            cached_ts = cached_ts.replace(tzinfo=timezone.utc)
+        if (now - cached_ts).total_seconds() < CACHE_TTL_SECONDS:
             return dict(cached)
         response_cache.pop(cache_key, None)
         return None
@@ -129,13 +132,13 @@ def _set_cached_response(cache_key: str, response_text: str, sources: list[str])
         if len(response_cache) >= settings.MAX_CACHE_SIZE:
             oldest_key = min(
                 response_cache,
-                key=lambda key: response_cache[key].get("timestamp", datetime.min),
+                key=lambda key: response_cache[key].get("timestamp", datetime.min.replace(tzinfo=timezone.utc)),
             )
             response_cache.pop(oldest_key, None)
         response_cache[cache_key] = {
             "response": response_text,
             "sources": sources,
-            "timestamp": datetime.utcnow(),
+            "timestamp": datetime.now(timezone.utc),
         }
 
 def get_default_system_prompt(tone: str, restriction_level: str) -> str:
@@ -203,7 +206,7 @@ async def root():
 
 @app.get("/health")
 async def health_check():
-    return {"status": "healthy", "timestamp": datetime.utcnow().isoformat()}
+    return {"status": "healthy", "timestamp": datetime.now(timezone.utc).isoformat()}
 
 
 @app.get("/ready")
@@ -316,12 +319,11 @@ async def register(request: Request, body: RegisterRequest):
         "role": "student",
         "auth_method": "email_password",
         "is_active": True,
-        "created_at": datetime.utcnow().isoformat()
+        "created_at": datetime.now(timezone.utc).isoformat()
     }
     await create_user(user)
     token = create_jwt_token(user_id=user_id, email=body.email, role="student")
     refresh_token, _, _ = create_refresh_token(user_id=user_id, email=body.email, role="student")
-    # Parche de seguridad: Eliminar hash del password de la respuesta
     safe_user = {k: v for k, v in user.items() if k != "password"}
     return {"token": token, "refresh_token": refresh_token, "user": map_user_response(safe_user)}
 
@@ -341,7 +343,7 @@ async def refresh_token(request: Request, body: RefreshRequest):
     # Revocar el refresh token usado (rotación)
     jti = payload.get("jti")
     if jti:
-        expires_at = datetime.utcnow() + timedelta(days=7)
+        expires_at = datetime.now(timezone.utc) + timedelta(days=7)
         await revoke_token(jti, "refresh", user_id, expires_at)
 
     new_token = create_jwt_token(user_id=user_id, email=email, role=role)
@@ -357,7 +359,7 @@ async def logout(request: Request, current_user: dict = Depends(get_current_user
     jti = current_user.get("jti")
     user_id = current_user.get("sub")
     if jti and user_id:
-        expires_at = datetime.utcnow() + timedelta(hours=24)
+        expires_at = datetime.now(timezone.utc) + timedelta(hours=24)
         await revoke_token(jti, "access", user_id, expires_at)
     return {"message": "Sesión cerrada exitosamente."}
 
@@ -394,7 +396,7 @@ async def create_new_chatbot(data: ChatbotCreate, request: Request):
         raise HTTPException(status_code=401, detail="Usuario no autenticado")
 
     chatbot_id = str(uuid.uuid4())
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(timezone.utc).isoformat()
     chatbot = {
         "id": chatbot_id,
         "owner_id": owner_id,
@@ -463,7 +465,7 @@ async def delete_chatbot_endpoint(chatbot_id: str, request: Request):
 async def publish_chatbot(chatbot_id: str, request: Request):
     user = await get_current_user(request)
     owner_id = user.get("sub")
-    updates = {"is_published": True, "updated_at": datetime.utcnow().isoformat()}
+    updates = {"is_published": True, "updated_at": datetime.now(timezone.utc).isoformat()}
     chatbot = await update_chatbot(chatbot_id, updates, owner_id=owner_id)
     if not chatbot:
         raise HTTPException(status_code=404, detail="Chatbot no encontrado")
@@ -536,7 +538,7 @@ async def upload_document(
         raise HTTPException(status_code=400, detail="Tipo de archivo no permitido. Solo se aceptan archivos .md, .txt, .pdf y .docx.")
 
     document_id = str(uuid.uuid4())
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(timezone.utc).isoformat()
 
     content_bytes = await file.read()
 
@@ -927,7 +929,7 @@ async def _persist_chat_turn(
     student_id: Optional[str] = None,
 ) -> str:
     """Guarda el turno de chat en Supabase (tabla messages normalizada) y retorna el conversation_id final."""
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(timezone.utc).isoformat()
 
     existing_conv = None
     if conversation_id_in:
@@ -955,7 +957,7 @@ async def _persist_chat_turn(
         await create_conversation(conversation)
 
     # Persistir los dos mensajes del turno en la tabla normalizada
-    assistant_ts = datetime.utcnow().isoformat()
+    assistant_ts = datetime.now(timezone.utc).isoformat()
     new_messages = [
         {"conversation_id": conversation_id, "role": "user", "content": user_message, "created_at": now},
         {"conversation_id": conversation_id, "role": "assistant", "content": assistant_response, "created_at": assistant_ts},
@@ -1041,7 +1043,7 @@ async def create_teacher(request: Request, data: TeacherCreate, current_user: di
         "auth_method": "email_password",
         "country": data.country,
         "is_active": True,
-        "created_at": datetime.utcnow().isoformat(),
+        "created_at": datetime.now(timezone.utc).isoformat(),
         "first_name": first,
         "last_name": last,
         "institution_name": inst,
@@ -1120,7 +1122,6 @@ async def delete_teacher(request: Request, teacher_id: str, current_user: dict =
     if not teacher or teacher.get("role") != "teacher":
         raise HTTPException(status_code=404, detail="Docente no encontrado")
 
-    # Usar la abstracción de supabase_db en lugar de acceder a get_client() directamente
     deleted = await delete_user(teacher_id)
     if not deleted:
         raise HTTPException(status_code=500, detail="Error al eliminar el docente")
@@ -1149,7 +1150,7 @@ async def get_teacher_metrics(current_user: dict = Depends(get_current_user)):
         total_documents = len([d for d in documents if d.get("status") == "indexed"])
 
         # 3. Obtener conversaciones semanales a la vez
-        one_week_ago = datetime.utcnow() - timedelta(days=7)
+        one_week_ago = datetime.now(timezone.utc) - timedelta(days=7)
         conversations = await list_conversations_for_chatbots(chatbot_ids)
         for conv in conversations:
             updated_at_str = conv.get("updated_at") or conv.get("created_at")
@@ -1157,8 +1158,9 @@ async def get_teacher_metrics(current_user: dict = Depends(get_current_user)):
                 try:
                     updated_at_str_clean = updated_at_str.replace("Z", "+00:00")
                     updated_at = datetime.fromisoformat(updated_at_str_clean)
-                    updated_at_naive = updated_at.replace(tzinfo=None)
-                    if updated_at_naive >= one_week_ago:
+                    if updated_at.tzinfo is None:
+                        updated_at = updated_at.replace(tzinfo=timezone.utc)
+                    if updated_at >= one_week_ago:
                         weekly_conversations_count += 1
                 except Exception:
                     weekly_conversations_count += 1

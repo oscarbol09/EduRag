@@ -1,5 +1,5 @@
 import logging
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import List
 import json
 import re
@@ -79,9 +79,7 @@ class Settings(BaseSettings):
     # TTL
     TTL_CONVERSATIONS_DAYS: int = 90
 
-    class Config:
-        env_file = ".env"
-        extra = "allow"
+    model_config = SettingsConfigDict(env_file=".env", extra="allow")
 
 
 settings = Settings()

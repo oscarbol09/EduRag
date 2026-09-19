@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional, Literal
 from datetime import datetime
 
@@ -25,9 +25,7 @@ class User(UserBase):
     id: str
     created_at: datetime
     is_active: bool = True
-
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TeacherCreate(BaseModel):
@@ -71,9 +69,7 @@ class Chatbot(ChatbotBase):
     is_published: bool = False
     created_at: datetime
     updated_at: datetime
-
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class DocumentBase(BaseModel):
@@ -96,9 +92,7 @@ class Document(DocumentBase):
     error_message: Optional[str] = Field(None, max_length=500)
     created_at: datetime
     processed_at: Optional[datetime] = None
-
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class Message(BaseModel):
@@ -121,9 +115,7 @@ class Conversation(ConversationBase):
     messages: list[Message] = []
     created_at: datetime
     updated_at: datetime
-
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class LoginRequest(BaseModel):

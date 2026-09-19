@@ -2,7 +2,7 @@ import logging
 
 from supabase import create_client, Client
 from typing import Optional, List
-from datetime import datetime
+from datetime import datetime, timezone
 from settings import settings
 
 import threading
@@ -125,7 +125,7 @@ async def get_chatbot_by_id_and_owner(chatbot_id: str, owner_id: str) -> Optiona
 
 
 async def update_chatbot(chatbot_id: str, updates: dict, owner_id: str) -> Optional[dict]:
-    updates["updated_at"] = datetime.utcnow().isoformat()
+    updates["updated_at"] = datetime.now(timezone.utc).isoformat()
     try:
         r = (
             get_client()
@@ -264,7 +264,7 @@ async def get_conversation(conversation_id: str) -> Optional[dict]:
 
 
 async def save_conversation(conversation_data: dict) -> dict:
-    conversation_data["updated_at"] = datetime.utcnow().isoformat()
+    conversation_data["updated_at"] = datetime.now(timezone.utc).isoformat()
     get_client().table("conversations").upsert(conversation_data).execute()
     return conversation_data
 

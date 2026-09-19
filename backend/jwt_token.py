@@ -1,6 +1,6 @@
 import jwt
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 from settings import settings
 
@@ -13,13 +13,14 @@ REFRESH_TOKEN_EXPIRATION_DAYS = 7
 
 def _make_payload(user_id: str, email: str, role: str, expires_delta: timedelta) -> dict:
     """Crea el payload base con jti único para revocación."""
+    now = datetime.now(timezone.utc)
     return {
         "sub": user_id,
         "email": email,
         "role": role,
         "jti": str(uuid.uuid4()),
-        "exp": datetime.utcnow() + expires_delta,
-        "iat": datetime.utcnow(),
+        "exp": now + expires_delta,
+        "iat": now,
         "iss": "edubot",
         "aud": "edubot-api",
     }
@@ -35,7 +36,8 @@ def create_refresh_token(user_id: str, email: str, role: str) -> tuple[str, str,
     """Crea un refresh token con expiración de 7 días.
     Retorna (token, jti, expires_at) para persistir el jti en la blacklist al hacer logout.
     """
-    expires_at = datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRATION_DAYS)
+    now = datetime.now(timezone.utc)
+    expires_at = now + timedelta(days=REFRESH_TOKEN_EXPIRATION_DAYS)
     payload = _make_payload(user_id, email, role, timedelta(days=REFRESH_TOKEN_EXPIRATION_DAYS))
     token = jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
     return token, payload["jti"], expires_at
