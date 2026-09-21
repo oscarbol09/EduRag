@@ -19,8 +19,53 @@ const serif = DM_Serif_Display({
 });
 
 export const metadata: Metadata = {
-  title: "EduRAG - Plataforma Educativa con RAG",
-  description: "Crea agentes conversacionales basados en tus documentos educativos",
+  metadataBase: new URL("https://edu-rag-red.vercel.app"),
+  title: {
+    default: "EduRAG — Asistentes Pedagógicos y RAG Educativo",
+    template: "%s | EduRAG",
+  },
+  description: "Crea tutores inteligentes a partir de tus documentos y apuntes de clase en PDF, Word o Markdown. Trazabilidad de fuentes y código embebible en Moodle y Canvas.",
+  keywords: [
+    "RAG educativo",
+    "chatbots para docentes",
+    "asistentes pedagógicos",
+    "Moodle IA",
+    "Canvas LMS",
+    "educación superior",
+    "OpenRouter BYOK",
+  ],
+  authors: [{ name: "EduRAG Platform" }],
+  creator: "EduRAG Platform",
+  publisher: "EduRAG Platform",
+  formatDetection: {
+    email: false,
+    address: false,
+    telephone: false,
+  },
+  openGraph: {
+    title: "EduRAG — Asistentes Pedagógicos y RAG Educativo",
+    description: "Crea tutores inteligentes a partir de tus documentos y apuntes de clase con trazabilidad estricta de fuentes.",
+    url: "https://edu-rag-red.vercel.app",
+    siteName: "EduRAG",
+    locale: "es_ES",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "EduRAG — Asistentes Pedagógicos y RAG Educativo",
+    description: "Tutoría inteligente basada en documentos de clase para docentes y estudiantes.",
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
 };
 
 export default function RootLayout({
@@ -31,8 +76,16 @@ export default function RootLayout({
   return (
     <html lang="es" className={`${jakarta.variable} ${serif.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col bg-gray-50 text-gray-900" style={{ fontFamily: "var(--font-sans), sans-serif" }}>
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-zinc-950 focus:text-white focus:rounded-lg focus:shadow-lg text-xs font-semibold"
+        >
+          Saltar al contenido principal
+        </a>
         <AppProvider>
-          {children}
+          <div id="main-content" className="flex-1 flex flex-col">
+            {children}
+          </div>
           <SupportWidget />
         </AppProvider>
       </body>

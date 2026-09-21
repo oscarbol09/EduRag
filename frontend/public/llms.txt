@@ -1,0 +1,17 @@
+# EduRAG — Plataforma SaaS Educativa de RAG Pedagógico
+
+> EduRAG permite a docentes de secundaria y universidad crear chatbots y tutores inteligentes a partir de sus propios documentos de clase (PDF, DOCX, TXT, Markdown) con trazabilidad de fuentes, costo operativo $0/mes y código de integración para plataformas LMS (Moodle, Canvas).
+
+## Arquitectura y Capacidades Clave
+
+- **Aislamiento Multi-tenant:** Validación criptográfica y estricta de tenant (`owner_id` y `chatbot_id`) en cada consulta y documento.
+- **RAG Léxico Optimizado:** Chunking léxico (1500 caracteres, 200 caracteres de solapamiento) y ranking contextual directo sin dependencias de vectores pesados, operando bajo límites de recursos cloud gratuitos.
+- **Modelos de Inferencia (BYOK):** Soporte de modelos OpenRouter gratuitos y de código abierto (Google Gemma 26B, NVIDIA Nemotron, OpenAI gpt-oss) mediante API Key propia del docente protegida con cifrado simétrico Fernet (AES-128-CBC).
+- **Integración LMS:** Interfaz de chat embebible vía iframe con eventos streaming SSE (`text/event-stream`), respuestas paso a paso (método socrático o directo) y citas documentales verificables.
+
+## Enlaces Públicos
+
+- Inicio y métricas: https://edu-rag-red.vercel.app/
+- Catálogo de tutores públicos: https://edu-rag-red.vercel.app/marketplace
+- Acceso a la plataforma: https://edu-rag-red.vercel.app/login
+- Registro de estudiantes: https://edu-rag-red.vercel.app/register
