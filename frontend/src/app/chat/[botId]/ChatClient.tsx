@@ -13,19 +13,32 @@ function renderMessageContent(content: string, isUser: boolean) {
   const codeInlineClass = isUser
     ? "bg-brand-700/80 px-1.5 py-0.5 rounded font-mono text-xs text-white border border-brand-500/40"
     : "bg-gray-100 px-1.5 py-0.5 rounded font-mono text-xs text-brand-700 border border-gray-200";
+  const mathInlineClass = isUser
+    ? "bg-brand-800/80 px-1.5 py-0.5 rounded font-mono text-xs text-amber-200 border border-brand-500/30 italic"
+    : "bg-amber-50/80 px-1.5 py-0.5 rounded font-mono text-xs text-amber-900 border border-amber-200/60 italic";
 
-  // Dividir por bloques de código triple backtick primero
-  const codeBlockRegex = /```[\w]*\n?([\s\S]*?)```/g;
-  const segments: { type: "code_block" | "text"; content: string }[] = [];
+  // Dividir por bloques: triple backtick (código) o $$...$$ / \[...\] (matemática display)
+  const blockRegex = /(```[\w]*\n?[\s\S]*?```|\$\$[\s\S]*?\$\$|\\\[[\s\S]*?\\\])/g;
+  const segments: { type: "code_block" | "math_block" | "text"; content: string }[] = [];
   let lastIndex = 0;
   let match;
 
-  while ((match = codeBlockRegex.exec(content)) !== null) {
+  while ((match = blockRegex.exec(content)) !== null) {
     if (match.index > lastIndex) {
       segments.push({ type: "text", content: content.slice(lastIndex, match.index) });
     }
-    segments.push({ type: "code_block", content: match[1].trim() });
-    lastIndex = match.index + match[0].length;
+    const raw = match[0];
+    if (raw.startsWith("```")) {
+      const inner = raw.replace(/^```[\w]*\n?/, "").replace(/```$/, "").trim();
+      segments.push({ type: "code_block", content: inner });
+    } else if (raw.startsWith("$$")) {
+      const inner = raw.slice(2, -2).trim();
+      segments.push({ type: "math_block", content: inner });
+    } else if (raw.startsWith("\\[")) {
+      const inner = raw.slice(2, -2).trim();
+      segments.push({ type: "math_block", content: inner });
+    }
+    lastIndex = match.index + raw.length;
   }
   if (lastIndex < content.length) {
     segments.push({ type: "text", content: content.slice(lastIndex) });
@@ -38,7 +51,9 @@ function renderMessageContent(content: string, isUser: boolean) {
       if (listMatch) {
         return (
           <div key={`${segKey}-line-${lineIdx}`} className="flex gap-2 my-1">
-            <span className={isUser ? "text-brand-200 select-none" : "text-gray-400 select-none"}>{"•"}</span>
+            <span className={isUser ? "text-brand-200 select-none" : "text-gray-400 select-none"}>
+              {listMatch[2].endsWith(".") ? listMatch[2] : "•"}
+            </span>
             <span>{renderInline(listMatch[3], `${segKey}-li-${lineIdx}`)}</span>
           </div>
         );
@@ -53,9 +68,11 @@ function renderMessageContent(content: string, isUser: boolean) {
   };
 
   const renderInline = (text: string, keyPrefix: string) => {
-    const regex = /(`[^`\n]+`|\*\*[^*]+\*\*|\*[^*]+\*)/g;
+    // Detectar `inline code`, **bold**, *italic*, \(math\) o $math$
+    const regex = /(`[^`\n]+`|\*\*[^*]+\*\*|\*[^*]+\*|\\\([^\n\\]+\\\)|\$[^\n$]+\$)/g;
     const parts = text.split(regex);
     return parts.map((part, index) => {
+      if (!part) return null;
       if (part.startsWith("`") && part.endsWith("`")) {
         return <code key={`${keyPrefix}-${index}`} className={codeInlineClass}>{part.slice(1, -1)}</code>;
       }
@@ -65,24 +82,42 @@ function renderMessageContent(content: string, isUser: boolean) {
       if (part.startsWith("*") && part.endsWith("*")) {
         return <em key={`${keyPrefix}-${index}`} className="italic">{part.slice(1, -1)}</em>;
       }
+      if (part.startsWith("\\(") && part.endsWith("\\)")) {
+        return <span key={`${keyPrefix}-${index}`} className={mathInlineClass}>{part.slice(2, -2)}</span>;
+      }
+      if (part.startsWith("$") && part.endsWith("$") && part.length > 2) {
+        return <span key={`${keyPrefix}-${index}`} className={mathInlineClass}>{part.slice(1, -1)}</span>;
+      }
       return part;
     });
   };
 
   return (
     <span className="whitespace-pre-wrap text-sm leading-relaxed font-sans">
-      {segments.map((seg, i) =>
-        seg.type === "code_block" ? (
-          <pre
-            key={i}
-            className="my-2.5 p-3.5 bg-slate-900 text-slate-100 border border-slate-800 rounded-lg text-xs font-mono overflow-x-auto whitespace-pre leading-normal"
-          >
-            <code>{seg.content}</code>
-          </pre>
-        ) : (
-          <span key={i}>{renderTextSegment(seg.content, i)}</span>
-        )
-      )}
+      {segments.map((seg, i) => {
+        if (seg.type === "code_block") {
+          return (
+            <pre
+              key={i}
+              className="my-2.5 p-3.5 bg-slate-900 text-slate-100 border border-slate-800 rounded-lg text-xs font-mono overflow-x-auto whitespace-pre leading-normal"
+            >
+              <code>{seg.content}</code>
+            </pre>
+          );
+        }
+        if (seg.type === "math_block") {
+          return (
+            <div
+              key={i}
+              className="my-2.5 p-3 bg-amber-50/70 text-amber-950 border border-amber-200/80 rounded-lg text-xs font-mono overflow-x-auto text-center font-medium italic select-all"
+              aria-label="Fórmula matemática display"
+            >
+              {seg.content}
+            </div>
+          );
+        }
+        return <span key={i}>{renderTextSegment(seg.content, i)}</span>;
+      })}
     </span>
   );
 }
