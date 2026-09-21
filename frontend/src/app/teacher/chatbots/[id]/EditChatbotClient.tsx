@@ -156,7 +156,7 @@ export default function EditChatbotClient() {
     setIsPublishing(true);
     try {
       const payload: UpdateChatbotPayload = { is_published: false };
-      const updated = await api.chatbots.update(chatbotId, payload as Partial<Chatbot>);
+      const updated = await api.chatbots.update(chatbotId, payload);
       setChatbot(updated);
       toast.success("Chatbot retirado del marketplace");
     } catch {
