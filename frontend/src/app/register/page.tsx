@@ -42,23 +42,29 @@ export default function RegisterPage() {
   };
 
   return (
-    <AuthLayout title="Crea tu cuenta de Estudiante">
-      <div className="bg-zinc-50 border border-zinc-200 text-zinc-700 text-xs rounded-lg p-3.5 mb-4 leading-relaxed">
-        <span className="font-semibold text-zinc-900 block mb-0.5">Atención Docentes:</span>
-        El registro público es exclusivo para estudiantes. Las cuentas docentes son habilitadas por el administrador de tu institución educativa.
+    <AuthLayout
+      title="Registro de Estudiante"
+      subtitle="Accede al marketplace y consulta a los tutores inteligentes de tus asignaturas"
+    >
+      <div className="glass-panel rounded-xl border border-indigo-500/30 bg-indigo-950/30 text-slate-300 text-xs p-3.5 mb-5 leading-relaxed font-sans">
+        <span className="font-bold text-indigo-300 block mb-0.5 font-display flex items-center gap-1.5">
+          <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 led-pulse" />
+          Aviso para Docentes e Investigadores:
+        </span>
+        El registro público habilita el rol de estudiante. Las credenciales docentes son aprovisionadas directamente por la administración institucional.
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4" noValidate>
         <div>
-          <label htmlFor="email" className="block text-xs font-semibold text-zinc-700 mb-1">
-            Correo electrónico
+          <label htmlFor="email" className="block text-xs font-mono uppercase tracking-wider text-slate-300 mb-1.5">
+            Correo institucional / personal
           </label>
           <input
             id="email"
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full px-3.5 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-zinc-900 focus:border-zinc-900 outline-none text-xs sm:text-sm transition-all text-zinc-900"
+            className="w-full px-4 py-2.5 bg-white/[0.04] border border-white/10 rounded-xl focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-400 outline-none text-xs sm:text-sm text-white placeholder-slate-500 font-sans transition-all"
             placeholder="estudiante@universidad.edu"
             required
             autoComplete="email"
@@ -66,7 +72,7 @@ export default function RegisterPage() {
         </div>
 
         <div>
-          <label htmlFor="password" className="block text-xs font-semibold text-zinc-700 mb-1">
+          <label htmlFor="password" className="block text-xs font-mono uppercase tracking-wider text-slate-300 mb-1.5">
             Contraseña
           </label>
           <input
@@ -74,8 +80,8 @@ export default function RegisterPage() {
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full px-3.5 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-zinc-900 focus:border-zinc-900 outline-none text-xs sm:text-sm transition-all text-zinc-900"
-            placeholder="••••••••"
+            className="w-full px-4 py-2.5 bg-white/[0.04] border border-white/10 rounded-xl focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-400 outline-none text-xs sm:text-sm text-white placeholder-slate-500 font-mono transition-all"
+            placeholder="Mínimo 6 caracteres"
             required
             minLength={6}
             autoComplete="new-password"
@@ -83,7 +89,7 @@ export default function RegisterPage() {
         </div>
 
         <div>
-          <label htmlFor="confirmPassword" className="block text-xs font-semibold text-zinc-700 mb-1">
+          <label htmlFor="confirmPassword" className="block text-xs font-mono uppercase tracking-wider text-slate-300 mb-1.5">
             Confirmar contraseña
           </label>
           <input
@@ -91,15 +97,15 @@ export default function RegisterPage() {
             type="password"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
-            className="w-full px-3.5 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-zinc-900 focus:border-zinc-900 outline-none text-xs sm:text-sm transition-all text-zinc-900"
-            placeholder="••••••••"
+            className="w-full px-4 py-2.5 bg-white/[0.04] border border-white/10 rounded-xl focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-400 outline-none text-xs sm:text-sm text-white placeholder-slate-500 font-mono transition-all"
+            placeholder="Repite la contraseña"
             required
             autoComplete="new-password"
           />
         </div>
 
         {error && (
-          <div role="alert" className="text-red-700 text-xs bg-red-50 border border-red-200 p-3 rounded-lg">
+          <div role="alert" className="text-rose-300 text-xs bg-rose-950/50 border border-rose-500/40 p-3 rounded-xl font-mono">
             {error}
           </div>
         )}
@@ -107,16 +113,23 @@ export default function RegisterPage() {
         <button
           type="submit"
           disabled={isLoading}
-          className="w-full py-2.5 bg-zinc-900 hover:bg-zinc-800 text-white font-semibold rounded-lg disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm btn-press shadow-sm transition-colors"
+          className="btn-press w-full py-3 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white font-semibold rounded-xl disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm shadow-lg shadow-indigo-950/50 border border-indigo-400/30 transition-all inline-flex items-center justify-center gap-2"
         >
-          {isLoading ? "Creando cuenta..." : "Crear cuenta de estudiante"}
+          {isLoading ? (
+            <>
+              <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              Creando cuenta de estudiante...
+            </>
+          ) : (
+            "Crear Cuenta de Estudiante"
+          )}
         </button>
       </form>
 
       <div className="mt-6 text-center">
-        <p className="text-xs text-zinc-600">
-          ¿Ya tienes cuenta?{" "}
-          <Link href="/login" className="text-brand-600 hover:text-brand-700 font-semibold hover:underline transition-colors">
+        <p className="text-xs text-slate-400">
+          ¿Ya tienes cuenta activa?{" "}
+          <Link href="/login" className="text-cyan-400 hover:text-cyan-300 font-semibold hover:underline transition-colors">
             Inicia sesión
           </Link>
         </p>
@@ -124,4 +137,3 @@ export default function RegisterPage() {
     </AuthLayout>
   );
 }
-
