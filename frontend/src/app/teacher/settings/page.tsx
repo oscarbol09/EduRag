@@ -12,33 +12,45 @@ import type { User } from "@/lib/types";
 const OPENROUTER_MODELS = [
   {
     id: "google/gemma-4-26b-a4b-it:free",
-    label: "Google Gemma 4 26B Free (Recomendado)",
-    description: "Modelo denso de Google DeepMind. Excelente razonamiento, velocidad de respuesta y tareas multilingües.",
+    label: "Google Gemma 4 26B Free",
+    badge: "RECOMENDADO",
+    description: "Modelo denso de Google DeepMind. Extraordinario razonamiento conceptual, latencia baja y precisión multilingüe.",
+    contextWindow: "128k tokens",
   },
   {
     id: "nvidia/nemotron-3-super-120b-a12b:free",
-    label: "NVIDIA Nemotron 3 Super Free (Alta Capacidad)",
-    description: "Modelo MoE de NVIDIA con 1 millón de tokens de contexto, ideal para procesar grandes volúmenes de documentos.",
+    label: "NVIDIA Nemotron 3 Super Free",
+    badge: "ALTA CAPACIDAD",
+    description: "Modelo MoE de NVIDIA con hasta 1 millón de tokens de contexto, ideal para indexar cursos completos y tesis.",
+    contextWindow: "1M tokens",
   },
   {
     id: "liquid/lfm-2.5-1.2b-instruct:free",
-    label: "Liquid LFM 2.5 1.2B Free (Ultra Veloz)",
-    description: "Modelo ultra veloz y preciso para tareas de respuesta a preguntas rápidas y chat fluido.",
+    label: "Liquid LFM 2.5 1.2B Free",
+    badge: "ULTRA VELOZ",
+    description: "Arquitectura híbrida de tiempo continuo. Respuestas instantáneas y máxima fluidez en interacciones socráticas.",
+    contextWindow: "32k tokens",
   },
   {
     id: "baidu/cobuddy:free",
     label: "Baidu Qianfan CoBuddy Free",
-    description: "Modelo optimizado por Baidu para tareas analíticas y agentes inteligentes interactivos.",
+    badge: "ANALÍTICO",
+    description: "Optimizado para resolución de ejercicios cuantitativos y agentes de tutoría paso a paso.",
+    contextWindow: "64k tokens",
   },
   {
     id: "openai/gpt-oss-120b:free",
     label: "OpenAI gpt-oss-120b Free",
-    description: "Modelo MoE libre y optimizado compatible con flujos de razonamiento y respuestas lógicas estructuradas.",
+    badge: "ESTRUCTURADO",
+    description: "Modelo abierto de alta precisión lógica y generación estructurada de explicaciones académicas.",
+    contextWindow: "128k tokens",
   },
   {
     id: "nvidia/nemotron-3-nano-30b-a3b:free",
     label: "NVIDIA Nemotron 3 Nano Free",
-    description: "Modelo ultra optimizado y ligero de NVIDIA, ideal para respuestas rápidas y concisas.",
+    badge: "EFICIENTE",
+    description: "Inferencia ultraligera para respuestas concisas y tutoría directa en dispositivos de bajo ancho de banda.",
+    contextWindow: "32k tokens",
   },
 ];
 
@@ -99,7 +111,7 @@ export default function TeacherSettingsPage() {
 
   if (isChecking || !isAuthorized) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+      <div className="min-h-screen flex items-center justify-center bg-[#07080c]">
         <Spinner />
       </div>
     );
@@ -125,11 +137,11 @@ export default function TeacherSettingsPage() {
         openrouterApiKey: formData.openrouterApiKey.trim() || undefined,
         openrouterModel: formData.openrouterModel || undefined,
       });
-      
-      updateUser(updatedUser);
-      setMessage("Configuración guardada exitosamente");
 
-      setTimeout(() => setMessage(""), 3000);
+      updateUser(updatedUser);
+      setMessage("Configuración guardada y cifrada correctamente en el servidor.");
+
+      setTimeout(() => setMessage(""), 4000);
     } catch (error) {
       setIsError(true);
       setMessage(error instanceof Error ? error.message : "Error al guardar perfil");
@@ -139,242 +151,264 @@ export default function TeacherSettingsPage() {
   };
 
   const isTestUser = user.email.endsWith("@edurag.com");
-  const selectedModelInfo = OPENROUTER_MODELS.find((m) => m.id === formData.openrouterModel);
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col font-sans selection:bg-brand-600 selection:text-white">
+    <div className="min-h-screen bg-[#07080c] flex flex-col font-sans selection:bg-indigo-500 selection:text-white">
       <Navbar
         variant="teacher"
         backTo="/teacher"
         backLabel="Volver al panel"
-        title="Configuración de Perfil"
+        title="Configuración & Inferencia BYOK"
         actions={
           <button
             onClick={() => {
               logout();
               router.push("/");
             }}
-            className="px-3 py-1.5 text-zinc-500 hover:text-red-700 hover:bg-red-50 rounded-lg font-semibold text-xs transition-colors"
+            className="btn-press px-3 py-1.5 text-slate-400 hover:text-rose-400 hover:bg-rose-950/40 rounded-xl font-semibold text-xs transition-all"
           >
             Cerrar sesión
           </button>
         }
       />
 
-      <main className="max-w-4xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 flex-1">
+      <main className="max-w-5xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 flex-1 relative z-10">
         <div className="mb-8">
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-zinc-950 font-display tracking-tight">Configuración del Docente</h1>
-          <p className="text-zinc-500 text-xs sm:text-sm mt-1">
-            Gestiona tus datos personales y tu motor de inferencia OpenRouter (BYOK)
+          <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-md bg-indigo-950/60 border border-indigo-500/30 text-indigo-300 text-[11px] font-mono uppercase tracking-wider mb-3">
+            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 led-pulse" aria-hidden="true" />
+            Bóveda de Credenciales & Modelos
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-white font-display tracking-tight">
+            Configuración del Docente
+          </h1>
+          <p className="text-slate-400 text-xs sm:text-sm mt-1">
+            Administra tus datos institucionales y calibra tu motor de inferencia LLM con arquitectura BYOK ($0 costo operativo).
           </p>
         </div>
 
         <div className="grid md:grid-cols-3 gap-6">
-          {/* Columna Izquierda: Información de la Cuenta */}
+          {/* Columna Izquierda: Información de la Cuenta & Seguridad (1 col) */}
           <div className="md:col-span-1 space-y-4">
-            <div className="bg-white rounded-xl border border-zinc-200 p-5 shadow-sm space-y-4">
-              <h2 className="font-bold text-xs uppercase tracking-wider text-zinc-500 flex items-center gap-2">
-                <svg className="w-4 h-4 text-zinc-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <div className="glass-panel specular-highlight rounded-2xl border border-white/10 p-5 shadow-2xl space-y-4">
+              <h2 className="font-bold text-xs uppercase tracking-wider font-mono text-indigo-300 flex items-center gap-2">
+                <svg className="w-4 h-4 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                 </svg>
-                Cuenta
+                Cuenta Docente
               </h2>
-              <div className="space-y-3 text-xs text-zinc-600">
+              <div className="space-y-3 text-xs text-slate-300">
                 <div>
-                  <span className="text-[11px] text-zinc-400 block">Correo de Acceso</span>
-                  <strong className="text-zinc-900 font-medium">{user.email}</strong>
+                  <span className="text-[10px] font-mono uppercase text-slate-500 block">Correo Institucional</span>
+                  <strong className="text-white font-mono">{user.email}</strong>
                 </div>
                 <div>
-                  <span className="text-[11px] text-zinc-400 block">Rol en el Sistema</span>
-                  <strong className="text-zinc-900 font-medium">Docente Autorizado</strong>
+                  <span className="text-[10px] font-mono uppercase text-slate-500 block">Rol del Sistema</span>
+                  <strong className="text-white">Docente Titular</strong>
                 </div>
-                <div className="pt-2 border-t border-zinc-100">
-                  <span className="text-[11px] text-zinc-400 block">Autenticación</span>
-                  <strong className="text-zinc-900 capitalize font-medium">{user.auth_method.replace("_", " ")}</strong>
+                <div className="pt-2 border-t border-white/10">
+                  <span className="text-[10px] font-mono uppercase text-slate-500 block">Método de Firma</span>
+                  <strong className="text-white capitalize font-mono text-[11px]">{user.auth_method.replace("_", " ")}</strong>
                 </div>
               </div>
             </div>
 
-            {/* Aviso de API Key */}
-            <div
-              className={`rounded-xl border p-5 shadow-sm text-xs leading-relaxed ${
-                isTestUser ? "bg-indigo-50/50 border-indigo-100 text-indigo-900" : "bg-amber-50/60 border-amber-200 text-amber-900"
-              }`}
-            >
-              <h3 className="font-bold mb-1.5 flex items-center gap-1.5">
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            {/* Tarjeta BYOK / Info Fernet */}
+            <div className="glass-panel rounded-2xl border border-cyan-500/30 bg-cyan-950/20 p-5 shadow-2xl text-xs leading-relaxed">
+              <h3 className="font-bold text-cyan-300 mb-1.5 flex items-center gap-1.5 font-display">
+                <svg className="w-4 h-4 text-cyan-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                 </svg>
-                {isTestUser ? "Modo Demostración" : "API Key Requerida"}
+                {isTestUser ? "Modo Demostración Activo" : "Arquitectura BYOK $0/mes"}
               </h3>
-              <p className="text-[11px] opacity-90">
-                {isTestUser ? (
-                  "Cuenta de demostración institucional. Puedes usar la clave del sistema o conectar tu propia key para pruebas."
-                ) : (
-                  "Para garantizar el costo $0/mes, cada docente provee su propia API Key de OpenRouter (modelos gratuitos)."
-                )}
+              <p className="text-[11px] text-slate-300">
+                {isTestUser
+                  ? "Cuenta de demostración institucional con cuota del sistema. Puedes vincular tu propia API key para pruebas extendidas."
+                  : "Tu clave de API se cifra con Fernet (AES-128-CBC) en el backend y solo se descifra en memoria durante la inferencia."}
               </p>
               <a
                 href="https://openrouter.ai/keys"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mt-2.5 inline-flex items-center gap-1 text-[11px] font-semibold underline underline-offset-2 hover:opacity-80"
+                className="mt-3 inline-flex items-center gap-1 text-[11px] font-mono text-cyan-400 hover:text-cyan-300 underline underline-offset-2 transition-colors"
               >
-                Obtén tu API Key gratis en OpenRouter ↗
+                Generar API Key gratis en OpenRouter ↗
               </a>
             </div>
-
-            {/* Info del modelo seleccionado */}
-            {selectedModelInfo && (
-              <div className="bg-white rounded-xl border border-zinc-200 p-4 shadow-sm">
-                <h3 className="font-bold text-xs uppercase tracking-wider text-zinc-500 mb-1">
-                  Modelo Seleccionado
-                </h3>
-                <p className="text-xs font-semibold text-brand-700">{selectedModelInfo.label}</p>
-                <p className="text-[11px] text-zinc-500 mt-1 leading-relaxed">{selectedModelInfo.description}</p>
-              </div>
-            )}
           </div>
 
-          {/* Columna Derecha: Formulario */}
+          {/* Columna Derecha: Formulario de Perfil & Modelos (2 cols) */}
           <div className="md:col-span-2">
-            <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-zinc-200 p-6 sm:p-8 shadow-sm space-y-5">
-              <h2 className="text-sm font-bold text-zinc-900 border-b border-zinc-100 pb-3">
-                Datos del Docente
-              </h2>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label htmlFor="firstName" className="block text-xs font-semibold text-zinc-700 mb-1">
-                    Nombre *
-                  </label>
-                  <input
-                    id="firstName"
-                    name="firstName"
-                    type="text"
-                    value={formData.firstName}
-                    onChange={handleChange}
-                    className="w-full px-3.5 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-zinc-900 focus:border-zinc-900 outline-none text-zinc-900 text-xs sm:text-sm transition-all"
-                    required
-                  />
-                </div>
-                <div>
-                  <label htmlFor="lastName" className="block text-xs font-semibold text-zinc-700 mb-1">
-                    Apellido *
-                  </label>
-                  <input
-                    id="lastName"
-                    name="lastName"
-                    type="text"
-                    value={formData.lastName}
-                    onChange={handleChange}
-                    className="w-full px-3.5 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-zinc-900 focus:border-zinc-900 outline-none text-zinc-900 text-xs sm:text-sm transition-all"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label htmlFor="institution" className="block text-xs font-semibold text-zinc-700 mb-1">
-                    Institución *
-                  </label>
-                  <input
-                    id="institution"
-                    name="institution"
-                    type="text"
-                    value={formData.institution}
-                    onChange={handleChange}
-                    className="w-full px-3.5 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-zinc-900 focus:border-zinc-900 outline-none text-zinc-900 text-xs sm:text-sm transition-all"
-                    required
-                  />
-                </div>
-                <div>
-                  <label htmlFor="country" className="block text-xs font-semibold text-zinc-700 mb-1">
-                    País
-                  </label>
-                  <input
-                    id="country"
-                    name="country"
-                    type="text"
-                    value={formData.country}
-                    onChange={handleChange}
-                    className="w-full px-3.5 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-zinc-900 focus:border-zinc-900 outline-none text-zinc-900 text-xs sm:text-sm transition-all"
-                    placeholder="Ej: Colombia"
-                  />
-                </div>
-              </div>
-
-              {/* Sección OpenRouter */}
-              <h2 className="text-sm font-bold text-zinc-900 border-b border-zinc-100 pb-3 pt-2">
-                Configuración de OpenRouter (BYOK)
-              </h2>
-
-              <div className="space-y-4">
-                <div>
-                  <div className="flex justify-between items-center mb-1">
-                    <label htmlFor="openrouterApiKey" className="block text-xs font-semibold text-zinc-700">
-                      API Key de OpenRouter
+            <form onSubmit={handleSubmit} className="glass-panel specular-highlight rounded-2xl border border-white/10 p-6 sm:p-8 shadow-2xl space-y-6">
+              <div>
+                <h2 className="text-sm font-bold text-white font-display border-b border-white/10 pb-3 flex items-center gap-2">
+                  <svg className="w-4 h-4 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                  </svg>
+                  Datos Institucionales
+                </h2>
+                <div className="grid sm:grid-cols-2 gap-4 mt-4">
+                  <div>
+                    <label htmlFor="firstName" className="block text-xs font-mono uppercase tracking-wider text-slate-300 mb-1">
+                      Nombre *
                     </label>
-                    <a
-                      href="https://openrouter.ai/keys"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-[11px] text-brand-600 hover:underline font-medium"
-                    >
-                      Obtener gratis ↗
-                    </a>
-                  </div>
-                  <div className="relative">
                     <input
-                      id="openrouterApiKey"
-                      name="openrouterApiKey"
-                      type={showApiKey ? "text" : "password"}
-                      value={formData.openrouterApiKey}
+                      id="firstName"
+                      name="firstName"
+                      type="text"
+                      value={formData.firstName}
                       onChange={handleChange}
-                      className="w-full pl-3.5 pr-20 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-zinc-900 focus:border-zinc-900 outline-none text-zinc-900 font-mono text-xs transition-all"
-                      placeholder="sk-or-v1-..."
+                      className="w-full px-3.5 py-2.5 bg-white/[0.04] border border-white/10 rounded-xl focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-400 outline-none text-white text-xs sm:text-sm font-sans transition-all"
+                      required
                     />
-                    <button
-                      type="button"
-                      onClick={() => setShowApiKey(!showApiKey)}
-                      className="absolute right-2.5 top-2 text-xs font-semibold text-zinc-500 hover:text-zinc-800"
-                    >
-                      {showApiKey ? "Ocultar" : "Mostrar"}
-                    </button>
                   </div>
-                  <p className="text-[11px] text-zinc-400 mt-1">
-                    Cifrada con Fernet (AES-128-CBC) en el servidor. Nunca se expone en texto plano.
-                  </p>
+                  <div>
+                    <label htmlFor="lastName" className="block text-xs font-mono uppercase tracking-wider text-slate-300 mb-1">
+                      Apellido *
+                    </label>
+                    <input
+                      id="lastName"
+                      name="lastName"
+                      type="text"
+                      value={formData.lastName}
+                      onChange={handleChange}
+                      className="w-full px-3.5 py-2.5 bg-white/[0.04] border border-white/10 rounded-xl focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-400 outline-none text-white text-xs sm:text-sm font-sans transition-all"
+                      required
+                    />
+                  </div>
                 </div>
 
-                <div>
-                  <label htmlFor="openrouterModel" className="block text-xs font-semibold text-zinc-700 mb-1">
-                    Modelo de Inferencia Activo
-                  </label>
-                  <select
-                    id="openrouterModel"
-                    name="openrouterModel"
-                    value={formData.openrouterModel}
-                    onChange={handleChange}
-                    className="w-full px-3.5 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-zinc-900 focus:border-zinc-900 outline-none text-zinc-900 text-xs sm:text-sm transition-all bg-white"
+                <div className="grid sm:grid-cols-2 gap-4 mt-4">
+                  <div>
+                    <label htmlFor="institution" className="block text-xs font-mono uppercase tracking-wider text-slate-300 mb-1">
+                      Institución Educativa *
+                    </label>
+                    <input
+                      id="institution"
+                      name="institution"
+                      type="text"
+                      value={formData.institution}
+                      onChange={handleChange}
+                      className="w-full px-3.5 py-2.5 bg-white/[0.04] border border-white/10 rounded-xl focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-400 outline-none text-white text-xs sm:text-sm font-sans transition-all"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="country" className="block text-xs font-mono uppercase tracking-wider text-slate-300 mb-1">
+                      País
+                    </label>
+                    <input
+                      id="country"
+                      name="country"
+                      type="text"
+                      value={formData.country}
+                      onChange={handleChange}
+                      className="w-full px-3.5 py-2.5 bg-white/[0.04] border border-white/10 rounded-xl focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-400 outline-none text-white text-xs sm:text-sm font-sans transition-all"
+                      placeholder="Ej: Colombia"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Sección OpenRouter BYOK */}
+              <div>
+                <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                  <h2 className="text-sm font-bold text-white font-display flex items-center gap-2">
+                    <svg className="w-4 h-4 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                    </svg>
+                    Bóveda de Clave OpenRouter (BYOK)
+                  </h2>
+                  <a
+                    href="https://openrouter.ai/keys"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[11px] font-mono text-cyan-400 hover:text-cyan-300 transition-colors"
                   >
-                    {OPENROUTER_MODELS.map((model) => (
-                      <option key={model.id} value={model.id}>
-                        {model.label}
-                      </option>
-                    ))}
-                  </select>
+                    Obtener clave gratis ↗
+                  </a>
+                </div>
+
+                <div className="mt-4 space-y-4">
+                  <div>
+                    <label htmlFor="openrouterApiKey" className="block text-xs font-mono uppercase tracking-wider text-slate-300 mb-1.5">
+                      API Key Personal
+                    </label>
+                    <div className="relative">
+                      <input
+                        id="openrouterApiKey"
+                        name="openrouterApiKey"
+                        type={showApiKey ? "text" : "password"}
+                        value={formData.openrouterApiKey}
+                        onChange={handleChange}
+                        className="w-full pl-3.5 pr-20 py-2.5 bg-white/[0.04] border border-white/10 rounded-xl focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-400 outline-none text-white font-mono text-xs transition-all"
+                        placeholder="sk-or-v1-..."
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowApiKey(!showApiKey)}
+                        className="btn-press absolute right-2.5 top-2.5 text-xs font-mono text-slate-400 hover:text-white px-2 py-0.5 rounded-md bg-white/[0.05]"
+                      >
+                        {showApiKey ? "Ocultar" : "Mostrar"}
+                      </button>
+                    </div>
+                    <p className="text-[10px] font-mono text-slate-400 mt-1.5 flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                      Cifrado asimétrico simétrico Fernet (AES-128). Nunca viaja en texto plano.
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-mono uppercase tracking-wider text-slate-300 mb-2">
+                      Selecciona tu Modelo de Inferencia Activo
+                    </label>
+                    <div className="grid sm:grid-cols-2 gap-3">
+                      {OPENROUTER_MODELS.map((model) => {
+                        const isSelected = formData.openrouterModel === model.id;
+                        return (
+                          <div
+                            key={model.id}
+                            onClick={() => setFormData((prev) => ({ ...prev, openrouterModel: model.id }))}
+                            className={`p-3.5 rounded-xl border transition-all cursor-pointer select-none flex flex-col justify-between btn-press ${
+                              isSelected
+                                ? "border-cyan-500/80 bg-cyan-950/40 shadow-lg shadow-cyan-950/40"
+                                : "border-white/10 bg-white/[0.02] hover:bg-white/[0.05] hover:border-white/20"
+                            }`}
+                          >
+                            <div>
+                              <div className="flex items-center justify-between gap-1 mb-1.5">
+                                <span className={`text-[10px] font-mono px-2 py-0.5 rounded-md border ${
+                                  isSelected
+                                    ? "bg-cyan-500/20 text-cyan-300 border-cyan-500/40"
+                                    : "bg-white/[0.04] text-slate-400 border-white/10"
+                                }`}>
+                                  {model.badge}
+                                </span>
+                                <span className="text-[10px] font-mono text-slate-500">{model.contextWindow}</span>
+                              </div>
+                              <h4 className="font-bold text-xs text-white font-display">{model.label}</h4>
+                              <p className="text-[11px] text-slate-400 mt-1 leading-relaxed">{model.description}</p>
+                            </div>
+                            {isSelected && (
+                              <div className="mt-2 pt-2 border-t border-cyan-500/20 flex items-center gap-1.5 text-[10px] font-mono text-cyan-300">
+                                <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 led-pulse" />
+                                Modelo Activo para tus Chatbots
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
                 </div>
               </div>
 
               {message && (
                 <div
-                  className={`text-xs p-3 rounded-lg border ${
+                  className={`text-xs p-3.5 rounded-xl border ${
                     isError
-                      ? "text-red-700 bg-red-50 border-red-200"
-                      : "text-emerald-700 bg-emerald-50 border-emerald-200"
-                  } animate-in fade-in duration-150`}
+                      ? "text-rose-300 bg-rose-950/50 border-rose-500/40"
+                      : "text-emerald-300 bg-emerald-950/50 border-emerald-500/40"
+                  } animate-in fade-in duration-200 font-mono`}
                 >
                   {message}
                 </div>
@@ -383,9 +417,16 @@ export default function TeacherSettingsPage() {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full py-2.5 bg-zinc-900 hover:bg-zinc-800 text-white rounded-lg font-semibold text-xs sm:text-sm btn-press shadow-sm disabled:opacity-50 transition-colors"
+                className="btn-press w-full py-3 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white rounded-xl font-semibold text-xs sm:text-sm shadow-lg shadow-indigo-950/50 border border-indigo-400/30 transition-all disabled:opacity-50 inline-flex items-center justify-center gap-2"
               >
-                {isSubmitting ? "Guardando..." : "Guardar Configuración"}
+                {isSubmitting ? (
+                  <>
+                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Guardando credenciales...
+                  </>
+                ) : (
+                  "Guardar y Actualizar Motor de Inferencia"
+                )}
               </button>
             </form>
           </div>
@@ -394,4 +435,3 @@ export default function TeacherSettingsPage() {
     </div>
   );
 }
-
