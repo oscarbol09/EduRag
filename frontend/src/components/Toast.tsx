@@ -34,17 +34,17 @@ export function useToast() {
 }
 
 const STYLES: Record<ToastVariant, string> = {
-  success: "bg-white border-zinc-200 text-zinc-900 shadow-lg",
-  error:   "bg-white border-red-200 text-zinc-900 shadow-lg",
-  warning: "bg-white border-amber-200 text-zinc-900 shadow-lg",
-  info:    "bg-white border-zinc-200 text-zinc-900 shadow-lg",
+  success: "glass-panel border-emerald-500/30 text-slate-100 shadow-2xl shadow-emerald-950/40",
+  error:   "glass-panel border-rose-500/30 text-slate-100 shadow-2xl shadow-rose-950/40",
+  warning: "glass-panel border-amber-500/30 text-slate-100 shadow-2xl shadow-amber-950/40",
+  info:    "glass-panel border-indigo-500/30 text-slate-100 shadow-2xl shadow-indigo-950/40",
 };
 
 const ICON_STYLES: Record<ToastVariant, string> = {
-  success: "bg-emerald-50 text-emerald-600 border border-emerald-200",
-  error:   "bg-red-50 text-red-600 border border-red-200",
-  warning: "bg-amber-50 text-amber-600 border border-amber-200",
-  info:    "bg-brand-50 text-brand-600 border border-brand-200",
+  success: "bg-emerald-950/80 text-emerald-400 border border-emerald-500/40",
+  error:   "bg-rose-950/80 text-rose-400 border border-rose-500/40",
+  warning: "bg-amber-950/80 text-amber-400 border border-amber-500/40",
+  info:    "bg-indigo-950/80 text-indigo-400 border border-indigo-500/40",
 };
 
 function ToastIcon({ variant }: { variant: ToastVariant }) {
@@ -86,16 +86,16 @@ function ToastItem({ toast, onRemove }: { toast: Toast; onRemove: (id: string) =
     <div
       role="alert"
       aria-live="assertive"
-      className={`flex items-start gap-3 px-3.5 py-3 rounded-xl border text-xs font-medium max-w-sm w-full animate-in slide-in-from-bottom-2 duration-150 ${STYLES[toast.variant]}`}
+      className={`specular-highlight flex items-start gap-3 px-4 py-3 rounded-xl border text-xs font-medium max-w-sm w-full animate-in slide-in-from-bottom-3 duration-200 backdrop-blur-xl ${STYLES[toast.variant]}`}
     >
       <span className={`flex-shrink-0 w-6 h-6 rounded-lg flex items-center justify-center ${ICON_STYLES[toast.variant]}`}>
         <ToastIcon variant={toast.variant} />
       </span>
-      <span className="flex-1 leading-snug pt-0.5 text-zinc-800">{toast.message}</span>
+      <span className="flex-1 leading-snug pt-0.5 text-slate-100">{toast.message}</span>
       <button
         onClick={() => onRemove(toast.id)}
         aria-label="Cerrar notificación"
-        className="flex-shrink-0 text-zinc-400 hover:text-zinc-700 transition-colors p-0.5 rounded"
+        className="flex-shrink-0 text-slate-400 hover:text-white transition-colors p-0.5 rounded"
       >
         <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -121,4 +121,3 @@ export function ToastContainer({ toasts, onRemove }: { toasts: Toast[]; onRemove
     </div>
   );
 }
-

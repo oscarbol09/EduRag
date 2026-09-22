@@ -26,6 +26,6 @@ describe("StatusBadge", () => {
   it("applies correct color classes", () => {
     render(<StatusBadge status="published" />);
     const badge = screen.getByText("Publicado");
-    expect(badge).toHaveClass("bg-green-100", "text-green-700");
+    expect(badge).toHaveClass("bg-emerald-950/70", "text-emerald-300");
   });
 });

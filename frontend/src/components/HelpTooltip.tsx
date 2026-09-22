@@ -17,7 +17,7 @@ export function HelpTooltip({ text }: HelpTooltipProps) {
         onMouseLeave={() => setIsVisible(false)}
         onFocus={() => setIsVisible(true)}
         onBlur={() => setIsVisible(false)}
-        className="text-zinc-400 hover:text-zinc-700 transition-colors focus:outline-none"
+        className="text-slate-400 hover:text-cyber-cyan-400 transition-colors focus:outline-none"
         aria-label="Ayuda"
       >
         <svg
@@ -37,14 +37,13 @@ export function HelpTooltip({ text }: HelpTooltipProps) {
       </button>
 
       {isVisible && (
-        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 bg-zinc-900 text-zinc-100 text-[11px] rounded-lg p-3 shadow-xl border border-zinc-800 z-50 pointer-events-none leading-relaxed font-normal">
+        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 glass-panel text-slate-200 text-[11px] rounded-lg p-3 shadow-2xl border border-white/15 z-50 pointer-events-none leading-relaxed font-normal">
           <div className="relative">
             {text}
-            <div className="absolute top-full left-1/2 -translate-x-1/2 w-2 h-2 bg-zinc-900 rotate-45 mt-0.5 border-r border-b border-zinc-800" />
+            <div className="absolute top-full left-1/2 -translate-x-1/2 w-2 h-2 bg-[#0d0f17] rotate-45 mt-0.5 border-r border-b border-white/15" />
           </div>
         </div>
       )}
     </div>
   );
 }
-

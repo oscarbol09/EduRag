@@ -74,11 +74,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es" className={`${jakarta.variable} ${serif.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col bg-gray-50 text-gray-900" style={{ fontFamily: "var(--font-sans), sans-serif" }}>
+    <html lang="es" className={`${jakarta.variable} ${serif.variable} h-full antialiased dark`}>
+      <body className="min-h-full flex flex-col bg-[#07080c] text-slate-100 selection:bg-indigo-500 selection:text-white" style={{ fontFamily: "var(--font-sans), sans-serif" }}>
         <a
           href="#main-content"
-          className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-zinc-950 focus:text-white focus:rounded-lg focus:shadow-lg text-xs font-semibold"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-indigo-600 focus:text-white focus:rounded-lg focus:shadow-xl text-xs font-semibold"
         >
           Saltar al contenido principal
         </a>

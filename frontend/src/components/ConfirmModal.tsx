@@ -52,8 +52,8 @@ export function ConfirmModal({
 
   const confirmStyles =
     variant === "danger"
-      ? "bg-red-600 hover:bg-red-700 text-white focus:ring-red-500"
-      : "bg-amber-600 hover:bg-amber-700 text-white focus:ring-amber-500";
+      ? "bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-500 hover:to-rose-600 text-white border-rose-500/30 focus:ring-rose-500 shadow-lg shadow-rose-900/30"
+      : "bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white border-amber-500/30 focus:ring-amber-500 shadow-lg shadow-amber-900/30";
 
   return (
     <div
@@ -65,17 +65,17 @@ export function ConfirmModal({
     >
       {/* Overlay */}
       <div
-        className="absolute inset-0 bg-zinc-900/40 backdrop-blur-sm animate-in fade-in duration-150"
+        className="absolute inset-0 bg-black/75 backdrop-blur-md animate-in fade-in duration-150"
         onClick={onCancel}
         aria-hidden="true"
       />
 
       {/* Panel */}
-      <div className="relative bg-white rounded-xl shadow-xl border border-zinc-200 p-6 max-w-sm w-full space-y-4 animate-in zoom-in-95 duration-150">
+      <div className="relative glass-panel specular-highlight rounded-2xl shadow-2xl border border-white/15 p-6 max-w-sm w-full space-y-4 animate-in zoom-in-95 duration-150">
         <div className="flex items-start gap-3.5">
           <div
-            className={`flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center ${
-              variant === "danger" ? "bg-red-50 text-red-600 border border-red-100" : "bg-amber-50 text-amber-600 border border-amber-100"
+            className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center border shadow-inner ${
+              variant === "danger" ? "bg-rose-950/70 text-rose-400 border-rose-500/30" : "bg-amber-950/70 text-amber-400 border-amber-500/30"
             }`}
             aria-hidden="true"
           >
@@ -90,11 +90,11 @@ export function ConfirmModal({
             )}
           </div>
           <div className="flex-1">
-            <h2 id="confirm-modal-title" className="font-bold text-zinc-900 text-sm leading-snug">
+            <h2 id="confirm-modal-title" className="font-bold text-white text-base leading-snug font-display">
               {title}
             </h2>
             {description && (
-              <p id="confirm-modal-desc" className="text-xs text-zinc-500 mt-1 leading-relaxed">
+              <p id="confirm-modal-desc" className="text-xs text-slate-300 mt-1 leading-relaxed">
                 {description}
               </p>
             )}
@@ -105,13 +105,13 @@ export function ConfirmModal({
           <button
             ref={cancelRef}
             onClick={onCancel}
-            className="flex-1 py-2 px-3 rounded-lg border border-zinc-200 text-zinc-700 font-semibold text-xs hover:bg-zinc-50 transition-colors focus:outline-none focus:ring-2 focus:ring-zinc-300 btn-press"
+            className="flex-1 py-2 px-3 rounded-lg border border-white/10 text-slate-300 font-semibold text-xs hover:bg-white/[0.06] hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-white/20 btn-press"
           >
             {cancelLabel}
           </button>
           <button
             onClick={onConfirm}
-            className={`flex-1 py-2 px-3 rounded-lg font-semibold text-xs shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1 btn-press ${confirmStyles}`}
+            className={`flex-1 py-2 px-3 rounded-lg font-semibold text-xs border transition-all focus:outline-none focus:ring-2 focus:ring-offset-1 btn-press ${confirmStyles}`}
           >
             {confirmLabel}
           </button>
@@ -120,4 +120,3 @@ export function ConfirmModal({
     </div>
   );
 }
-

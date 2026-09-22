@@ -12,24 +12,31 @@ interface NavbarProps {
 
 export function Navbar({ variant = "public", backTo, backLabel = "Volver", title, actions }: NavbarProps) {
   return (
-    <nav className="bg-white/95 backdrop-blur-md border-b border-zinc-200/80 sticky top-0 z-40" aria-label="Navegación principal">
+    <nav className="glass-panel specular-highlight sticky top-0 z-40 border-b border-white/[0.08]" aria-label="Navegación principal">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16 items-center">
           <div className="flex items-center gap-4">
             {backTo ? (
               <Link
                 href={backTo}
-                className="flex items-center gap-1.5 text-xs sm:text-sm text-zinc-600 hover:text-zinc-950 font-semibold transition-colors group px-2.5 py-1.5 rounded-lg hover:bg-zinc-100"
+                className="btn-press flex items-center gap-2 text-xs sm:text-sm text-slate-300 hover:text-white font-medium px-3 py-1.5 rounded-lg border border-white/10 hover:border-white/20 bg-white/[0.03] hover:bg-white/[0.07] transition-all group"
               >
-                <span className="group-hover:-translate-x-0.5 transition-transform" aria-hidden="true">←</span> {backLabel}
+                <span className="group-hover:-translate-x-0.5 transition-transform text-indigo-400" aria-hidden="true">←</span>
+                <span>{backLabel}</span>
               </Link>
             ) : (
-              <Link href="/" className="flex items-center gap-2 group">
-                <span className="text-xl font-bold text-zinc-950 font-display tracking-tight group-hover:text-brand-600 transition-colors">
+              <Link href="/" className="flex items-center gap-2.5 group">
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-cyber-cyan-500 p-px shadow-sm flex items-center justify-center">
+                  <div className="w-full h-full bg-[#07080c] rounded-[7px] flex items-center justify-center">
+                    <span className="font-display font-bold text-sm bg-gradient-to-r from-indigo-400 to-cyber-cyan-400 bg-clip-text text-transparent">E</span>
+                  </div>
+                </div>
+                <span className="text-lg font-bold text-white font-display tracking-tight group-hover:text-indigo-300 transition-colors">
                   EduRAG
                 </span>
                 {variant !== "public" && (
-                  <span className="text-[10px] font-bold tracking-wider uppercase px-2 py-0.5 rounded-md bg-zinc-100 text-zinc-700 border border-zinc-200">
+                  <span className="inline-flex items-center gap-1.5 text-[10px] font-mono uppercase px-2 py-0.5 rounded-md bg-indigo-950/80 text-indigo-300 border border-indigo-500/30">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 led-pulse" aria-hidden="true" />
                     {variant}
                   </span>
                 )}
@@ -37,8 +44,8 @@ export function Navbar({ variant = "public", backTo, backLabel = "Volver", title
             )}
             {title && (
               <div className="flex items-center gap-2.5">
-                <span className="h-4 w-px bg-zinc-200" aria-hidden="true" />
-                <span className="text-xs sm:text-sm font-semibold text-zinc-800 truncate max-w-xs">{title}</span>
+                <span className="h-4 w-px bg-white/10" aria-hidden="true" />
+                <span className="text-xs sm:text-sm font-medium text-slate-200 truncate max-w-xs">{title}</span>
               </div>
             )}
           </div>
@@ -47,4 +54,4 @@ export function Navbar({ variant = "public", backTo, backLabel = "Volver", title
       </div>
     </nav>
   );
-}
+}
