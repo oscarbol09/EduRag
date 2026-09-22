@@ -42,7 +42,7 @@ export default function LoginPage() {
     >
       <form onSubmit={handleSubmit} className="space-y-4" noValidate>
         <div>
-          <label htmlFor="email" className="block text-xs font-mono uppercase tracking-wider text-slate-300 mb-1.5">
+          <label htmlFor="email" className="block text-xs font-medium text-zinc-300 mb-1.5">
             Correo electrónico
           </label>
           <input
@@ -50,7 +50,7 @@ export default function LoginPage() {
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full px-4 py-2.5 bg-white/[0.04] border border-white/10 rounded-xl focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-400 outline-none text-xs sm:text-sm text-white placeholder-slate-500 font-sans transition-all"
+            className="w-full px-3.5 py-2.5 bg-zinc-900 border border-zinc-800 rounded-lg focus:ring-1 focus:ring-zinc-600 focus:border-zinc-600 outline-none text-xs sm:text-sm text-zinc-100 placeholder-zinc-500 font-sans transition-colors"
             placeholder="usuario@universidad.edu"
             required
             autoComplete="email"
@@ -58,7 +58,7 @@ export default function LoginPage() {
         </div>
 
         <div>
-          <label htmlFor="password" className="block text-xs font-mono uppercase tracking-wider text-slate-300 mb-1.5">
+          <label htmlFor="password" className="block text-xs font-medium text-zinc-300 mb-1.5">
             Contraseña
           </label>
           <input
@@ -66,7 +66,7 @@ export default function LoginPage() {
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full px-4 py-2.5 bg-white/[0.04] border border-white/10 rounded-xl focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-400 outline-none text-xs sm:text-sm text-white placeholder-slate-500 font-mono transition-all"
+            className="w-full px-3.5 py-2.5 bg-zinc-900 border border-zinc-800 rounded-lg focus:ring-1 focus:ring-zinc-600 focus:border-zinc-600 outline-none text-xs sm:text-sm text-zinc-100 placeholder-zinc-500 font-mono transition-colors"
             placeholder="••••••••••••"
             required
             autoComplete="current-password"
@@ -74,7 +74,7 @@ export default function LoginPage() {
         </div>
 
         {error && (
-          <div role="alert" className="text-rose-300 text-xs bg-rose-950/50 border border-rose-500/40 p-3 rounded-xl font-mono">
+          <div role="alert" className="text-rose-300 text-xs bg-rose-950/40 border border-rose-500/40 p-3 rounded-lg">
             {error}
           </div>
         )}
@@ -82,11 +82,11 @@ export default function LoginPage() {
         <button
           type="submit"
           disabled={isLoading}
-          className="btn-press w-full py-3 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white font-semibold rounded-xl disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm shadow-lg shadow-indigo-950/50 border border-indigo-400/30 transition-all inline-flex items-center justify-center gap-2"
+          className="btn-press w-full py-2.5 bg-zinc-100 hover:bg-white text-zinc-950 font-medium rounded-lg disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm transition-colors inline-flex items-center justify-center gap-2"
         >
           {isLoading ? (
             <>
-              <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              <span className="w-4 h-4 border-2 border-zinc-950/30 border-t-zinc-950 rounded-full animate-spin" />
               Iniciando sesión...
             </>
           ) : (
@@ -96,17 +96,17 @@ export default function LoginPage() {
       </form>
 
       <div className="mt-6 text-center">
-        <p className="text-xs text-slate-400">
+        <p className="text-xs text-zinc-400">
           ¿No tienes cuenta?{" "}
-          <Link href="/register" className="text-cyan-400 hover:text-cyan-300 font-semibold hover:underline transition-colors">
+          <Link href="/register" className="text-zinc-200 hover:text-white font-medium hover:underline transition-colors">
             Regístrate como estudiante
           </Link>
         </p>
       </div>
 
       {/* Institutional SSO */}
-      <div className="mt-6 pt-6 border-t border-white/10">
-        <p className="text-[10px] font-mono uppercase tracking-wider text-slate-500 text-center mb-3">
+      <div className="mt-6 pt-6 border-t border-zinc-800">
+        <p className="text-[11px] font-medium text-zinc-500 text-center mb-3">
           Autenticación Institucional Federada
         </p>
         <div className="flex gap-3">
@@ -115,7 +115,7 @@ export default function LoginPage() {
             disabled
             title="Próximamente disponible vía protocolo OIDC"
             aria-label="Iniciar sesión con Google — próximamente disponible"
-            className="flex-1 flex items-center justify-center gap-2 py-2 border border-white/10 rounded-xl opacity-40 cursor-not-allowed bg-white/[0.02] text-slate-400 text-xs font-mono"
+            className="flex-1 flex items-center justify-center gap-2 py-2 border border-zinc-800 rounded-lg opacity-40 cursor-not-allowed bg-zinc-900/40 text-zinc-400 text-xs"
           >
             <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" aria-hidden="true">
               <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -130,7 +130,7 @@ export default function LoginPage() {
             disabled
             title="Próximamente disponible vía Microsoft Entra ID"
             aria-label="Iniciar sesión con Microsoft — próximamente disponible"
-            className="flex-1 flex items-center justify-center gap-2 py-2 border border-white/10 rounded-xl opacity-40 cursor-not-allowed bg-white/[0.02] text-slate-400 text-xs font-mono"
+            className="flex-1 flex items-center justify-center gap-2 py-2 border border-zinc-800 rounded-lg opacity-40 cursor-not-allowed bg-zinc-900/40 text-zinc-400 text-xs"
           >
             <svg className="w-3.5 h-3.5" fill="#00A4EF" viewBox="0 0 24 24" aria-hidden="true">
               <path d="M11.4 24H0V12.6h11.4V24zM24 24H12.6V12.6H24V24zM11.4 11.4H0V0h11.4v11.4zM24 11.4H12.6V0H24v11.4z"/>
