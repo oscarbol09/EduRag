@@ -9,13 +9,9 @@ import type { ChatResponse, Message, Chatbot } from "@/lib/types";
 function renderMessageContent(content: string, isUser: boolean) {
   if (!content) return null;
 
-  const boldClass = isUser ? "font-bold text-white" : "font-semibold text-white";
-  const codeInlineClass = isUser
-    ? "bg-indigo-900/80 px-1.5 py-0.5 rounded font-mono text-xs text-indigo-200 border border-indigo-400/40"
-    : "bg-[#07080c] px-1.5 py-0.5 rounded font-mono text-xs text-cyan-300 border border-white/10";
-  const mathInlineClass = isUser
-    ? "bg-indigo-950/90 px-1.5 py-0.5 rounded font-mono text-xs text-amber-300 border border-amber-500/30 italic"
-    : "bg-amber-950/60 px-1.5 py-0.5 rounded font-mono text-xs text-amber-300 border border-amber-500/40 italic";
+  const boldClass = isUser ? "font-bold text-white" : "font-semibold text-zinc-100";
+  const codeInlineClass = "bg-zinc-800/80 px-1.5 py-0.5 rounded font-mono text-xs text-zinc-200 border border-zinc-700/50";
+  const mathInlineClass = "bg-zinc-850 px-1.5 py-0.5 rounded font-mono text-xs text-zinc-200 border border-zinc-700/50 italic";
 
   // Dividir por bloques: triple backtick (código) o $$...$$ / \[...\] (matemática display)
   const blockRegex = /(```[\w]*\n?[\s\S]*?```|\$\$[\s\S]*?\$\$|\\\[[\s\S]*?\\\])/g;
@@ -51,7 +47,7 @@ function renderMessageContent(content: string, isUser: boolean) {
       if (listMatch) {
         return (
           <div key={`${segKey}-line-${lineIdx}`} className="flex gap-2 my-1.5 items-start">
-            <span className={isUser ? "text-indigo-300 select-none font-mono text-xs" : "text-cyan-400 select-none font-mono text-xs"}>
+            <span className="text-zinc-400 select-none text-xs">
               {listMatch[2].endsWith(".") ? listMatch[2] : "•"}
             </span>
             <span className="flex-1">{renderInline(listMatch[3], `${segKey}-li-${lineIdx}`)}</span>
@@ -98,7 +94,7 @@ function renderMessageContent(content: string, isUser: boolean) {
           return (
             <pre
               key={i}
-              className="my-3 p-3.5 bg-[#050608] text-cyan-300 border border-white/10 rounded-xl text-xs font-mono overflow-x-auto whitespace-pre leading-normal shadow-inner"
+              className="my-3 p-3.5 bg-zinc-950 text-zinc-200 border border-zinc-800 rounded-xl text-xs font-mono overflow-x-auto whitespace-pre leading-normal"
             >
               <code>{seg.content}</code>
             </pre>
@@ -108,7 +104,7 @@ function renderMessageContent(content: string, isUser: boolean) {
           return (
             <div
               key={i}
-              className="my-3 p-3.5 bg-amber-950/40 text-amber-200 border border-amber-500/30 rounded-xl text-xs font-mono overflow-x-auto text-center font-medium italic select-all shadow-sm"
+              className="my-3 p-3.5 bg-zinc-950 text-zinc-200 border border-zinc-800 rounded-xl text-xs font-mono overflow-x-auto text-center font-medium italic select-all"
               aria-label="Fórmula matemática display"
             >
               {seg.content}
@@ -261,29 +257,27 @@ export default function ChatClient() {
   const chatbotName = chatbot?.name || "Asistente Pedagógico";
 
   return (
-    <div className="min-h-screen bg-[#07080c] flex flex-col font-sans selection:bg-indigo-500 selection:text-white">
-      {/* Header con navegación de Terminal */}
-      <header className="glass-panel specular-highlight border-b border-white/10 py-3 px-4 sm:px-6 sticky top-0 z-20">
+    <div className="min-h-screen bg-zinc-950 flex flex-col font-sans selection:bg-zinc-800 selection:text-white">
+      {/* Header */}
+      <header className="bg-zinc-950/80 backdrop-blur-md border-b border-zinc-800/80 py-3 px-4 sm:px-6 sticky top-0 z-20">
         <div className="max-w-4xl mx-auto flex items-center justify-between gap-4">
           <button
             onClick={() => router.back()}
-            className="btn-press flex items-center gap-2 text-xs font-semibold text-slate-300 hover:text-white px-3 py-1.5 rounded-lg border border-white/10 bg-white/[0.04] hover:bg-white/[0.08] transition-all"
+            className="btn-press flex items-center gap-1.5 text-xs font-medium text-zinc-400 hover:text-zinc-100 px-3 py-1.5 rounded-lg border border-zinc-800 hover:border-zinc-700 bg-zinc-900/50 transition-colors"
             aria-label="Volver a la página anterior"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-            </svg>
+            <span aria-hidden="true">←</span>
             <span>Volver</span>
           </button>
 
           <div className="flex-1 text-center min-w-0">
             <div className="flex items-center justify-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 led-pulse" aria-hidden="true" />
-              <h1 className="text-sm font-bold text-white truncate font-display">{chatbotName}</h1>
+              <span className="w-2 h-2 rounded-full bg-emerald-400" aria-hidden="true" />
+              <h1 className="text-sm font-semibold text-zinc-100 truncate">{chatbotName}</h1>
             </div>
             {chatbot?.subject_area && (
-              <p className="text-[10px] font-mono text-cyan-400 uppercase tracking-wider truncate mt-0.5">
-                {chatbot.subject_area} {chatbot.education_level && `// ${chatbot.education_level.toUpperCase()}`}
+              <p className="text-xs text-zinc-400 truncate mt-0.5">
+                {chatbot.subject_area} {chatbot.education_level && `· ${chatbot.education_level === "secondary" ? "Secundaria" : "Universidad"}`}
               </p>
             )}
           </div>
@@ -295,10 +289,10 @@ export default function ChatClient() {
               }}
               disabled={chatbot.is_published}
               aria-label={chatbot.is_published ? "Chatbot ya publicado" : "Publicar este chatbot"}
-              className={`btn-press flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-all ${
+              className={`btn-press flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors ${
                 chatbot.is_published
-                  ? "bg-emerald-950/80 text-emerald-300 border border-emerald-500/40 cursor-default"
-                  : "bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white shadow-md shadow-indigo-950/40 border border-indigo-400/30"
+                  ? "bg-zinc-900 text-zinc-400 border border-zinc-800 cursor-default"
+                  : "bg-zinc-100 hover:bg-white text-zinc-900 shadow-sm"
               }`}
             >
               {chatbot.is_published ? "Publicado" : "Publicar"}
@@ -309,23 +303,21 @@ export default function ChatClient() {
         </div>
       </header>
 
-      {/* Main Terminal Chat Area */}
+      {/* Main Chat Area */}
       <main className="flex-1 max-w-4xl w-full mx-auto p-3 sm:p-6 flex flex-col justify-between overflow-hidden">
-        <div className="glass-panel specular-highlight rounded-2xl border border-white/10 flex-1 flex flex-col justify-between overflow-hidden shadow-2xl min-h-[calc(100vh-140px)]">
+        <div className="rounded-2xl border border-zinc-800 bg-zinc-900/40 flex-1 flex flex-col justify-between overflow-hidden shadow-xl min-h-[calc(100vh-140px)]">
           {/* Welcome directive banner */}
           {chatbot?.welcome_message && messages.length === 0 && (
-            <div className="p-4 sm:p-5 border-b border-white/10 bg-gradient-to-r from-indigo-950/60 to-transparent">
+            <div className="p-4 sm:p-5 border-b border-zinc-800/80 bg-zinc-950/60">
               <div className="flex items-start gap-3">
-                <div className="w-7 h-7 rounded-lg bg-indigo-900/60 border border-indigo-500/40 text-indigo-300 flex items-center justify-center text-xs font-bold shrink-0">
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
+                <div className="w-6 h-6 rounded-lg bg-zinc-800 border border-zinc-700 flex items-center justify-center text-xs text-zinc-300 shrink-0 font-medium">
+                  i
                 </div>
                 <div>
-                  <span className="text-[10px] font-mono uppercase tracking-wider text-indigo-300 block mb-0.5">
-                    Directiva Pedagógica del Docente
+                  <span className="text-xs font-medium text-zinc-300 block mb-0.5">
+                    Mensaje del Tutor
                   </span>
-                  <p className="text-xs sm:text-sm text-slate-200 leading-relaxed">{chatbot.welcome_message}</p>
+                  <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed">{chatbot.welcome_message}</p>
                 </div>
               </div>
             </div>
@@ -335,14 +327,14 @@ export default function ChatClient() {
           <div className="flex-1 overflow-auto p-4 sm:p-6 space-y-4" role="log" aria-label="Mensajes del chat" aria-live="polite">
             {messages.length === 0 ? (
               <div className="text-center py-16 px-4 max-w-md mx-auto space-y-3">
-                <div className="w-12 h-12 rounded-xl bg-indigo-950/70 border border-indigo-500/40 text-indigo-400 flex items-center justify-center mx-auto shadow-inner">
-                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+                <div className="w-10 h-10 rounded-xl bg-zinc-850 border border-zinc-800 flex items-center justify-center mx-auto text-zinc-400">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                   </svg>
                 </div>
-                <h2 className="text-base font-bold text-white font-display">Inicia la consulta académica</h2>
-                <p className="text-xs text-slate-400 leading-relaxed">
-                  Formula tus dudas sobre el material de estudio. Las respuestas son sintetizadas con estricta trazabilidad de fuentes a partir de los documentos provistos por el docente.
+                <h2 className="text-base font-semibold text-zinc-100 tracking-tight">Inicia la consulta académica</h2>
+                <p className="text-xs text-zinc-400 leading-relaxed">
+                  Formula tus preguntas sobre el material del curso. Las explicaciones se basan estrictamente en los documentos curriculares cargados por el docente.
                 </p>
               </div>
             ) : (
@@ -352,18 +344,18 @@ export default function ChatClient() {
                   className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
                 >
                   <div
-                    className={`max-w-[85%] rounded-2xl p-4 sm:p-5 shadow-lg ${
+                    className={`max-w-[85%] rounded-2xl p-4 sm:p-5 ${
                       msg.role === "user"
-                        ? "bg-gradient-to-br from-indigo-600 to-indigo-700 text-white rounded-br-xs border border-indigo-400/30"
-                        : "glass-card text-slate-100 rounded-bl-xs border border-white/10"
+                        ? "bg-zinc-800 text-zinc-100 rounded-tr-sm border border-zinc-700"
+                        : "bg-zinc-950/90 text-zinc-200 rounded-tl-sm border border-zinc-800"
                     }`}
                   >
                     {msg.role === "assistant" && !msg.content ? (
                       <div className="flex gap-2 items-center h-5 py-1" aria-label="El asistente está escribiendo">
-                        <span className="text-[10px] font-mono text-cyan-400 uppercase tracking-wider">Sintetizando</span>
-                        <div className="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-                        <div className="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-                        <div className="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                        <span className="text-xs text-zinc-400">Generando respuesta...</span>
+                        <div className="w-1.5 h-1.5 bg-zinc-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                        <div className="w-1.5 h-1.5 bg-zinc-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                        <div className="w-1.5 h-1.5 bg-zinc-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
                       </div>
                     ) : (
                       renderMessageContent(msg.content, msg.role === "user")
@@ -371,14 +363,14 @@ export default function ChatClient() {
 
                     {/* Cited sources */}
                     {msg.role === "assistant" && msg.sources && msg.sources.length > 0 && (
-                      <div className="mt-3 pt-2.5 border-t border-white/10 flex flex-wrap gap-1.5 items-center" aria-label="Fuentes citadas">
-                        <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider mr-1">Fuentes:</span>
+                      <div className="mt-3 pt-2.5 border-t border-zinc-800/80 flex flex-wrap gap-1.5 items-center" aria-label="Fuentes citadas">
+                        <span className="text-[11px] text-zinc-500 mr-1">Fuentes:</span>
                         {msg.sources.map((src, idx) => (
                           <span
                             key={idx}
-                            className="inline-flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded-md bg-[#07080c] text-cyan-300 border border-white/10 select-none"
+                            className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-md bg-zinc-900 text-zinc-300 border border-zinc-800 select-none"
                           >
-                            <span className="w-1 h-1 rounded-full bg-cyan-400" />
+                            <span className="w-1 h-1 rounded-full bg-emerald-400" />
                             <span className="truncate max-w-[220px]">{src}</span>
                           </span>
                         ))}
@@ -386,8 +378,8 @@ export default function ChatClient() {
                     )}
 
                     <p
-                      className={`text-[10px] font-mono tabular-nums mt-2 text-right ${
-                        msg.role === "user" ? "text-indigo-200" : "text-slate-500"
+                      className={`text-[10px] tabular-nums mt-2 text-right ${
+                        msg.role === "user" ? "text-zinc-400" : "text-zinc-500"
                       }`}
                       aria-label={`Enviado a las ${new Date(msg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`}
                     >
@@ -400,16 +392,16 @@ export default function ChatClient() {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Form Input Terminal */}
-          <form onSubmit={handleSend} className="border-t border-white/10 p-3 sm:p-4 flex gap-2.5 bg-[#07080c]/80 rounded-b-2xl">
+          {/* Form Input Bar */}
+          <form onSubmit={handleSend} className="border-t border-zinc-800/80 p-3 sm:p-4 flex gap-2.5 bg-zinc-950/70 rounded-b-2xl">
             <label htmlFor="chat-input" className="sr-only">Escribe tu consulta</label>
             <input
               id="chat-input"
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Escribe tu consulta académica o pide una explicación paso a paso..."
-              className="flex-1 px-4 py-2.5 bg-white/[0.04] text-slate-100 placeholder:text-slate-500 border border-white/15 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-xl outline-none text-xs sm:text-sm transition-all"
+              placeholder="Escribe tu consulta académica sobre los apuntes de clase..."
+              className="flex-1 px-4 py-2.5 bg-zinc-900 text-zinc-100 placeholder:text-zinc-500 border border-zinc-800 focus:border-zinc-600 focus:ring-2 focus:ring-zinc-700 rounded-xl outline-none text-xs sm:text-sm transition-all"
               disabled={isLoading}
               maxLength={4000}
               autoComplete="off"
@@ -417,13 +409,10 @@ export default function ChatClient() {
             <button
               type="submit"
               disabled={isLoading || !input.trim()}
-              className="btn-press px-4 sm:px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl font-semibold text-xs sm:text-sm transition-all shadow-lg shadow-indigo-950/50 border border-indigo-400/30 flex items-center gap-1.5 shrink-0"
+              className="btn-press px-4 sm:px-5 py-2.5 bg-zinc-100 hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed text-zinc-900 rounded-xl font-medium text-xs sm:text-sm transition-colors shadow-sm flex items-center gap-1.5 shrink-0"
               aria-label="Enviar mensaje"
             >
-              <span>Consultar</span>
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9-7-9-7v5H4v4h8v5z" />
-              </svg>
+              <span>Enviar</span>
             </button>
           </form>
         </div>

@@ -1,43 +1,38 @@
 import Link from "next/link";
 import { StatsSection } from "./_components/StatsSection";
-import { RagSandboxSimulator } from "./_components/RagSandboxSimulator";
+import { ProductPreview } from "./_components/ProductPreview";
 
 export default function HomePage() {
   return (
-    <main className="min-h-screen bg-[#07080c] flex flex-col font-sans selection:bg-indigo-500 selection:text-white">
+    <main className="min-h-screen bg-zinc-950 flex flex-col font-sans selection:bg-zinc-800 selection:text-white">
       {/* Navigation Header */}
-      <header className="glass-panel specular-highlight border-b border-white/[0.08] sticky top-0 z-40">
+      <header className="sticky top-0 z-40 bg-zinc-950/80 backdrop-blur-md border-b border-zinc-800/80">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2.5 group">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-cyan-500 p-px shadow-sm flex items-center justify-center">
-              <div className="w-full h-full bg-[#07080c] rounded-[7px] flex items-center justify-center">
-                <span className="font-display font-bold text-sm bg-gradient-to-r from-indigo-400 to-cyan-400 bg-clip-text text-transparent">E</span>
-              </div>
+            <div className="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center font-bold text-sm text-zinc-100 group-hover:border-zinc-700 transition-colors">
+              E
             </div>
-            <span className="text-xl font-bold text-white font-display tracking-tight group-hover:text-indigo-300 transition-colors">
+            <span className="text-base font-bold text-zinc-100 tracking-tight">
               EduRAG
-            </span>
-            <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded-md bg-indigo-950/80 text-indigo-300 border border-indigo-500/30 hidden sm:inline-block">
-              SaaS Educativo
             </span>
           </Link>
           
-          <nav className="flex items-center gap-2 sm:gap-4 text-xs sm:text-sm font-medium">
+          <nav className="flex items-center gap-3 text-xs sm:text-sm font-medium">
             <Link
               href="/marketplace"
-              className="text-slate-300 hover:text-white transition-colors px-3 py-1.5 rounded-lg hover:bg-white/[0.04]"
+              className="text-zinc-400 hover:text-zinc-100 px-3 py-1.5 rounded-lg transition-colors"
             >
               Marketplace
             </Link>
             <Link
               href="/login"
-              className="text-slate-300 hover:text-white transition-colors px-3 py-1.5 rounded-lg hover:bg-white/[0.04]"
+              className="text-zinc-400 hover:text-zinc-100 px-3 py-1.5 rounded-lg transition-colors"
             >
               Iniciar sesión
             </Link>
             <Link
               href="/register"
-              className="btn-press px-3.5 py-1.5 sm:px-4 sm:py-2 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white rounded-lg text-xs font-semibold shadow-lg shadow-indigo-900/40 border border-indigo-400/30 transition-all"
+              className="btn-press px-3.5 py-1.5 bg-zinc-100 hover:bg-white text-zinc-900 rounded-lg text-xs font-semibold shadow-sm transition-colors"
             >
               Comenzar gratis
             </Link>
@@ -46,174 +41,138 @@ export default function HomePage() {
       </header>
 
       {/* Hero Section */}
-      <section className="relative py-20 lg:py-28 px-4 sm:px-6 lg:px-8 overflow-hidden flex flex-col items-center justify-center text-center">
-        {/* Ambient Lights & Grid */}
-        <div className="absolute inset-0 blueprint-grid opacity-40 pointer-events-none" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[350px] bg-indigo-600/10 rounded-full blur-[100px] pointer-events-none" />
-
-        <div className="max-w-4xl mx-auto space-y-6 relative z-10">
-          {/* Status Badge */}
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-indigo-950/70 border border-indigo-500/30 text-xs font-mono text-indigo-300 select-none shadow-inner backdrop-blur-md">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 led-pulse" aria-hidden="true" />
-            <span>AISLAMIENTO MULTI-TENANT</span>
-            <span className="text-white/20">|</span>
-            <span className="text-cyan-300">0% ALUCINACIÓN</span>
+      <section className="py-20 lg:py-28 px-4 sm:px-6 lg:px-8 flex flex-col items-center justify-center text-center">
+        <div className="max-w-4xl mx-auto space-y-6">
+          {/* Pill Badge */}
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-900 border border-zinc-800 text-xs text-zinc-300">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" aria-hidden="true" />
+            <span>RAG Educativo para Educación Superior y Secundaria</span>
           </div>
 
-          <h1 className="text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-white leading-[1.08] font-display">
+          <h1 className="text-4xl sm:text-6xl font-bold tracking-tight text-zinc-100 leading-[1.1]">
             Asistentes pedagógicos basados en tus documentos de clase
           </h1>
 
-          <p className="text-base sm:text-lg text-slate-300 max-w-2xl mx-auto leading-relaxed font-normal">
-            EduRAG permite a docentes de secundaria y universidad desplegar tutores inteligentes a partir de apuntes, guías y sílabos en PDF, Word o Markdown. Trazabilidad rigurosa de fuentes, costo operativo $0/mes y embebible en Moodle o Canvas.
+          <p className="text-base sm:text-lg text-zinc-400 max-w-2xl mx-auto leading-relaxed">
+            EduRAG permite a docentes desplegar tutores inteligentes a partir de apuntes, guías y sílabos en PDF, Word o Markdown. Con trazabilidad estricta de fuentes, costo $0/mes e integración en Moodle y Canvas.
           </p>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3.5 pt-4">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-4">
             <Link
               href="/register"
-              className="btn-press w-full sm:w-auto px-6 py-3 text-sm font-semibold text-white bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 rounded-xl shadow-xl shadow-indigo-900/40 border border-indigo-400/30 transition-all"
+              className="btn-press w-full sm:w-auto px-6 py-2.5 text-sm font-semibold text-zinc-900 bg-zinc-100 hover:bg-white rounded-xl shadow-sm transition-colors"
             >
-              Crear cuenta de estudiante
+              Comenzar como estudiante
             </Link>
             <Link
               href="/marketplace"
-              className="btn-press w-full sm:w-auto px-6 py-3 text-sm font-semibold text-slate-200 hover:text-white bg-white/[0.04] hover:bg-white/[0.08] rounded-xl border border-white/15 backdrop-blur-md transition-all"
+              className="btn-press w-full sm:w-auto px-6 py-2.5 text-sm font-semibold text-zinc-300 hover:text-white bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 rounded-xl transition-colors"
             >
-              Explorar tutores públicos →
+              Explorar tutores públicos
             </Link>
           </div>
         </div>
       </section>
 
-      {/* Interactive RAG Sandbox Simulator Section */}
-      <section className="py-12 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto w-full relative z-20">
-        <RagSandboxSimulator />
+      {/* Product Preview Section */}
+      <section className="pb-16 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto w-full">
+        <ProductPreview />
       </section>
 
-      {/* Real-time Telemetry Section */}
+      {/* Telemetry / Stats */}
       <StatsSection />
 
-      {/* Cyber-Academic Bento Grid Features */}
+      {/* Features Grid */}
       <section className="py-24 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto w-full space-y-12">
         <div className="text-center max-w-2xl mx-auto space-y-2">
-          <span className="text-xs font-mono uppercase tracking-wider text-cyan-400">
-            ARQUITECTURA DE SOFTWARE
-          </span>
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight font-display">
-            Diseñado para rigor académico y costo operativo $0/mes
+          <h2 className="text-2xl sm:text-3xl font-bold text-zinc-100 tracking-tight">
+            Diseñado para rigor académico y simplicidad institucional
           </h2>
-          <p className="text-slate-400 text-sm leading-relaxed">
-            Elimina dependencias pesadas de bases de datos vectoriales. EduRAG opera mediante chunking léxico eficiente y rankings de solapamiento directo.
+          <p className="text-zinc-400 text-sm leading-relaxed">
+            Arquitectura ligera y eficiente sin bases de datos vectoriales costosas. EduRAG opera con ranking léxico contextual directo.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Bento Tile 1: Lexical Chunking (Span 2) */}
-          <div className="md:col-span-2 bento-card p-6 sm:p-8 flex flex-col justify-between">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-mono text-indigo-400 px-2.5 py-1 rounded-md bg-indigo-950/80 border border-indigo-500/30">
-                  CORE // RAG LÉXICO
-                </span>
-                <span className="text-xs font-mono text-slate-500">60,000 CHARS BUDGET</span>
-              </div>
-              <h3 className="text-xl font-bold text-white font-display">
-                Chunking Dinámico de 1500 Caracteres + 200c de Solapamiento
-              </h3>
-              <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-xl">
-                Los documentos se segmentan en bloques semánticos con preservación de contexto en los límites. El motor clasifica los fragmentos por solapamiento léxico directo e inyecta únicamente el material pertinente en la ventana de contexto.
-              </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Feature 1 */}
+          <div className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-6 sm:p-8 space-y-3">
+            <div className="w-10 h-10 rounded-xl bg-zinc-850 border border-zinc-800 flex items-center justify-center text-zinc-300">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
             </div>
-
-            <div className="mt-6 p-4 rounded-xl bg-[#07080c]/80 border border-white/10 font-mono text-xs text-slate-300 space-y-2">
-              <div className="flex items-center justify-between text-[11px] text-slate-400 border-b border-white/10 pb-1.5">
-                <span>PIPELINE DE EXTRACCIÓN</span>
-                <span className="text-emerald-400">HERMÉTICO MULTI-TENANT</span>
-              </div>
-              <p className="text-indigo-300 text-[11px]">
-                PDF / DOCX / MD ➔ TextExtractor ➔ LexicalRanker ➔ OpenRouter Engine
-              </p>
-            </div>
+            <h3 className="text-lg font-semibold text-zinc-100 tracking-tight">
+              Indexación Curricular Directa
+            </h3>
+            <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed">
+              Sube tus documentos en PDF, DOCX, TXT o Markdown. Los contenidos se segmentan en bloques semánticos y se inyectan en el contexto según la relevancia de la pregunta.
+            </p>
           </div>
 
-          {/* Bento Tile 2: Pedagogical Rigor */}
-          <div className="bento-card p-6 sm:p-8 flex flex-col justify-between">
-            <div className="space-y-3">
-              <span className="text-[11px] font-mono text-amber-400 px-2.5 py-1 rounded-md bg-amber-950/80 border border-amber-500/30 inline-block">
-                PEDAGOGÍA // DIDÁCTICA
-              </span>
-              <h3 className="text-lg font-bold text-white font-display">
-                Calibración de Rigor y Método Socrático
-              </h3>
-              <p className="text-xs text-slate-300 leading-relaxed">
-                Configura el nivel educativo (Secundaria / Universidad), el tono y las restricciones: responde guiando paso a paso o entregando deducciones formales sin saltarse etapas conceptuales.
-              </p>
+          {/* Feature 2 */}
+          <div className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-6 sm:p-8 space-y-3">
+            <div className="w-10 h-10 rounded-xl bg-zinc-850 border border-zinc-800 flex items-center justify-center text-zinc-300">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+              </svg>
             </div>
-            <div className="mt-4 pt-3 border-t border-white/10 text-[11px] font-mono text-amber-400">
-              MODOS: ESTRICTO · GUIADO · ABIERTO
-            </div>
+            <h3 className="text-lg font-semibold text-zinc-100 tracking-tight">
+              Calibración Pedagógica Flexible
+            </h3>
+            <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed">
+              Define el nivel educativo (Secundaria o Universidad), el tono y el nivel de restricción para responder con método socrático o deducciones técnicas formales.
+            </p>
           </div>
 
-          {/* Bento Tile 3: LMS Iframe Hub */}
-          <div className="bento-card p-6 sm:p-8 flex flex-col justify-between">
-            <div className="space-y-3">
-              <span className="text-[11px] font-mono text-cyan-400 px-2.5 py-1 rounded-md bg-cyan-950/80 border border-cyan-500/30 inline-block">
-                INTEGRACIÓN // LMS
-              </span>
-              <h3 className="text-lg font-bold text-white font-display">
-                Embebible en Moodle, Canvas & Blackboard
-              </h3>
-              <p className="text-xs text-slate-300 leading-relaxed">
-                Genera con un solo clic el snippet iframe con encabezado <code className="text-cyan-300 font-mono text-[10px]">frame-ancestors *</code> autorizado para integrarse de inmediato en las aulas virtuales institucionales.
-              </p>
+          {/* Feature 3 */}
+          <div className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-6 sm:p-8 space-y-3">
+            <div className="w-10 h-10 rounded-xl bg-zinc-850 border border-zinc-800 flex items-center justify-center text-zinc-300">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+              </svg>
             </div>
-            <div className="mt-4 pt-3 border-t border-white/10 text-[11px] font-mono text-slate-400">
-              SNIPPET: IFRAME 100% RESPONSIVO
-            </div>
+            <h3 className="text-lg font-semibold text-zinc-100 tracking-tight">
+              Embebible en Aulas Virtuales
+            </h3>
+            <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed">
+              Genera un código iframe listo para incrustar en Moodle, Canvas o Blackboard con un solo clic, sin configuraciones complejas de servidores.
+            </p>
           </div>
 
-          {/* Bento Tile 4: BYOK Security Vault (Span 2) */}
-          <div className="md:col-span-2 bento-card p-6 sm:p-8 flex flex-col justify-between">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-mono text-emerald-400 px-2.5 py-1 rounded-md bg-emerald-950/80 border border-emerald-500/30">
-                  SEGURIDAD // CRIPTOGRAFÍA
-                </span>
-                <span className="text-xs font-mono text-emerald-400">FERNET AES-128-CBC</span>
-              </div>
-              <h3 className="text-xl font-bold text-white font-display">
-                Bóveda de Credenciales BYOK con Cifrado Simétrico
-              </h3>
-              <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-xl">
-                Cada docente aporta su propia API Key gratuita de OpenRouter. Las claves son cifradas simétricamente en el servidor y nunca se almacenan ni transmiten en texto plano, manteniendo la privacidad de la cuenta y el costo cero para la plataforma.
-              </p>
+          {/* Feature 4 */}
+          <div className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-6 sm:p-8 space-y-3">
+            <div className="w-10 h-10 rounded-xl bg-zinc-850 border border-zinc-800 flex items-center justify-center text-zinc-300">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
             </div>
-
-            <div className="mt-4 p-3 rounded-lg bg-[#07080c]/80 border border-white/10 flex items-center justify-between text-xs font-mono text-slate-400">
-              <span>MODELOS SOPORTADOS: GEMMA 26B · NEMOTRON · GPT-OSS</span>
-              <span className="text-cyan-400">BYOK ZERO-STORE</span>
-            </div>
+            <h3 className="text-lg font-semibold text-zinc-100 tracking-tight">
+              Bóveda BYOK con Cifrado Fernet
+            </h3>
+            <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed">
+              Cada docente utiliza su clave gratuita de OpenRouter (modelos como Gemma 26B o Nemotron). Las claves se almacenan cifradas con AES-128 en el backend.
+            </p>
           </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="glass-panel border-t border-white/10 py-12 px-4 sm:px-6 lg:px-8 mt-auto">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6 text-xs text-slate-400">
+      <footer className="border-t border-zinc-800/80 py-12 px-4 sm:px-6 lg:px-8 mt-auto bg-zinc-950">
+        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-6 text-xs text-zinc-400">
           <div className="flex items-center gap-3">
-            <div className="w-6 h-6 rounded-md bg-gradient-to-br from-indigo-500 to-cyan-500 flex items-center justify-center font-display font-bold text-xs text-white">
+            <div className="w-6 h-6 rounded-md bg-zinc-900 border border-zinc-800 flex items-center justify-center font-bold text-xs text-zinc-200">
               E
             </div>
             <div>
-              <span className="font-bold text-white font-display text-sm">EduRAG</span>
-              <p className="text-[11px] text-slate-500 mt-0.5">Plataforma SaaS de RAG Pedagógico para Educación Superior y Secundaria.</p>
+              <span className="font-semibold text-zinc-200">EduRAG</span>
+              <p className="text-zinc-500 text-[11px] mt-0.5">Plataforma de Asistentes Pedagógicos con RAG para Educación.</p>
             </div>
           </div>
 
-          <nav className="flex items-center gap-6 font-medium text-slate-300" aria-label="Navegación inferior">
-            <Link href="/login" className="hover:text-white transition-colors">Acceso Docentes</Link>
-            <Link href="/marketplace" className="hover:text-white transition-colors">Marketplace</Link>
-            <Link href="/admin" className="hover:text-white transition-colors">Administración</Link>
+          <nav className="flex items-center gap-6 text-zinc-400" aria-label="Navegación inferior">
+            <Link href="/login" className="hover:text-zinc-200 transition-colors">Acceso Docentes</Link>
+            <Link href="/marketplace" className="hover:text-zinc-200 transition-colors">Marketplace</Link>
+            <Link href="/admin" className="hover:text-zinc-200 transition-colors">Administración</Link>
           </nav>
         </div>
       </footer>
