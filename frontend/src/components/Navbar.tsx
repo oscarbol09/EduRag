@@ -12,31 +12,28 @@ interface NavbarProps {
 
 export function Navbar({ variant = "public", backTo, backLabel = "Volver", title, actions }: NavbarProps) {
   return (
-    <nav className="glass-panel specular-highlight sticky top-0 z-40 border-b border-white/[0.08]" aria-label="Navegación principal">
+    <nav className="sticky top-0 z-40 bg-zinc-950/80 backdrop-blur-md border-b border-zinc-800/80" aria-label="Navegación principal">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16 items-center">
           <div className="flex items-center gap-4">
             {backTo ? (
               <Link
                 href={backTo}
-                className="btn-press flex items-center gap-2 text-xs sm:text-sm text-slate-300 hover:text-white font-medium px-3 py-1.5 rounded-lg border border-white/10 hover:border-white/20 bg-white/[0.03] hover:bg-white/[0.07] transition-all group"
+                className="btn-press flex items-center gap-2 text-xs sm:text-sm text-zinc-400 hover:text-zinc-100 font-medium px-3 py-1.5 rounded-lg border border-zinc-800 hover:border-zinc-700 bg-zinc-900/50 hover:bg-zinc-800/50 transition-all group"
               >
-                <span className="group-hover:-translate-x-0.5 transition-transform text-indigo-400" aria-hidden="true">←</span>
+                <span className="group-hover:-translate-x-0.5 transition-transform text-zinc-400" aria-hidden="true">←</span>
                 <span>{backLabel}</span>
               </Link>
             ) : (
               <Link href="/" className="flex items-center gap-2.5 group">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-cyber-cyan-500 p-px shadow-sm flex items-center justify-center">
-                  <div className="w-full h-full bg-[#07080c] rounded-[7px] flex items-center justify-center">
-                    <span className="font-display font-bold text-sm bg-gradient-to-r from-indigo-400 to-cyber-cyan-400 bg-clip-text text-transparent">E</span>
-                  </div>
+                <div className="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center font-bold text-sm text-zinc-100 group-hover:border-zinc-700 transition-colors">
+                  E
                 </div>
-                <span className="text-lg font-bold text-white font-display tracking-tight group-hover:text-indigo-300 transition-colors">
+                <span className="text-base font-bold text-zinc-100 tracking-tight">
                   EduRAG
                 </span>
                 {variant !== "public" && (
-                  <span className="inline-flex items-center gap-1.5 text-[10px] font-mono uppercase px-2 py-0.5 rounded-md bg-indigo-950/80 text-indigo-300 border border-indigo-500/30">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 led-pulse" aria-hidden="true" />
+                  <span className="inline-flex items-center gap-1.5 text-[11px] font-medium px-2 py-0.5 rounded-md bg-zinc-900 text-zinc-400 border border-zinc-800 capitalize">
                     {variant}
                   </span>
                 )}
@@ -44,12 +41,38 @@ export function Navbar({ variant = "public", backTo, backLabel = "Volver", title
             )}
             {title && (
               <div className="flex items-center gap-2.5">
-                <span className="h-4 w-px bg-white/10" aria-hidden="true" />
-                <span className="text-xs sm:text-sm font-medium text-slate-200 truncate max-w-xs">{title}</span>
+                <span className="h-4 w-px bg-zinc-800" aria-hidden="true" />
+                <span className="text-xs sm:text-sm font-medium text-zinc-300 truncate max-w-xs">{title}</span>
               </div>
             )}
           </div>
-          {actions && <div className="flex items-center gap-2 sm:gap-3">{actions}</div>}
+          
+          <div className="flex items-center gap-3">
+            {actions ? (
+              actions
+            ) : variant === "public" ? (
+              <div className="flex items-center gap-3">
+                <Link
+                  href="/marketplace"
+                  className="text-xs sm:text-sm font-medium text-zinc-400 hover:text-zinc-100 px-3 py-1.5 rounded-lg transition-colors"
+                >
+                  Marketplace
+                </Link>
+                <Link
+                  href="/login"
+                  className="text-xs sm:text-sm font-medium text-zinc-400 hover:text-zinc-100 px-3 py-1.5 rounded-lg transition-colors"
+                >
+                  Iniciar sesión
+                </Link>
+                <Link
+                  href="/register"
+                  className="btn-press text-xs sm:text-sm font-medium bg-zinc-100 text-zinc-900 hover:bg-white px-3.5 py-1.5 rounded-lg shadow-sm transition-colors"
+                >
+                  Comenzar gratis
+                </Link>
+              </div>
+            ) : null}
+          </div>
         </div>
       </div>
     </nav>

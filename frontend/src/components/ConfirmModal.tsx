@@ -13,12 +13,6 @@ export interface ConfirmModalProps {
   onCancel: () => void;
 }
 
-/**
- * Modal de confirmación accesible que reemplaza `window.confirm()`.
- * — Funciona dentro de iframes (Moodle) donde confirm() es silenciado.
- * — Atrapa el foco dentro del modal mientras está abierto (focus trap).
- * — Cierra con Escape.
- */
 export function ConfirmModal({
   isOpen,
   title,
@@ -41,7 +35,7 @@ export function ConfirmModal({
     return () => document.removeEventListener("keydown", handleKey);
   }, [isOpen, onCancel]);
 
-  // Enfocar el botón cancelar al abrir (acción segura por defecto)
+  // Enfocar el botón cancelar al abrir
   useEffect(() => {
     if (isOpen) {
       setTimeout(() => cancelRef.current?.focus(), 50);
@@ -52,8 +46,8 @@ export function ConfirmModal({
 
   const confirmStyles =
     variant === "danger"
-      ? "bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-500 hover:to-rose-600 text-white border-rose-500/30 focus:ring-rose-500 shadow-lg shadow-rose-900/30"
-      : "bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white border-amber-500/30 focus:ring-amber-500 shadow-lg shadow-amber-900/30";
+      ? "bg-rose-600 hover:bg-rose-700 text-white focus:ring-rose-500 shadow-sm"
+      : "bg-amber-600 hover:bg-amber-700 text-white focus:ring-amber-500 shadow-sm";
 
   return (
     <div
@@ -65,17 +59,17 @@ export function ConfirmModal({
     >
       {/* Overlay */}
       <div
-        className="absolute inset-0 bg-black/75 backdrop-blur-md animate-in fade-in duration-150"
+        className="absolute inset-0 bg-black/70 backdrop-blur-sm animate-in fade-in duration-150"
         onClick={onCancel}
         aria-hidden="true"
       />
 
       {/* Panel */}
-      <div className="relative glass-panel specular-highlight rounded-2xl shadow-2xl border border-white/15 p-6 max-w-sm w-full space-y-4 animate-in zoom-in-95 duration-150">
+      <div className="relative bg-zinc-950 rounded-2xl shadow-xl border border-zinc-800 p-6 max-w-sm w-full space-y-4 animate-in zoom-in-95 duration-150">
         <div className="flex items-start gap-3.5">
           <div
-            className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center border shadow-inner ${
-              variant === "danger" ? "bg-rose-950/70 text-rose-400 border-rose-500/30" : "bg-amber-950/70 text-amber-400 border-amber-500/30"
+            className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center border ${
+              variant === "danger" ? "bg-rose-950/40 text-rose-400 border-rose-500/20" : "bg-amber-950/40 text-amber-400 border-amber-500/20"
             }`}
             aria-hidden="true"
           >
@@ -90,11 +84,11 @@ export function ConfirmModal({
             )}
           </div>
           <div className="flex-1">
-            <h2 id="confirm-modal-title" className="font-bold text-white text-base leading-snug font-display">
+            <h2 id="confirm-modal-title" className="font-semibold text-zinc-100 text-base leading-snug tracking-tight">
               {title}
             </h2>
             {description && (
-              <p id="confirm-modal-desc" className="text-xs text-slate-300 mt-1 leading-relaxed">
+              <p id="confirm-modal-desc" className="text-xs text-zinc-400 mt-1 leading-relaxed">
                 {description}
               </p>
             )}
@@ -105,13 +99,13 @@ export function ConfirmModal({
           <button
             ref={cancelRef}
             onClick={onCancel}
-            className="flex-1 py-2 px-3 rounded-lg border border-white/10 text-slate-300 font-semibold text-xs hover:bg-white/[0.06] hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-white/20 btn-press"
+            className="flex-1 py-2 px-3 rounded-lg border border-zinc-800 text-zinc-300 font-medium text-xs hover:bg-zinc-900 hover:text-zinc-100 transition-colors focus:outline-none focus:ring-2 focus:ring-zinc-700 btn-press"
           >
             {cancelLabel}
           </button>
           <button
             onClick={onConfirm}
-            className={`flex-1 py-2 px-3 rounded-lg font-semibold text-xs border transition-all focus:outline-none focus:ring-2 focus:ring-offset-1 btn-press ${confirmStyles}`}
+            className={`flex-1 py-2 px-3 rounded-lg font-medium text-xs transition-all focus:outline-none focus:ring-2 btn-press ${confirmStyles}`}
           >
             {confirmLabel}
           </button>

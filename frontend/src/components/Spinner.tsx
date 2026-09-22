@@ -11,9 +11,7 @@ const sizeClasses = {
 export function Spinner({ size = "md" }: SpinnerProps) {
   return (
     <div className="flex justify-center items-center py-8" role="status" aria-label="Cargando...">
-      <div className={`relative ${sizeClasses[size]} rounded-full border-white/10 border-t-indigo-400 border-r-cyber-cyan-400 animate-spin shadow-sm`}>
-        <div className="absolute inset-0 rounded-full blur-[2px] bg-indigo-500/20" />
-      </div>
+      <div className={`relative ${sizeClasses[size]} rounded-full border-zinc-800 border-t-zinc-200 animate-spin`} />
     </div>
   );
 }

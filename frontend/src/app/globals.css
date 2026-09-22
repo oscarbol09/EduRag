@@ -1,203 +1,111 @@
 @import "tailwindcss";
 
 @theme {
-  --color-obsidian-950: #050608;
-  --color-obsidian-900: #07080c;
-  --color-obsidian-850: #0d0f17;
-  --color-obsidian-800: #121522;
-  --color-obsidian-700: #1b1f32;
-  
-  --color-cyber-cyan-400: #22d3ee;
-  --color-cyber-cyan-500: #06b6d4;
-  --color-cyber-cyan-600: #0891b2;
-  
-  --color-academic-indigo-400: #818cf8;
-  --color-academic-indigo-500: #6366f1;
-  --color-academic-indigo-600: #4f46e5;
-  --color-academic-indigo-700: #4338ca;
-  --color-academic-indigo-800: #3730a3;
-  --color-academic-indigo-900: #312e81;
+  --color-zinc-950: #09090b;
+  --color-zinc-900: #18181b;
+  --color-zinc-850: #202024;
+  --color-zinc-800: #27272a;
+  --color-zinc-700: #3f3f46;
+  --color-zinc-600: #52525b;
+  --color-zinc-500: #71717a;
+  --color-zinc-400: #a1a1aa;
+  --color-zinc-300: #d4d4d8;
+  --color-zinc-200: #e4e4e7;
+  --color-zinc-100: #f4f4f5;
 
-  --color-academic-amber-400: #fbbf24;
-  --color-academic-amber-500: #f59e0b;
-  --color-academic-amber-600: #d97706;
+  --color-brand-50: #eef2ff;
+  --color-brand-100: #e0e7ff;
+  --color-brand-400: #818cf8;
+  --color-brand-500: #6366f1;
+  --color-brand-600: #4f46e5;
+  --color-brand-700: #4338ca;
 
-  --color-academic-emerald-400: #34d399;
-  --color-academic-emerald-500: #10b981;
-  --color-academic-emerald-600: #059669;
-
-  --font-sans: var(--font-sans), system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --font-display: var(--font-display), "DM Serif Display", Georgia, serif;
+  --font-sans: var(--font-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-display: var(--font-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
 :root {
-  --background: #07080c;
-  --foreground: #f8fafc;
+  --background: #09090b;
+  --foreground: #fafafa;
 }
 
 body {
-  background-color: #07080c;
-  color: #f8fafc;
+  background-color: #09090b;
+  color: #fafafa;
   min-height: 100vh;
   overflow-x: hidden;
-  background-image: 
-    radial-gradient(circle at 50% 0%, rgba(99, 102, 241, 0.08) 0%, transparent 50%),
-    radial-gradient(circle at 85% 20%, rgba(6, 182, 212, 0.05) 0%, transparent 40%),
-    radial-gradient(circle at 15% 70%, rgba(245, 158, 11, 0.03) 0%, transparent 40%);
-  background-attachment: fixed;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  -webkit-font-smoothing: antialiased;
 }
 
-/* ─── Blueprint Technical Grid ───────────────────────────────────────────── */
-.blueprint-grid {
-  background-image: 
-    linear-gradient(to right, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
-  background-size: 32px 32px;
-}
-
-.blueprint-grid-dense {
-  background-image: 
-    linear-gradient(to right, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
-  background-size: 16px 16px;
-}
-
-/* ─── Liquid Glass Panels & Surfaces ───────────────────────────────────────── */
-.glass-panel {
-  background: rgba(13, 15, 23, 0.72);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+/* ─── Clean Kokonut UI Card & Surface Styles ────────────────────────────── */
+.card-clean {
+  background: rgba(24, 24, 27, 0.5);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.45);
+  border-radius: 1rem;
+  transition: all 180ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.glass-card {
-  position: relative;
-  background: rgba(18, 21, 32, 0.65);
+.card-clean:hover {
+  background: rgba(24, 24, 27, 0.8);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+/* ─── Backward compatibility classes ─────────────────────────────────────── */
+.glass-panel {
+  background: rgba(24, 24, 27, 0.65);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.5);
-  transition: transform 180ms cubic-bezier(0.16, 1, 0.3, 1), 
-              border-color 180ms cubic-bezier(0.16, 1, 0.3, 1), 
-              box-shadow 180ms cubic-bezier(0.16, 1, 0.3, 1);
+  border-radius: 1rem;
 }
 
-.glass-card:hover {
-  transform: translateY(-2px);
-  border-color: rgba(255, 255, 255, 0.18);
-  box-shadow: 0 12px 36px -4px rgba(0, 0, 0, 0.7), 0 0 20px -4px rgba(99, 102, 241, 0.15);
+.glass-card, .bento-card, .craft-card, .glow-card {
+  position: relative;
+  background: rgba(24, 24, 27, 0.5);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 1rem;
+  transition: all 180ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* ─── Specular Top Highlight (Liquid Glass Bevel) ────────────────────────── */
+.glass-card:hover, .bento-card:hover, .craft-card:hover, .glow-card:hover {
+  border-color: rgba(255, 255, 255, 0.16);
+  background: rgba(24, 24, 27, 0.75);
+}
+
 .specular-highlight {
   position: relative;
-}
-.specular-highlight::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.22), transparent);
-  pointer-events: none;
-}
-
-/* ─── Bento Grid Surface ─────────────────────────────────────────────────── */
-.bento-card {
-  position: relative;
-  overflow: hidden;
-  border-radius: 1rem;
-  background: rgba(13, 15, 23, 0.68);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.5);
-  transition: all 200ms cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.bento-card:hover {
-  border-color: rgba(99, 102, 241, 0.35);
-  box-shadow: 0 16px 40px -8px rgba(0, 0, 0, 0.6), 0 0 28px -6px rgba(99, 102, 241, 0.2);
 }
 
 /* ─── Tactile Feedback Button ────────────────────────────────────────────── */
 .btn-press {
   position: relative;
-  transition: transform 150ms cubic-bezier(0.16, 1, 0.3, 1), 
-              filter 150ms ease, 
-              background-color 150ms ease,
-              border-color 150ms ease,
-              box-shadow 150ms ease;
+  transition: transform 120ms ease, opacity 120ms ease, background-color 120ms ease;
   user-select: none;
 }
 .btn-press:active {
-  transform: scale(0.97);
+  transform: scale(0.98);
 }
 
 /* ─── Tabular Numerals ───────────────────────────────────────────────────── */
 .tabular-nums {
   font-variant-numeric: tabular-nums lining-nums;
-  letter-spacing: -0.015em;
 }
 
-/* ─── Glowing LED Indicators ─────────────────────────────────────────────── */
+/* ─── Subtle Status Dot ─────────────────────────────────────────────────── */
 .led-pulse {
-  animation: led-pulse-anim 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  animation: subtle-pulse 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
-@keyframes led-pulse-anim {
+@keyframes subtle-pulse {
   0%, 100% {
     opacity: 1;
-    transform: scale(1);
   }
   50% {
-    opacity: 0.4;
-    transform: scale(0.92);
+    opacity: 0.5;
   }
-}
-
-/* ─── Shimmer Gradient Effect ────────────────────────────────────────────── */
-@keyframes shimmer-sweep {
-  0% {
-    transform: translateX(-100%);
-  }
-  100% {
-    transform: translateX(100%);
-  }
-}
-
-.animate-shimmer {
-  position: relative;
-  overflow: hidden;
-}
-.animate-shimmer::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.06), transparent);
-  animation: shimmer-sweep 2.5s infinite;
-}
-
-/* ─── Backward compatibility classes ─────────────────────────────────────── */
-.craft-card, .glow-card {
-  background: rgba(18, 21, 32, 0.65);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.5);
-  transition: transform 180ms cubic-bezier(0.16, 1, 0.3, 1), 
-              border-color 180ms cubic-bezier(0.16, 1, 0.3, 1), 
-              box-shadow 180ms cubic-bezier(0.16, 1, 0.3, 1);
-}
-.craft-card:hover, .glow-card:hover {
-  transform: translateY(-2px);
-  border-color: rgba(255, 255, 255, 0.18);
-  box-shadow: 0 12px 36px -4px rgba(0, 0, 0, 0.7);
 }
 
 /* ─── Accessibility: Reduced Motion ──────────────────────────────────────── */
@@ -210,10 +118,10 @@ body {
     transition-duration: 0.01ms !important;
   }
 
+  .btn-press:active,
+  .card-clean:hover,
   .glass-card:hover,
-  .bento-card:hover,
-  .craft-card:hover,
-  .btn-press:active {
+  .bento-card:hover {
     transform: none;
   }
 }

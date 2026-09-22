@@ -13,11 +13,11 @@ export function StatusBadge({
 }: StatusBadgeProps) {
   const defaultColors: Record<string, string> = {
     published: "bg-emerald-950/70 text-emerald-300 border-emerald-500/40",
-    draft: "bg-zinc-900/80 text-zinc-400 border-zinc-700/60",
+    draft: "bg-zinc-900 text-zinc-400 border-zinc-800",
     active: "bg-emerald-950/70 text-emerald-300 border-emerald-500/40",
-    inactive: "bg-rose-950/70 text-rose-300 border-rose-500/40",
+    inactive: "bg-zinc-900 text-zinc-500 border-zinc-800",
     queued: "bg-amber-950/70 text-amber-300 border-amber-500/40",
-    processing: "bg-cyan-950/70 text-cyan-300 border-cyan-500/40",
+    processing: "bg-zinc-900 text-zinc-300 border-zinc-700",
     indexed: "bg-emerald-950/70 text-emerald-300 border-emerald-500/40",
     error: "bg-rose-950/70 text-rose-300 border-rose-500/40",
     ...colors,
@@ -35,21 +35,21 @@ export function StatusBadge({
     ...labels,
   };
 
-  const sizeClasses = size === "sm" ? "px-2 py-0.5 text-[11px] font-medium" : "px-2.5 py-1 text-xs font-semibold";
-  const colorClass = defaultColors[status] || "bg-zinc-900/80 text-zinc-400 border-zinc-700/60";
+  const sizeClasses = size === "sm" ? "px-2.5 py-0.5 text-xs font-medium" : "px-3 py-1 text-xs font-medium";
+  const colorClass = defaultColors[status] || "bg-zinc-900 text-zinc-400 border-zinc-800";
 
   const isPositive = status === "published" || status === "active" || status === "indexed";
   const isPending = status === "queued" || status === "processing";
 
   return (
-    <span className={`inline-flex items-center gap-1.5 rounded-md font-mono border backdrop-blur-md ${sizeClasses} ${colorClass}`}>
+    <span className={`inline-flex items-center gap-1.5 rounded-full border ${sizeClasses} ${colorClass}`}>
       <span
         className={`w-1.5 h-1.5 rounded-full ${
           isPositive
-            ? "bg-emerald-400 led-pulse"
+            ? "bg-emerald-400"
             : isPending
-            ? "bg-cyan-400 animate-pulse"
-            : status === "error" || status === "inactive"
+            ? "bg-amber-400"
+            : status === "error"
             ? "bg-rose-400"
             : "bg-zinc-500"
         }`}

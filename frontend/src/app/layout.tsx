@@ -1,30 +1,23 @@
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans, DM_Serif_Display } from "next/font/google";
+import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { AppProvider } from "@/lib/context";
 import { SupportWidget } from "@/components/SupportWidget";
 
-const jakarta = Plus_Jakarta_Sans({
+const fontSans = Plus_Jakarta_Sans({
   variable: "--font-sans",
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
   display: "swap",
 });
 
-const serif = DM_Serif_Display({
-  variable: "--font-display",
-  subsets: ["latin"],
-  weight: ["400"],
-  display: "swap",
-});
-
 export const metadata: Metadata = {
   metadataBase: new URL("https://edu-rag-red.vercel.app"),
   title: {
-    default: "EduRAG — Asistentes Pedagógicos y RAG Educativo",
+    default: "EduRAG — Asistentes Pedagógicos con RAG",
     template: "%s | EduRAG",
   },
-  description: "Crea tutores inteligentes a partir de tus documentos y apuntes de clase en PDF, Word o Markdown. Trazabilidad de fuentes y código embebible en Moodle y Canvas.",
+  description: "Plataforma educativa para crear tutores inteligentes a partir de apuntes, guías y sílabos en PDF, Word o Markdown. Embebible en Moodle y Canvas.",
   keywords: [
     "RAG educativo",
     "chatbots para docentes",
@@ -34,16 +27,16 @@ export const metadata: Metadata = {
     "educación superior",
     "OpenRouter BYOK",
   ],
-  authors: [{ name: "EduRAG Platform" }],
-  creator: "EduRAG Platform",
-  publisher: "EduRAG Platform",
+  authors: [{ name: "EduRAG" }],
+  creator: "EduRAG",
+  publisher: "EduRAG",
   formatDetection: {
     email: false,
     address: false,
     telephone: false,
   },
   openGraph: {
-    title: "EduRAG — Asistentes Pedagógicos y RAG Educativo",
+    title: "EduRAG — Asistentes Pedagógicos con RAG",
     description: "Crea tutores inteligentes a partir de tus documentos y apuntes de clase con trazabilidad estricta de fuentes.",
     url: "https://edu-rag-red.vercel.app",
     siteName: "EduRAG",
@@ -52,7 +45,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "EduRAG — Asistentes Pedagógicos y RAG Educativo",
+    title: "EduRAG — Asistentes Pedagógicos con RAG",
     description: "Tutoría inteligente basada en documentos de clase para docentes y estudiantes.",
   },
   robots: {
@@ -74,11 +67,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es" className={`${jakarta.variable} ${serif.variable} h-full antialiased dark`}>
-      <body className="min-h-full flex flex-col bg-[#07080c] text-slate-100 selection:bg-indigo-500 selection:text-white" style={{ fontFamily: "var(--font-sans), sans-serif" }}>
+    <html lang="es" className={`${fontSans.variable} h-full antialiased dark`}>
+      <body className="min-h-full flex flex-col bg-zinc-950 text-zinc-100 selection:bg-zinc-800 selection:text-white font-sans">
         <a
           href="#main-content"
-          className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-indigo-600 focus:text-white focus:rounded-lg focus:shadow-xl text-xs font-semibold"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-zinc-100 focus:text-zinc-900 focus:rounded-lg focus:shadow-xl text-xs font-semibold"
         >
           Saltar al contenido principal
         </a>
