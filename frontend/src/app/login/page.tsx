@@ -14,9 +14,17 @@ export default function LoginPage() {
   const router = useRouter();
   const { login } = useApp();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError("");
+
+    // Anti-spam honeypot
+    const formData = new FormData(e.currentTarget);
+    if (formData.get("_gotcha")) {
+      setError("Solicitud no válida.");
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -41,15 +49,21 @@ export default function LoginPage() {
       subtitle="Ingresa tus credenciales institucionales para acceder a tus tutores y cursos"
     >
       <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+        {/* Anti-spam honeypot */}
+        <input type="text" name="_gotcha" tabIndex={-1} autoComplete="off" className="hidden" aria-hidden="true" />
+
         <div>
           <label htmlFor="email" className="block text-xs font-medium text-zinc-300 mb-1.5">
-            Correo electrónico
+            Correo electrónico *
           </label>
           <input
             id="email"
+            name="email"
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            aria-invalid={!!error}
+            aria-describedby={error ? "login-error" : undefined}
             className="w-full px-3.5 py-2.5 bg-zinc-900 border border-zinc-800 rounded-lg focus:ring-1 focus:ring-zinc-600 focus:border-zinc-600 outline-none text-xs sm:text-sm text-zinc-100 placeholder-zinc-500 font-sans transition-colors"
             placeholder="usuario@universidad.edu"
             required
@@ -59,13 +73,16 @@ export default function LoginPage() {
 
         <div>
           <label htmlFor="password" className="block text-xs font-medium text-zinc-300 mb-1.5">
-            Contraseña
+            Contraseña *
           </label>
           <input
             id="password"
+            name="password"
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            aria-invalid={!!error}
+            aria-describedby={error ? "login-error" : undefined}
             className="w-full px-3.5 py-2.5 bg-zinc-900 border border-zinc-800 rounded-lg focus:ring-1 focus:ring-zinc-600 focus:border-zinc-600 outline-none text-xs sm:text-sm text-zinc-100 placeholder-zinc-500 font-mono transition-colors"
             placeholder="••••••••••••"
             required
@@ -74,7 +91,7 @@ export default function LoginPage() {
         </div>
 
         {error && (
-          <div role="alert" className="text-rose-300 text-xs bg-rose-950/40 border border-rose-500/40 p-3 rounded-lg">
+          <div id="login-error" role="alert" className="text-rose-300 text-xs bg-rose-950/40 border border-rose-500/40 p-3 rounded-lg">
             {error}
           </div>
         )}
