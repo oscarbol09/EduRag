@@ -1,6 +1,10 @@
 import Link from "next/link";
 import { StatsSection } from "./_components/StatsSection";
 import { ProductPreview } from "./_components/ProductPreview";
+import { HowItWorks } from "./_components/HowItWorks";
+import { ComparisonSection } from "./_components/ComparisonSection";
+import { FeatureMatrix } from "./_components/FeatureMatrix";
+import { FaqSection } from "./_components/FaqSection";
 
 export default function HomePage() {
   const jsonLd = {
@@ -23,26 +27,41 @@ export default function HomePage() {
   };
 
   return (
-    <main className="min-h-screen bg-zinc-950 flex flex-col font-sans selection:bg-zinc-800 selection:text-white">
-      {/* Schema.org Structured Data for SEO / Search Engines */}
+    <main className="min-h-screen bg-zinc-950 flex flex-col font-sans selection:bg-indigo-900 selection:text-white relative overflow-hidden">
+      {/* Schema.org Structured Data for SEO */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
+      {/* Architectural Background Grid & Ambient Lighting */}
+      <div 
+        className="absolute inset-0 bg-[linear-gradient(to_right,#27272a15_1px,transparent_1px),linear-gradient(to_bottom,#27272a15_1px,transparent_1px)] bg-[size:32px_32px] pointer-events-none" 
+        aria-hidden="true" 
+      />
+      <div 
+        className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-gradient-to-b from-indigo-500/10 via-purple-500/5 to-transparent blur-3xl pointer-events-none" 
+        aria-hidden="true" 
+      />
+
       {/* Navigation Header */}
-      <header className="sticky top-0 z-40 bg-zinc-950/80 backdrop-blur-md border-b border-zinc-800/80">
+      <header className="sticky top-0 z-40 bg-zinc-950/85 backdrop-blur-md border-b border-zinc-800/80">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2.5 group">
-            <div className="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center font-bold text-sm text-zinc-100 group-hover:border-zinc-700 transition-colors">
+            <div className="w-8 h-8 rounded-lg bg-indigo-950 border border-indigo-500/30 flex items-center justify-center font-bold text-sm text-indigo-300 group-hover:border-indigo-400 transition-colors shadow-sm">
               E
             </div>
-            <span className="text-base font-bold text-zinc-100 tracking-tight">
-              EduRAG
-            </span>
+            <div className="flex flex-col">
+              <span className="text-base font-bold text-zinc-100 tracking-tight leading-none">
+                EduRAG
+              </span>
+              <span className="text-[10px] text-zinc-400 font-mono mt-0.5">
+                RAG Pedagógico
+              </span>
+            </div>
           </Link>
           
-          <nav className="flex items-center gap-3 text-xs sm:text-sm font-medium">
+          <nav className="flex items-center gap-2 sm:gap-4 text-xs sm:text-sm font-medium">
             <Link
               href="/marketplace"
               className="text-zinc-400 hover:text-zinc-100 px-3 py-1.5 rounded-lg transition-colors"
@@ -57,7 +76,7 @@ export default function HomePage() {
             </Link>
             <Link
               href="/register"
-              className="btn-press px-3.5 py-1.5 bg-zinc-100 hover:bg-white text-zinc-900 rounded-lg text-xs font-semibold shadow-sm transition-colors"
+              className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold shadow-sm transition-colors border border-indigo-500/40 active:scale-95"
             >
               Comenzar gratis
             </Link>
@@ -66,145 +85,151 @@ export default function HomePage() {
       </header>
 
       {/* Hero Section */}
-      <section className="py-20 lg:py-28 px-4 sm:px-6 lg:px-8 flex flex-col items-center justify-center text-center">
+      <section className="relative pt-16 pb-12 lg:pt-24 lg:pb-16 px-4 sm:px-6 lg:px-8 flex flex-col items-center justify-center text-center z-10">
         <div className="max-w-4xl mx-auto space-y-6">
-          {/* Pill Badge */}
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-900 border border-zinc-800 text-xs text-zinc-300">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" aria-hidden="true" />
-            <span>RAG Educativo para Educación Superior y Secundaria</span>
+          {/* Institutional Badge */}
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-zinc-900/90 border border-zinc-700/80 text-xs text-zinc-300 shadow-sm">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" aria-hidden="true" />
+            <span className="font-medium text-zinc-200">EduRAG 2.0</span>
+            <span className="text-zinc-500">|</span>
+            <span>Tutoría Inteligente con Trazabilidad Curricular</span>
           </div>
 
-          <h1 className="text-4xl sm:text-6xl font-bold tracking-tight text-zinc-100 leading-[1.1]">
-            Asistentes pedagógicos basados en tus documentos de clase
+          {/* Punchy Headline */}
+          <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight text-zinc-100 leading-[1.12]">
+            Asistentes Pedagógicos Calibrados con tus{" "}
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-300 via-indigo-100 to-zinc-200">
+              Documentos de Clase
+            </span>
           </h1>
 
+          {/* Subtitle */}
           <p className="text-base sm:text-lg text-zinc-400 max-w-2xl mx-auto leading-relaxed">
-            EduRAG permite a docentes desplegar tutores inteligentes a partir de apuntes, guías y sílabos en PDF, Word o Markdown. Con trazabilidad estricta de fuentes, costo $0/mes e integración en Moodle y Canvas.
+            Convierte sílabos, guías de laboratorio y lecturas en PDFs o Word en tutores socráticos interactivos. Con citas exactas de fuente, costo operativo $0/mes e integración en Moodle y Canvas vía Iframe.
           </p>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-4">
+          {/* Dual Action Buttons */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
             <Link
               href="/register"
-              className="btn-press w-full sm:w-auto px-6 py-2.5 text-sm font-semibold text-zinc-900 bg-zinc-100 hover:bg-white rounded-xl shadow-sm transition-colors"
+              className="w-full sm:w-auto px-6 py-3 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 border border-indigo-400/30 rounded-xl shadow-lg shadow-indigo-950/50 transition-all active:scale-98 flex items-center justify-center gap-2"
             >
-              Comenzar como estudiante
+              <span>Crear mi primer tutor</span>
+              <span className="text-indigo-200 font-mono text-xs">→</span>
             </Link>
             <Link
               href="/marketplace"
-              className="btn-press w-full sm:w-auto px-6 py-2.5 text-sm font-semibold text-zinc-300 hover:text-white bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 rounded-xl transition-colors"
+              className="w-full sm:w-auto px-6 py-3 text-sm font-semibold text-zinc-300 hover:text-white bg-zinc-900 hover:bg-zinc-800 border border-zinc-700/80 rounded-xl transition-all active:scale-98"
             >
               Explorar tutores públicos
             </Link>
           </div>
+
+          {/* Quick Trust Highlights */}
+          <div className="pt-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-zinc-400 font-medium">
+            <span className="flex items-center gap-1.5">
+              <span className="text-emerald-400 font-bold">✓</span> $0/mes permanente (Free Tier)
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="text-emerald-400 font-bold">✓</span> Compatible con Moodle & Canvas
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="text-emerald-400 font-bold">✓</span> Cifrado Fernet BYOK
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="text-emerald-400 font-bold">✓</span> Cero alucinaciones externas
+            </span>
+          </div>
         </div>
       </section>
 
-      {/* Product Preview Section */}
-      <section className="pb-16 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto w-full">
+      {/* Interactive Studio Preview Section */}
+      <section className="pb-16 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto w-full z-10">
         <ProductPreview />
       </section>
 
-      {/* Telemetry / Stats */}
-      <StatsSection />
+      {/* Real-time Telemetry / Stats */}
+      <div className="z-10 relative">
+        <StatsSection />
+      </div>
 
-      {/* Features Grid */}
-      <section className="py-24 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto w-full space-y-12">
-        <div className="text-center max-w-2xl mx-auto space-y-2">
-          <h2 className="text-2xl sm:text-3xl font-bold text-zinc-100 tracking-tight">
-            Diseñado para rigor académico y simplicidad institucional
-          </h2>
-          <p className="text-zinc-400 text-sm leading-relaxed">
-            Arquitectura ligera y eficiente sin bases de datos vectoriales costosas. EduRAG opera con ranking léxico contextual directo.
-          </p>
-        </div>
+      {/* 4-Step Pipeline Workflow */}
+      <div className="z-10 relative">
+        <HowItWorks />
+      </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Feature 1 */}
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-6 sm:p-8 space-y-3">
-            <div className="w-10 h-10 rounded-xl bg-zinc-850 border border-zinc-800 flex items-center justify-center text-zinc-300">
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-            </div>
-            <h3 className="text-lg font-semibold text-zinc-100 tracking-tight">
-              Indexación Curricular Directa
-            </h3>
-            <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed">
-              Sube tus documentos en PDF, DOCX, TXT o Markdown. Los contenidos se segmentan en bloques semánticos y se inyectan en el contexto según la relevancia de la pregunta.
+      {/* Comparison: Generic Chatbots vs EduRAG */}
+      <div className="z-10 relative">
+        <ComparisonSection />
+      </div>
+
+      {/* Technical Architecture & Feature Matrix */}
+      <div className="z-10 relative">
+        <FeatureMatrix />
+      </div>
+
+      {/* FAQ Accordion */}
+      <div className="z-10 relative">
+        <FaqSection />
+      </div>
+
+      {/* Bottom Conversion CTA Card */}
+      <section className="py-20 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto w-full z-10">
+        <div className="relative rounded-3xl border border-indigo-500/30 bg-gradient-to-b from-indigo-950/40 via-zinc-900/60 to-zinc-950 p-8 sm:p-12 text-center space-y-6 shadow-2xl overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute bottom-0 left-0 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
+
+          <div className="max-w-2xl mx-auto space-y-3 relative z-10">
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-zinc-100 tracking-tight">
+              Potencia tu Cátedra con Asistentes Basados en tu Contenido
+            </h2>
+            <p className="text-sm sm:text-base text-zinc-400 leading-relaxed">
+              Únete a docentes universitarios y de secundaria que ya despliegan tutores inteligentes con costo $0/mes y total rigor curricular.
             </p>
           </div>
 
-          {/* Feature 2 */}
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-6 sm:p-8 space-y-3">
-            <div className="w-10 h-10 rounded-xl bg-zinc-850 border border-zinc-800 flex items-center justify-center text-zinc-300">
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-              </svg>
-            </div>
-            <h3 className="text-lg font-semibold text-zinc-100 tracking-tight">
-              Calibración Pedagógica Flexible
-            </h3>
-            <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed">
-              Define el nivel educativo (Secundaria o Universidad), el tono y el nivel de restricción para responder con método socrático o deducciones técnicas formales.
-            </p>
-          </div>
-
-          {/* Feature 3 */}
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-6 sm:p-8 space-y-3">
-            <div className="w-10 h-10 rounded-xl bg-zinc-850 border border-zinc-800 flex items-center justify-center text-zinc-300">
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
-              </svg>
-            </div>
-            <h3 className="text-lg font-semibold text-zinc-100 tracking-tight">
-              Embebible en Aulas Virtuales
-            </h3>
-            <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed">
-              Genera un código iframe listo para incrustar en Moodle, Canvas o Blackboard con un solo clic, sin configuraciones complejas de servidores.
-            </p>
-          </div>
-
-          {/* Feature 4 */}
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-6 sm:p-8 space-y-3">
-            <div className="w-10 h-10 rounded-xl bg-zinc-850 border border-zinc-800 flex items-center justify-center text-zinc-300">
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-              </svg>
-            </div>
-            <h3 className="text-lg font-semibold text-zinc-100 tracking-tight">
-              Bóveda BYOK con Cifrado Fernet
-            </h3>
-            <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed">
-              Cada docente utiliza su clave gratuita de OpenRouter (modelos como Gemma 26B o Nemotron). Las claves se almacenan cifradas con AES-128 en el backend.
-            </p>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2 relative z-10">
+            <Link
+              href="/register"
+              className="w-full sm:w-auto px-8 py-3.5 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-500 rounded-xl shadow-lg shadow-indigo-950/60 transition-all border border-indigo-400/30"
+            >
+              Comenzar gratis como estudiante o docente
+            </Link>
+            <Link
+              href="/marketplace"
+              className="w-full sm:w-auto px-6 py-3.5 text-sm font-semibold text-zinc-300 hover:text-white bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 rounded-xl transition-all"
+            >
+              Ver tutores en el marketplace
+            </Link>
           </div>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t border-zinc-800/80 py-12 px-4 sm:px-6 lg:px-8 mt-auto bg-zinc-950">
-        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-6 text-xs text-zinc-400">
-          <div className="flex items-center gap-3">
-            <div className="w-6 h-6 rounded-md bg-zinc-900 border border-zinc-800 flex items-center justify-center font-bold text-xs text-zinc-200">
+      {/* High-Craft Footer */}
+      <footer className="border-t border-zinc-800/80 py-12 px-4 sm:px-6 lg:px-8 mt-auto bg-zinc-950/90 z-10 relative">
+        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-8 text-xs text-zinc-400">
+          <div className="flex items-center gap-3.5">
+            <div className="w-8 h-8 rounded-lg bg-indigo-950 border border-indigo-500/30 flex items-center justify-center font-bold text-xs text-indigo-300">
               E
             </div>
             <div>
-              <span className="font-semibold text-zinc-200">EduRAG</span>
-              <p className="text-zinc-500 text-[11px] mt-0.5">Plataforma de Asistentes Pedagógicos con RAG para Educación.</p>
+              <span className="font-bold text-zinc-200 text-sm">EduRAG</span>
+              <p className="text-zinc-500 text-[11px] mt-0.5">
+                Plataforma SaaS de Asistentes Pedagógicos con RAG para Educación Superior y Secundaria.
+              </p>
             </div>
           </div>
 
           <nav className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-zinc-400" aria-label="Navegación inferior">
-            <Link href="/privacy" className="hover:text-zinc-200 transition-colors">Privacidad</Link>
-            <Link href="/terms" className="hover:text-zinc-200 transition-colors">Términos</Link>
             <Link href="/marketplace" className="hover:text-zinc-200 transition-colors">Marketplace</Link>
+            <Link href="/privacy" className="hover:text-zinc-200 transition-colors">Política de Privacidad</Link>
+            <Link href="/terms" className="hover:text-zinc-200 transition-colors">Términos y Condiciones</Link>
             <Link href="/login" className="hover:text-zinc-200 transition-colors">Acceso Docentes</Link>
-            <Link href="/admin" className="hover:text-zinc-200 transition-colors">Administración</Link>
           </nav>
-        </div>
-        <div className="max-w-6xl mx-auto mt-6 pt-6 border-t border-zinc-800/50 flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px] text-zinc-500">
-          <p>© 2026 EduRAG. Todos los derechos reservados.</p>
-          <p>Contacto de Soporte y Privacidad: <a href="mailto:admin@edurag.com" className="text-zinc-400 hover:text-zinc-200 underline">admin@edurag.com</a></p>
+
+          <div className="text-zinc-500 text-[11px] text-center md:text-right">
+            © {new Date().getFullYear()} EduRAG. Todos los derechos reservados.
+          </div>
         </div>
       </footer>
     </main>
