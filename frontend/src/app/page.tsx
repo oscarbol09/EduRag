@@ -3,8 +3,33 @@ import { StatsSection } from "./_components/StatsSection";
 import { ProductPreview } from "./_components/ProductPreview";
 
 export default function HomePage() {
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "EduRAG",
+    "applicationCategory": "EducationalApplication",
+    "operatingSystem": "Web",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "USD",
+    },
+    "description": "Plataforma SaaS educativa para crear tutores pedagógicos con RAG y trazabilidad estricta de fuentes a partir de documentos de clase.",
+    "publisher": {
+      "@type": "Organization",
+      "name": "EduRAG",
+      "url": "https://edu-rag-red.vercel.app",
+    },
+  };
+
   return (
     <main className="min-h-screen bg-zinc-950 flex flex-col font-sans selection:bg-zinc-800 selection:text-white">
+      {/* Schema.org Structured Data for SEO / Search Engines */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+
       {/* Navigation Header */}
       <header className="sticky top-0 z-40 bg-zinc-950/80 backdrop-blur-md border-b border-zinc-800/80">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
@@ -169,11 +194,17 @@ export default function HomePage() {
             </div>
           </div>
 
-          <nav className="flex items-center gap-6 text-zinc-400" aria-label="Navegación inferior">
-            <Link href="/login" className="hover:text-zinc-200 transition-colors">Acceso Docentes</Link>
+          <nav className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-zinc-400" aria-label="Navegación inferior">
+            <Link href="/privacy" className="hover:text-zinc-200 transition-colors">Privacidad</Link>
+            <Link href="/terms" className="hover:text-zinc-200 transition-colors">Términos</Link>
             <Link href="/marketplace" className="hover:text-zinc-200 transition-colors">Marketplace</Link>
+            <Link href="/login" className="hover:text-zinc-200 transition-colors">Acceso Docentes</Link>
             <Link href="/admin" className="hover:text-zinc-200 transition-colors">Administración</Link>
           </nav>
+        </div>
+        <div className="max-w-6xl mx-auto mt-6 pt-6 border-t border-zinc-800/50 flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px] text-zinc-500">
+          <p>© 2026 EduRAG. Todos los derechos reservados.</p>
+          <p>Contacto de Soporte y Privacidad: <a href="mailto:admin@edurag.com" className="text-zinc-400 hover:text-zinc-200 underline">admin@edurag.com</a></p>
         </div>
       </footer>
     </main>

@@ -16,6 +16,8 @@ describe("SEO & Production Meta Verification", () => {
       expect(rule?.userAgent).toBe("*");
       expect(rule?.allow).toContain("/");
       expect(rule?.allow).toContain("/marketplace");
+      expect(rule?.allow).toContain("/privacy");
+      expect(rule?.allow).toContain("/terms");
       expect(rule?.disallow).toContain("/teacher/");
       expect(rule?.disallow).toContain("/admin/");
       expect(rule?.disallow).toContain("/chat/");
@@ -27,21 +29,23 @@ describe("SEO & Production Meta Verification", () => {
       const routes = sitemap();
 
       expect(Array.isArray(routes)).toBe(true);
-      expect(routes.length).toBeGreaterThanOrEqual(4);
+      expect(routes.length).toBeGreaterThanOrEqual(6);
 
       const urls = routes.map((r) => r.url);
       expect(urls).toContain("https://edu-rag-red.vercel.app");
       expect(urls).toContain("https://edu-rag-red.vercel.app/marketplace");
       expect(urls).toContain("https://edu-rag-red.vercel.app/login");
       expect(urls).toContain("https://edu-rag-red.vercel.app/register");
+      expect(urls).toContain("https://edu-rag-red.vercel.app/privacy");
+      expect(urls).toContain("https://edu-rag-red.vercel.app/terms");
 
       const homeRoute = routes.find((r) => r.url === "https://edu-rag-red.vercel.app");
       expect(homeRoute?.priority).toBe(1.0);
       expect(homeRoute?.changeFrequency).toBe("weekly");
 
-      const marketplaceRoute = routes.find((r) => r.url === "https://edu-rag-red.vercel.app/marketplace");
-      expect(marketplaceRoute?.priority).toBe(0.9);
-      expect(marketplaceRoute?.changeFrequency).toBe("daily");
+      const privacyRoute = routes.find((r) => r.url === "https://edu-rag-red.vercel.app/privacy");
+      expect(privacyRoute?.priority).toBe(0.4);
+      expect(privacyRoute?.changeFrequency).toBe("monthly");
     });
   });
 });
