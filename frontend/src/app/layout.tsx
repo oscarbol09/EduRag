@@ -1,8 +1,9 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { AppProvider } from "@/lib/context";
 import { SupportWidget } from "@/components/SupportWidget";
+import { CookieBanner } from "@/components/CookieBanner";
 
 const fontSans = Plus_Jakarta_Sans({
   variable: "--font-sans",
@@ -10,6 +11,14 @@ const fontSans = Plus_Jakarta_Sans({
   weight: ["400", "500", "600", "700"],
   display: "swap",
 });
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  themeColor: "#09090b",
+  viewportFit: "cover",
+};
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://edu-rag-red.vercel.app"),
@@ -26,10 +35,17 @@ export const metadata: Metadata = {
     "Canvas LMS",
     "educación superior",
     "OpenRouter BYOK",
+    "privacidad educativa",
   ],
   authors: [{ name: "EduRAG" }],
   creator: "EduRAG",
   publisher: "EduRAG",
+  alternates: {
+    canonical: "https://edu-rag-red.vercel.app",
+  },
+  icons: {
+    icon: "/favicon.ico",
+  },
   formatDetection: {
     email: false,
     address: false,
@@ -42,11 +58,20 @@ export const metadata: Metadata = {
     siteName: "EduRAG",
     locale: "es_ES",
     type: "website",
+    images: [
+      {
+        url: "/globe.svg",
+        width: 1200,
+        height: 630,
+        alt: "EduRAG — Asistentes Pedagógicos con RAG",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "EduRAG — Asistentes Pedagógicos con RAG",
     description: "Tutoría inteligente basada en documentos de clase para docentes y estudiantes.",
+    images: ["/globe.svg"],
   },
   robots: {
     index: true,
@@ -80,6 +105,7 @@ export default function RootLayout({
             {children}
           </div>
           <SupportWidget />
+          <CookieBanner />
         </AppProvider>
       </body>
     </html>
