@@ -363,14 +363,16 @@ export function ProductPreview() {
             <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-950 space-y-3">
               <label className="block text-xs font-semibold text-zinc-200">Tono Didáctico</label>
               <div className="space-y-2">
-                {[
-                  { key: "friendly", label: "Amigable y Motivador", desc: "Empático y alentador" },
-                  { key: "formal", label: "Académico Formal", desc: "Rigor universitario estructurado" },
-                  { key: "technical", label: "Técnico Especializado", desc: "Preciso y formal" },
-                ].map((item) => (
+                {(
+                  [
+                    { key: "friendly", label: "Amigable y Motivador", desc: "Empático y alentador" },
+                    { key: "formal", label: "Académico Formal", desc: "Rigor universitario estructurado" },
+                    { key: "technical", label: "Técnico Especializado", desc: "Preciso y formal" },
+                  ] as const
+                ).map((item) => (
                   <button
                     key={item.key}
-                    onClick={() => setTone(item.key as any)}
+                    onClick={() => setTone(item.key)}
                     className={`w-full text-left p-2.5 rounded-lg border text-xs transition-all ${
                       tone === item.key
                         ? "bg-indigo-950/50 border-indigo-500/50 text-indigo-200"
@@ -388,14 +390,16 @@ export function ProductPreview() {
             <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-950 space-y-3">
               <label className="block text-xs font-semibold text-zinc-200">Rigor de Restricción</label>
               <div className="space-y-2">
-                {[
-                  { key: "strict", label: "Socrático Estricto", desc: "Solo responde con el contexto provisto" },
-                  { key: "guided", label: "Guiado con Ejemplos", desc: "Usa contexto y complementa didáctica" },
-                  { key: "open", label: "Ampliación Libre", desc: "Expande con analogías externas" },
-                ].map((item) => (
+                {(
+                  [
+                    { key: "strict", label: "Socrático Estricto", desc: "Solo responde con el contexto provisto" },
+                    { key: "guided", label: "Guiado con Ejemplos", desc: "Usa contexto y complementa didáctica" },
+                    { key: "open", label: "Ampliación Libre", desc: "Expande con analogías externas" },
+                  ] as const
+                ).map((item) => (
                   <button
                     key={item.key}
-                    onClick={() => setRestriction(item.key as any)}
+                    onClick={() => setRestriction(item.key)}
                     className={`w-full text-left p-2.5 rounded-lg border text-xs transition-all ${
                       restriction === item.key
                         ? "bg-indigo-950/50 border-indigo-500/50 text-indigo-200"
@@ -413,13 +417,15 @@ export function ProductPreview() {
             <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-950 space-y-3">
               <label className="block text-xs font-semibold text-zinc-200">Nivel del Estudiante</label>
               <div className="space-y-2">
-                {[
-                  { key: "university", label: "Educación Superior", desc: "Pregrado, Posgrado, Técnico" },
-                  { key: "secondary", label: "Educación Secundaria", desc: "Bachillerato y ciclo medio" },
-                ].map((item) => (
+                {(
+                  [
+                    { key: "university", label: "Educación Superior", desc: "Pregrado, Posgrado, Técnico" },
+                    { key: "secondary", label: "Educación Secundaria", desc: "Bachillerato y ciclo medio" },
+                  ] as const
+                ).map((item) => (
                   <button
                     key={item.key}
-                    onClick={() => setAudience(item.key as any)}
+                    onClick={() => setAudience(item.key)}
                     className={`w-full text-left p-2.5 rounded-lg border text-xs transition-all ${
                       audience === item.key
                         ? "bg-indigo-950/50 border-indigo-500/50 text-indigo-200"
