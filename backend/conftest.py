@@ -6,9 +6,7 @@ Ensures zero network calls to remote Supabase instances during automated testing
 import os
 import uuid
 import pytest
-from datetime import datetime, timezone
 from cryptography.fernet import Fernet
-from unittest.mock import MagicMock
 
 # Generar clave Fernet válida y JWT secret para pruebas
 TEST_FERNET_KEY = Fernet.generate_key().decode()

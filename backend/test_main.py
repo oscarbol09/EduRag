@@ -2,7 +2,7 @@ import logging
 import pytest
 import uuid
 import asyncio
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from fastapi.testclient import TestClient
 from unittest.mock import patch, AsyncMock
 from main import app, _persist_chat_turn, get_client_ip
@@ -644,16 +644,34 @@ def test_extract_text_unknown_extension():
     assert result == "Texto arbitrario"
 
 
-def test_extract_text_pdf_invalid_raises():
-    """PDF inválido debe lanzar ValueError."""
-    with pytest.raises(ValueError, match="Error al extraer texto del PDF"):
+def test_extract_text_pdf_magic_bytes_invalid():
+    """PDF sin firma mágica %PDF- debe lanzar ValueError."""
+    with pytest.raises(ValueError, match="firma binaria de PDF"):
         extract_text_from_file(b"not a pdf", "test.pdf", "application/pdf")
 
 
-def test_extract_text_docx_invalid_raises():
-    """DOCX inválido debe lanzar ValueError."""
-    with pytest.raises(ValueError, match="Error al extraer texto del archivo DOCX"):
+def test_extract_text_pdf_corrupted_payload_raises():
+    """PDF con firma mágica pero cuerpo corrupto debe lanzar ValueError de extracción."""
+    with pytest.raises(ValueError, match="Error al extraer texto del PDF"):
+        extract_text_from_file(b"%PDF-1.4\ncorrupt content", "test.pdf", "application/pdf")
+
+
+def test_extract_text_docx_magic_bytes_invalid():
+    """DOCX sin firma mágica PK\x03\x04 debe lanzar ValueError."""
+    with pytest.raises(ValueError, match="firma binaria de DOCX"):
         extract_text_from_file(b"not a docx", "test.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+
+
+def test_extract_text_docx_corrupted_payload_raises():
+    """DOCX con cabecera ZIP pero estructura interna corrupta debe lanzar ValueError."""
+    with pytest.raises(ValueError, match="Error al extraer texto del archivo DOCX"):
+        extract_text_from_file(b"PK\x03\x04corrupted zip stream", "test.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+
+
+def test_extract_text_txt_binary_null_bytes_rejected():
+    """TXT con bytes nulos (binario camuflado) debe ser rechazado."""
+    with pytest.raises(ValueError, match="bytes binarios no permitidos"):
+        extract_text_from_file(b"MZ\x90\x00\x03\x00\x00\x00binary executable disguised", "malicious.txt", "text/plain")
 
 
 # ─── password.py — hash/verify ──────────────────────────────────────
@@ -840,3 +858,103 @@ def test_logout():
     # El mensaje exacto depende de si la tabla revoked_tokens existe en el test env
     data = resp.json()
     assert "message" in data or "detail" in data
+
+
+# ─── Tests Adicionales de Auditoría de Seguridad y QA ──────────────
+
+def test_upload_document_rejects_magic_bytes_spoofing():
+    """POST /documents/upload debe rechazar archivos cuya firma mágica no coincida con la extensión."""
+    uid = str(uuid.uuid4())[:8]
+    _user, token = _register_and_login(f"doc_sec_{uid}@example.com", "Password123!")
+    bot = _create_chatbot(token, f"Bot Doc Sec {uid}")
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # Intentar subir un PDF falso
+    resp = client.post(
+        "/documents/upload",
+        data={"chatbot_id": bot["id"]},
+        files={"file": ("fake.pdf", b"This is plain text pretending to be PDF", "application/pdf")},
+        headers=headers,
+    )
+    assert resp.status_code == 400
+    assert "firma binaria" in resp.text.lower() or "inválido" in resp.text.lower()
+
+
+def test_document_deletion_isolation():
+    """Un usuario NO puede eliminar un documento de un chatbot ajeno."""
+    uid_a = str(uuid.uuid4())[:8]
+    uid_b = str(uuid.uuid4())[:8]
+    _user_a, token_a = _register_and_login(f"owner_del_a_{uid_a}@example.com", "Password123!")
+    _user_b, token_b = _register_and_login(f"owner_del_b_{uid_b}@example.com", "Password123!")
+
+    bot_a = _create_chatbot(token_a, f"Bot Del A {uid_a}")
+    headers_a = {"Authorization": f"Bearer {token_a}"}
+    headers_b = {"Authorization": f"Bearer {token_b}"}
+
+    # User A sube un documento válido TXT
+    upload_resp = client.post(
+        "/documents/upload",
+        data={"chatbot_id": bot_a["id"]},
+        files={"file": ("valid.txt", b"Texto de prueba para aislamiento.", "text/plain")},
+        headers=headers_a,
+    )
+    assert upload_resp.status_code == 200
+    doc_id = upload_resp.json()["id"]
+
+    # User B intenta eliminar el documento de User A
+    del_resp = client.delete(f"/documents/{doc_id}?chatbot_id={bot_a['id']}", headers=headers_b)
+    assert del_resp.status_code == 403
+
+
+def test_teacher_metrics_endpoint():
+    """GET /teacher/metrics debe responder datos estructurados para docentes y 403 para estudiantes."""
+    uid = str(uuid.uuid4())[:8]
+    admin_token = _create_admin_and_token()
+    teacher_email = f"teacher_metric_{uid}@school.com"
+    teacher_resp = client.post("/admin/teachers", json={
+        "email": teacher_email,
+        "password": "Teacher123!",
+        "firstName": "Profe",
+        "lastName": "Métricas",
+    }, headers={"Authorization": f"Bearer {admin_token}"})
+    assert teacher_resp.status_code == 200
+
+    login_resp = client.post("/auth/login", json={"email": teacher_email, "password": "Teacher123!"})
+    teacher_token = login_resp.json()["token"]
+
+    resp = client.get("/teacher/metrics", headers={"Authorization": f"Bearer {teacher_token}"})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "totalChatbots" in data
+    assert "publishedChatbots" in data
+    assert "totalDocuments" in data
+    assert "weeklyConversations" in data
+
+    # Un estudiante debe recibir 403
+    _student, student_token = _register_and_login(f"student_metric_{uid}@example.com", "Password123!")
+    stud_resp = client.get("/teacher/metrics", headers={"Authorization": f"Bearer {student_token}"})
+    assert stud_resp.status_code == 403
+
+
+def test_rate_limiter_isolated_enforcement_429():
+    """Verifica que slowapi emite HTTP 429 al exceder la cuota cuando el limiter está activo."""
+    from main import app as fastapi_app
+    prev_state = fastapi_app.state.limiter.enabled
+    try:
+        fastapi_app.state.limiter.enabled = True
+        uid = str(uuid.uuid4())[:8]
+        # El endpoint /auth/register tiene un límite de 5/minuto
+        responses = []
+        for i in range(7):
+            r = client.post(
+                "/auth/register",
+                json={"email": f"ratelimit_{uid}_{i}@example.com", "password": "Password123!"},
+                headers={"X-Forwarded-For": f"198.51.100.{uid[:2]}"},
+            )
+            responses.append(r.status_code)
+
+        # Al menos una de las últimas peticiones debe haber recibido 429
+        assert 429 in responses
+    finally:
+        fastapi_app.state.limiter.enabled = prev_state
+
