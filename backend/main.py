@@ -9,7 +9,6 @@ import hashlib
 import html
 import json
 import logging
-import os
 import re
 import threading
 import unicodedata
@@ -32,9 +31,9 @@ from models import (
 )
 from supabase_db import (
     create_user, get_user, get_user_by_email, list_users, update_user, update_user_auth_claim, delete_user,
-    create_chatbot, get_chatbot, get_chatbot_by_id_and_owner, update_chatbot, delete_chatbot, list_chatbots,
-    create_document, get_document, update_document, list_documents, list_documents_for_chatbots, delete_document,
-    create_conversation, get_conversation, save_conversation, list_conversations, list_conversations_for_chatbots,
+    create_chatbot, get_chatbot, update_chatbot, delete_chatbot, list_chatbots,
+    create_document, get_document, list_documents, list_documents_for_chatbots, delete_document,
+    create_conversation, get_conversation, save_conversation, list_conversations_for_chatbots,
     create_messages_batch, list_messages_for_conversation,
     revoke_token,
     get_client
@@ -499,8 +498,6 @@ async def get_chatbot_embed(chatbot_id: str, request: Request):
 
 
 def sanitize_filename(filename: str) -> str:
-    import unicodedata
-    import re
     # Separate extension
     name_parts = filename.rsplit(".", 1)
     name = name_parts[0]
@@ -536,7 +533,8 @@ async def upload_document(
     if not chatbot or chatbot.get("owner_id") != current_user.get("sub"):
         raise HTTPException(status_code=403, detail="No tienes permisos para este chatbot.")
 
-    if file.size and file.size > settings.MAX_FILE_SIZE_MB * 1024 * 1024:
+    max_bytes = settings.MAX_FILE_SIZE_MB * 1024 * 1024
+    if file.size and file.size > max_bytes:
         raise HTTPException(status_code=400, detail=f"Archivo demasiado grande (máx {settings.MAX_FILE_SIZE_MB}MB)")
 
     filename = file.filename or ""
@@ -551,10 +549,27 @@ async def upload_document(
     document_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc).isoformat()
 
-    content_bytes = await file.read()
+    # Lectura protegida por chunks para evitar agotamiento de memoria
+    content_chunks = []
+    total_bytes = 0
+    chunk_size = 64 * 1024  # 64 KB
+
+    while True:
+        chunk = await file.read(chunk_size)
+        if not chunk:
+            break
+        total_bytes += len(chunk)
+        if total_bytes > max_bytes:
+            raise HTTPException(status_code=400, detail=f"Archivo demasiado grande (máx {settings.MAX_FILE_SIZE_MB}MB)")
+        content_chunks.append(chunk)
+
+    content_bytes = b"".join(content_chunks)
 
     # Extraer texto del archivo subido en un thread para evitar bloquear el event loop
-    text_content = await asyncio.to_thread(extract_text_from_file, content_bytes, filename, file.content_type)
+    try:
+        text_content = await asyncio.to_thread(extract_text_from_file, content_bytes, filename, file.content_type)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
     if not text_content or not text_content.strip():
         raise HTTPException(status_code=400, detail="No se pudo extraer texto del archivo.")

@@ -73,11 +73,34 @@ def download_from_blob(blob_path: str) -> bytes:
     return client.storage.from_(bucket).download(blob_path)
 
 
+def validate_file_magic_bytes(content: bytes, filename: str) -> None:
+    """Valida la firma de bytes mágicos del archivo para evitar spoofing de extensiones."""
+    if not content:
+        raise ValueError("El archivo está vacío.")
+
+    lower_name = filename.lower()
+
+    if lower_name.endswith(".pdf"):
+        if not content.startswith(b"%PDF-"):
+            raise ValueError("Formato de archivo inválido: el archivo no coincide con la firma binaria de PDF.")
+
+    elif lower_name.endswith(".docx"):
+        # Los archivos .docx son archivos comprimidos ZIP (OOXML) que inician con PK\x03\x04
+        if not content.startswith(b"PK\x03\x04"):
+            raise ValueError("Formato de archivo inválido: el archivo no coincide con la firma binaria de DOCX.")
+
+    elif lower_name.endswith((".md", ".txt")):
+        # Los archivos de texto no deben contener null bytes (posible ejecutable/binario camuflado)
+        if b"\x00" in content[:4096]:
+            raise ValueError("Formato de archivo inválido: el archivo de texto contiene bytes binarios no permitidos.")
+
+
 def extract_text_from_file(content: bytes, filename: str, content_type: str | None) -> str:
     """
-    Extract plain text from uploaded files.
+    Extract plain text from uploaded files with signature validation.
     Supports: Markdown (.md), plain text (.txt), PDF (.pdf), and Word (.docx).
     """
+    validate_file_magic_bytes(content, filename)
     lower_name = filename.lower()
 
     if lower_name.endswith(".pdf"):
@@ -128,3 +151,4 @@ def extract_text_from_file(content: bytes, filename: str, content_type: str | No
 
     # Fallback: try as UTF-8 text anyway
     return content.decode("utf-8", errors="replace")
+

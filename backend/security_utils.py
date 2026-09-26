@@ -1,4 +1,3 @@
-import os
 import base64
 import hashlib
 import logging
