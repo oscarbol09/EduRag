@@ -94,7 +94,7 @@ function renderMessageContent(content: string, isUser: boolean) {
           return (
             <pre
               key={i}
-              className="my-3 p-3.5 bg-zinc-950 text-zinc-200 border border-zinc-800 rounded-xl text-xs font-mono overflow-x-auto whitespace-pre leading-normal"
+              className="my-3 p-3.5 bg-zinc-950 text-zinc-200 border border-zinc-800 rounded-lg text-xs font-mono overflow-x-auto whitespace-pre leading-normal"
             >
               <code>{seg.content}</code>
             </pre>
@@ -104,7 +104,7 @@ function renderMessageContent(content: string, isUser: boolean) {
           return (
             <div
               key={i}
-              className="my-3 p-3.5 bg-zinc-950 text-zinc-200 border border-zinc-800 rounded-xl text-xs font-mono overflow-x-auto text-center font-medium italic select-all"
+              className="my-3 p-3.5 bg-zinc-950 text-zinc-200 border border-zinc-800 rounded-lg text-xs font-mono overflow-x-auto text-center font-medium italic select-all"
               aria-label="Fórmula matemática display"
             >
               {seg.content}
@@ -305,7 +305,7 @@ export default function ChatClient() {
 
       {/* Main Chat Area */}
       <main className="flex-1 max-w-4xl w-full mx-auto p-3 sm:p-6 flex flex-col justify-between overflow-hidden">
-        <div className="rounded-2xl border border-zinc-800 bg-zinc-900/40 flex-1 flex flex-col justify-between overflow-hidden shadow-xl min-h-[calc(100vh-140px)]">
+        <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 flex-1 flex flex-col justify-between overflow-hidden shadow-xl min-h-[calc(100vh-140px)]">
           {/* Welcome directive banner */}
           {chatbot?.welcome_message && messages.length === 0 && (
             <div className="p-4 sm:p-5 border-b border-zinc-800/80 bg-zinc-950/60">
@@ -327,7 +327,7 @@ export default function ChatClient() {
           <div className="flex-1 overflow-auto p-4 sm:p-6 space-y-4" role="log" aria-label="Mensajes del chat" aria-live="polite">
             {messages.length === 0 ? (
               <div className="text-center py-16 px-4 max-w-md mx-auto space-y-3">
-                <div className="w-10 h-10 rounded-xl bg-zinc-850 border border-zinc-800 flex items-center justify-center mx-auto text-zinc-400">
+                <div className="w-10 h-10 rounded-lg bg-zinc-850 border border-zinc-800 flex items-center justify-center mx-auto text-zinc-400">
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                   </svg>
@@ -344,7 +344,7 @@ export default function ChatClient() {
                   className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
                 >
                   <div
-                    className={`max-w-[85%] rounded-2xl p-4 sm:p-5 ${
+                    className={`max-w-[85%] rounded-lg p-4 sm:p-5 ${
                       msg.role === "user"
                         ? "bg-zinc-800 text-zinc-100 rounded-tr-sm border border-zinc-700"
                         : "bg-zinc-950/90 text-zinc-200 rounded-tl-sm border border-zinc-800"
@@ -401,7 +401,7 @@ export default function ChatClient() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="Escribe tu consulta académica sobre los apuntes de clase..."
-              className="flex-1 px-4 py-2.5 bg-zinc-900 text-zinc-100 placeholder:text-zinc-500 border border-zinc-800 focus:border-zinc-600 focus:ring-2 focus:ring-zinc-700 rounded-xl outline-none text-xs sm:text-sm transition-all"
+              className="flex-1 px-4 py-2.5 bg-zinc-900 text-zinc-100 placeholder:text-zinc-500 border border-zinc-800 focus:border-zinc-600 focus:ring-2 focus:ring-zinc-700 rounded-lg outline-none text-xs sm:text-sm transition-colors"
               disabled={isLoading}
               maxLength={4000}
               autoComplete="off"
@@ -409,7 +409,7 @@ export default function ChatClient() {
             <button
               type="submit"
               disabled={isLoading || !input.trim()}
-              className="btn-press px-4 sm:px-5 py-2.5 bg-zinc-100 hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed text-zinc-900 rounded-xl font-medium text-xs sm:text-sm transition-colors shadow-sm flex items-center gap-1.5 shrink-0"
+              className="btn-press px-4 sm:px-5 py-2.5 bg-zinc-100 hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed text-zinc-900 rounded-lg font-medium text-xs sm:text-sm transition-colors shadow-sm flex items-center gap-1.5 shrink-0"
               aria-label="Enviar mensaje"
             >
               <span>Enviar</span>

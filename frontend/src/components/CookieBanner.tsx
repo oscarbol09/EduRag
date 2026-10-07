@@ -38,7 +38,7 @@ export function CookieBanner() {
       role="region"
       className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:max-w-md z-50 animate-in slide-in-from-bottom-5 duration-200"
     >
-      <div className="card-clean rounded-2xl border border-zinc-800 bg-zinc-950/95 backdrop-blur-md p-5 shadow-2xl space-y-4">
+      <div className="card-clean rounded-lg border border-zinc-800 bg-zinc-950/95 backdrop-blur-md p-5 shadow-2xl space-y-4">
         <div className="flex items-start gap-3">
           <div className="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-xs flex-shrink-0" aria-hidden="true">
             🍪

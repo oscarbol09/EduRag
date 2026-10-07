@@ -63,7 +63,7 @@ export default function NewChatbotPage() {
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="card-clean rounded-xl p-6 sm:p-8 space-y-6 border border-zinc-800/80 bg-zinc-900/30">
+        <form onSubmit={handleSubmit} className="card-clean rounded-lg p-6 sm:p-8 space-y-6 border border-zinc-800/80 bg-zinc-900/30">
           <div className="space-y-4">
             <div>
               <label htmlFor="name" className="block text-xs font-medium text-zinc-300 mb-1.5 flex items-center gap-1.5">

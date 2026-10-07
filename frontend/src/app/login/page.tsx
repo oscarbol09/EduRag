@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useActionState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useApp } from "@/lib/context";
@@ -9,24 +9,15 @@ import { AuthLayout } from "@/components/AuthLayout";
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const { login } = useApp();
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setError("");
-
+  const handleLoginAction = async (prevState: any, formData: FormData) => {
     // Anti-spam honeypot
-    const formData = new FormData(e.currentTarget);
     if (formData.get("_gotcha")) {
-      setError("Solicitud no válida.");
-      return;
+      return { error: "Solicitud no válida." };
     }
-
-    setIsLoading(true);
-
+    
     try {
       const user = await login(email, password);
       if (user.role === "admin") {
@@ -36,19 +27,20 @@ export default function LoginPage() {
       } else {
         router.push("/marketplace");
       }
+      return { error: null };
     } catch {
-      setError("Credenciales inválidas. Verifica tu correo y contraseña.");
-    } finally {
-      setIsLoading(false);
+      return { error: "Credenciales inválidas. Verifica tu correo y contraseña." };
     }
   };
+
+  const [state, formAction, isPending] = useActionState(handleLoginAction, { error: null });
 
   return (
     <AuthLayout
       title="Acceso al Sistema EduRAG"
       subtitle="Ingresa tus credenciales institucionales para acceder a tus tutores y cursos"
     >
-      <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+      <form action={formAction} className="space-y-4" noValidate>
         {/* Anti-spam honeypot */}
         <input type="text" name="_gotcha" tabIndex={-1} autoComplete="off" className="hidden" aria-hidden="true" />
 
@@ -62,8 +54,8 @@ export default function LoginPage() {
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            aria-invalid={!!error}
-            aria-describedby={error ? "login-error" : undefined}
+            aria-invalid={!!state.error}
+            aria-describedby={state.error ? "login-error" : undefined}
             className="w-full px-3.5 py-2.5 bg-zinc-900 border border-zinc-800 rounded-lg focus:ring-1 focus:ring-zinc-600 focus:border-zinc-600 outline-none text-xs sm:text-sm text-zinc-100 placeholder-zinc-500 font-sans transition-colors"
             placeholder="usuario@universidad.edu"
             required
@@ -81,8 +73,8 @@ export default function LoginPage() {
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            aria-invalid={!!error}
-            aria-describedby={error ? "login-error" : undefined}
+            aria-invalid={!!state.error}
+            aria-describedby={state.error ? "login-error" : undefined}
             className="w-full px-3.5 py-2.5 bg-zinc-900 border border-zinc-800 rounded-lg focus:ring-1 focus:ring-zinc-600 focus:border-zinc-600 outline-none text-xs sm:text-sm text-zinc-100 placeholder-zinc-500 font-mono transition-colors"
             placeholder="••••••••••••"
             required
@@ -90,18 +82,18 @@ export default function LoginPage() {
           />
         </div>
 
-        {error && (
+        {state.error && (
           <div id="login-error" role="alert" className="text-rose-300 text-xs bg-rose-950/40 border border-rose-500/40 p-3 rounded-lg">
-            {error}
+            {state.error}
           </div>
         )}
 
         <button
           type="submit"
-          disabled={isLoading}
+          disabled={isPending}
           className="btn-press w-full py-2.5 bg-zinc-100 hover:bg-white text-zinc-950 font-medium rounded-lg disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm transition-colors inline-flex items-center justify-center gap-2"
         >
-          {isLoading ? (
+          {isPending ? (
             <>
               <span className="w-4 h-4 border-2 border-zinc-950/30 border-t-zinc-950 rounded-full animate-spin" />
               Iniciando sesión...

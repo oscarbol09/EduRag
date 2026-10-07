@@ -80,10 +80,10 @@ export function FeatureMatrix() {
         {features.map((feat, idx) => (
           <div
             key={idx}
-            className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-6 sm:p-7 space-y-4 hover:border-zinc-700 transition-colors shadow-sm flex flex-col justify-between"
+            className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-6 sm:p-7 space-y-4 hover:border-zinc-700 transition-colors shadow-sm flex flex-col justify-between"
           >
             <div className="space-y-3">
-              <div className="w-10 h-10 rounded-xl bg-zinc-850 border border-zinc-800 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-lg bg-zinc-850 border border-zinc-800 flex items-center justify-center">
                 {feat.icon}
               </div>
               <h3 className="text-base font-bold text-zinc-100 tracking-tight">

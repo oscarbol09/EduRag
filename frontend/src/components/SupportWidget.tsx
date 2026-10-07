@@ -86,7 +86,7 @@ export function SupportWidget() {
         onClick={() => setIsOpen(!isOpen)}
         aria-label={isOpen ? "Cerrar canal de ayuda" : "Abrir canal de ayuda y soporte"}
         aria-expanded={isOpen}
-        className="btn-press flex items-center justify-center w-11 h-11 rounded-full bg-zinc-900 hover:bg-zinc-800 text-zinc-200 shadow-lg border border-zinc-700 focus:outline-none focus:ring-2 focus:ring-zinc-600 transition-all"
+        className="btn-press flex items-center justify-center w-11 h-11 rounded-full bg-zinc-900 hover:bg-zinc-800 text-zinc-200 shadow-lg border border-zinc-700 focus:outline-none focus:ring-2 focus:ring-zinc-600 transition-colors"
       >
         {isOpen ? (
           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
@@ -104,7 +104,7 @@ export function SupportWidget() {
         <div
           role="dialog"
           aria-label="Canal de contacto y soporte"
-          className="absolute bottom-14 right-0 w-80 sm:w-84 rounded-2xl shadow-2xl border border-zinc-800 bg-zinc-950 overflow-hidden animate-in zoom-in-95 duration-150"
+          className="absolute bottom-14 right-0 w-80 sm:w-84 rounded-lg shadow-2xl border border-zinc-800 bg-zinc-950 overflow-hidden animate-in zoom-in-95 duration-150"
         >
           {/* Header */}
           <div className="p-4 bg-zinc-900/50 border-b border-zinc-800">
@@ -127,7 +127,7 @@ export function SupportWidget() {
                 role="tab"
                 aria-selected={activeTab === tab}
                 onClick={() => setActiveTab(tab)}
-                className={`flex-1 py-2.5 text-center transition-all border-b-2 ${
+                className={`flex-1 py-2.5 text-center transition-colors border-b-2 ${
                   activeTab === tab
                     ? "border-zinc-200 text-zinc-100 bg-zinc-900/40"
                     : "border-transparent text-zinc-400 hover:text-zinc-200"

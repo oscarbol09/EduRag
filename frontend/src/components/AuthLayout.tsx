@@ -25,7 +25,7 @@ export function AuthLayout({ title, subtitle, children, footer }: AuthLayoutProp
           {subtitle && <p className="text-zinc-400 text-xs mt-1.5 leading-relaxed">{subtitle}</p>}
         </div>
 
-        <div className="rounded-2xl p-6 sm:p-8 border border-zinc-800 bg-zinc-900/40 shadow-xl">
+        <div className="rounded-lg p-6 sm:p-8 border border-zinc-800 bg-zinc-900/40 shadow-xl">
           {children}
         </div>
 

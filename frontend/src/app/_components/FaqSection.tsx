@@ -57,7 +57,7 @@ export function FaqSection() {
           return (
             <div
               key={idx}
-              className="rounded-xl border border-zinc-800 bg-zinc-900/40 overflow-hidden transition-colors"
+              className="rounded-lg border border-zinc-800 bg-zinc-900/40 overflow-hidden transition-colors"
             >
               <button
                 onClick={() => toggle(idx)}

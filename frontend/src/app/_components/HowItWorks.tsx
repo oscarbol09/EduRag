@@ -48,7 +48,7 @@ export function HowItWorks() {
         {steps.map((step, idx) => (
           <div
             key={idx}
-            className="relative rounded-2xl border border-zinc-800 bg-zinc-900/40 p-6 flex flex-col justify-between space-y-4 hover:border-zinc-700 transition-colors shadow-sm"
+            className="relative rounded-lg border border-zinc-800 bg-zinc-900/40 p-6 flex flex-col justify-between space-y-4 hover:border-zinc-700 transition-colors shadow-sm"
           >
             <div className="space-y-3">
               <div className="flex items-center justify-between">

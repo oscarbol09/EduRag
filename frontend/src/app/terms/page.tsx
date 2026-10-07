@@ -38,7 +38,7 @@ export default function TermsPage() {
         </section>
 
         {/* Section 1: Service Description & BYOK Model */}
-        <section className="card-clean rounded-xl p-6 sm:p-7 border border-zinc-800/80 bg-zinc-900/30 space-y-3">
+        <section className="card-clean rounded-lg p-6 sm:p-7 border border-zinc-800/80 bg-zinc-900/30 space-y-3">
           <h2 className="text-base font-semibold text-zinc-100 flex items-center gap-2">
             <span className="w-6 h-6 rounded-lg bg-zinc-800 border border-zinc-700/80 flex items-center justify-center text-xs font-bold text-zinc-300">1</span>
             Naturaleza del Servicio y Arquitectura BYOK ($0 Costo)
@@ -54,7 +54,7 @@ export default function TermsPage() {
         </section>
 
         {/* Section 2: Pricing & Refunds */}
-        <section className="card-clean rounded-xl p-6 sm:p-7 border border-zinc-800/80 bg-zinc-900/30 space-y-3">
+        <section className="card-clean rounded-lg p-6 sm:p-7 border border-zinc-800/80 bg-zinc-900/30 space-y-3">
           <h2 className="text-base font-semibold text-zinc-100 flex items-center gap-2">
             <span className="w-6 h-6 rounded-lg bg-zinc-800 border border-zinc-700/80 flex items-center justify-center text-xs font-bold text-zinc-300">2</span>
             Precios, Pagos y Política de Reembolsos
@@ -73,7 +73,7 @@ export default function TermsPage() {
         </section>
 
         {/* Section 3: AI Disclaimer */}
-        <section className="card-clean rounded-xl p-6 sm:p-7 border border-zinc-800/80 bg-zinc-900/30 space-y-3">
+        <section className="card-clean rounded-lg p-6 sm:p-7 border border-zinc-800/80 bg-zinc-900/30 space-y-3">
           <h2 className="text-base font-semibold text-zinc-100 flex items-center gap-2">
             <span className="w-6 h-6 rounded-lg bg-zinc-800 border border-zinc-700/80 flex items-center justify-center text-xs font-bold text-zinc-300">3</span>
             Descargo de Responsabilidad sobre Inteligencia Artificial (AI Disclaimer)
@@ -89,7 +89,7 @@ export default function TermsPage() {
         </section>
 
         {/* Section 4: Intellectual Property */}
-        <section className="card-clean rounded-xl p-6 sm:p-7 border border-zinc-800/80 bg-zinc-900/30 space-y-3">
+        <section className="card-clean rounded-lg p-6 sm:p-7 border border-zinc-800/80 bg-zinc-900/30 space-y-3">
           <h2 className="text-base font-semibold text-zinc-100 flex items-center gap-2">
             <span className="w-6 h-6 rounded-lg bg-zinc-800 border border-zinc-700/80 flex items-center justify-center text-xs font-bold text-zinc-300">4</span>
             Propiedad Intelectual y Soberanía de Documentos
@@ -105,7 +105,7 @@ export default function TermsPage() {
         </section>
 
         {/* Section 5: Acceptable Use Policy */}
-        <section className="card-clean rounded-xl p-6 sm:p-7 border border-zinc-800/80 bg-zinc-900/30 space-y-3">
+        <section className="card-clean rounded-lg p-6 sm:p-7 border border-zinc-800/80 bg-zinc-900/30 space-y-3">
           <h2 className="text-base font-semibold text-zinc-100 flex items-center gap-2">
             <span className="w-6 h-6 rounded-lg bg-zinc-800 border border-zinc-700/80 flex items-center justify-center text-xs font-bold text-zinc-300">5</span>
             Política de Uso Aceptable (AUP)
@@ -122,7 +122,7 @@ export default function TermsPage() {
         </section>
 
         {/* Section 6: Service Availability & Disclaimers */}
-        <section className="card-clean rounded-xl p-6 sm:p-7 border border-zinc-800/80 bg-zinc-900/30 space-y-3">
+        <section className="card-clean rounded-lg p-6 sm:p-7 border border-zinc-800/80 bg-zinc-900/30 space-y-3">
           <h2 className="text-base font-semibold text-zinc-100 flex items-center gap-2">
             <span className="w-6 h-6 rounded-lg bg-zinc-800 border border-zinc-700/80 flex items-center justify-center text-xs font-bold text-zinc-300">6</span>
             Disponibilidad del Servicio y Limitación de Responsabilidad
@@ -135,7 +135,7 @@ export default function TermsPage() {
         </section>
 
         {/* Section 7: Account Suspension & Termination */}
-        <section className="card-clean rounded-xl p-6 sm:p-7 border border-zinc-800/80 bg-zinc-900/30 space-y-3">
+        <section className="card-clean rounded-lg p-6 sm:p-7 border border-zinc-800/80 bg-zinc-900/30 space-y-3">
           <h2 className="text-base font-semibold text-zinc-100 flex items-center gap-2">
             <span className="w-6 h-6 rounded-lg bg-zinc-800 border border-zinc-700/80 flex items-center justify-center text-xs font-bold text-zinc-300">7</span>
             Suspensión, Cancelación y Contacto

@@ -185,7 +185,7 @@ export default function TeacherSettingsPage() {
         <div className="grid md:grid-cols-3 gap-6">
           {/* Columna Izquierda: Información de la Cuenta & Seguridad (1 col) */}
           <div className="md:col-span-1 space-y-4">
-            <div className="card-clean rounded-xl border border-zinc-800/80 bg-zinc-900/30 p-5 space-y-4">
+            <div className="card-clean rounded-lg border border-zinc-800/80 bg-zinc-900/30 p-5 space-y-4">
               <h2 className="font-semibold text-xs uppercase tracking-wider text-zinc-400 flex items-center gap-2">
                 <svg className="w-4 h-4 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -209,7 +209,7 @@ export default function TeacherSettingsPage() {
             </div>
 
             {/* Tarjeta BYOK / Info Fernet */}
-            <div className="card-clean rounded-xl border border-zinc-800/80 bg-zinc-900/30 p-5 text-xs leading-relaxed">
+            <div className="card-clean rounded-lg border border-zinc-800/80 bg-zinc-900/30 p-5 text-xs leading-relaxed">
               <h3 className="font-semibold text-zinc-200 mb-1.5 flex items-center gap-1.5">
                 <svg className="w-4 h-4 text-zinc-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
@@ -234,7 +234,7 @@ export default function TeacherSettingsPage() {
 
           {/* Columna Derecha: Formulario de Perfil & Modelos (2 cols) */}
           <div className="md:col-span-2">
-            <form onSubmit={handleSubmit} className="card-clean rounded-xl border border-zinc-800/80 bg-zinc-900/30 p-6 sm:p-8 space-y-6">
+            <form onSubmit={handleSubmit} className="card-clean rounded-lg border border-zinc-800/80 bg-zinc-900/30 p-6 sm:p-8 space-y-6">
               <div>
                 <h2 className="text-sm font-semibold text-zinc-100 border-b border-zinc-800/80 pb-3 flex items-center gap-2">
                   <svg className="w-4 h-4 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -364,7 +364,7 @@ export default function TeacherSettingsPage() {
                           <div
                             key={model.id}
                             onClick={() => setFormData((prev) => ({ ...prev, openrouterModel: model.id }))}
-                            className={`p-3.5 rounded-xl border transition-colors cursor-pointer select-none flex flex-col justify-between btn-press ${
+                            className={`p-3.5 rounded-lg border transition-colors cursor-pointer select-none flex flex-col justify-between btn-press ${
                               isSelected
                                 ? "border-zinc-600 bg-zinc-800/80 shadow-sm"
                                 : "border-zinc-800 bg-zinc-900/30 hover:bg-zinc-900/60 hover:border-zinc-700"

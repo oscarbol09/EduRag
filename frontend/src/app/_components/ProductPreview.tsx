@@ -100,7 +100,7 @@ export function ProductPreview() {
   };
 
   return (
-    <div className="w-full rounded-2xl border border-zinc-800 bg-zinc-900/60 shadow-2xl overflow-hidden backdrop-blur-sm">
+    <div className="w-full rounded-lg border border-zinc-800 bg-zinc-900/60 shadow-2xl overflow-hidden backdrop-blur-sm">
       {/* Studio Top Navigation Bar */}
       <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between border-b border-zinc-800/80 bg-zinc-950/80 px-4 sm:px-6 py-3.5 gap-3">
         <div className="flex items-center gap-3">
@@ -123,7 +123,7 @@ export function ProductPreview() {
             role="tab"
             aria-selected={activeTab === "chat"}
             onClick={() => setActiveTab("chat")}
-            className={`px-3 py-1.5 rounded-md font-medium transition-all ${
+            className={`px-3 py-1.5 rounded-md font-medium transition-colors ${
               activeTab === "chat"
                 ? "bg-zinc-800 text-white shadow-sm border border-zinc-700"
                 : "text-zinc-400 hover:text-zinc-200"
@@ -135,7 +135,7 @@ export function ProductPreview() {
             role="tab"
             aria-selected={activeTab === "ingestion"}
             onClick={() => setActiveTab("ingestion")}
-            className={`px-3 py-1.5 rounded-md font-medium transition-all ${
+            className={`px-3 py-1.5 rounded-md font-medium transition-colors ${
               activeTab === "ingestion"
                 ? "bg-zinc-800 text-white shadow-sm border border-zinc-700"
                 : "text-zinc-400 hover:text-zinc-200"
@@ -147,7 +147,7 @@ export function ProductPreview() {
             role="tab"
             aria-selected={activeTab === "calibration"}
             onClick={() => setActiveTab("calibration")}
-            className={`px-3 py-1.5 rounded-md font-medium transition-all ${
+            className={`px-3 py-1.5 rounded-md font-medium transition-colors ${
               activeTab === "calibration"
                 ? "bg-zinc-800 text-white shadow-sm border border-zinc-700"
                 : "text-zinc-400 hover:text-zinc-200"
@@ -170,7 +170,7 @@ export function ProductPreview() {
                   <button
                     key={demo.id}
                     onClick={() => setActiveDemoId(demo.id)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                       activeDemoId === demo.id
                         ? "bg-indigo-600/20 text-indigo-300 border border-indigo-500/40 shadow-sm"
                         : "bg-zinc-800/60 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 border border-zinc-800"
@@ -197,7 +197,7 @@ export function ProductPreview() {
 
           {/* Embed Code Drawer */}
           {showEmbedCode && (
-            <div className="p-4 rounded-xl bg-zinc-950 border border-zinc-800 space-y-3 animate-in fade-in duration-150">
+            <div className="p-4 rounded-lg bg-zinc-950 border border-zinc-800 space-y-3 animate-in fade-in duration-150">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-zinc-300">
                   Código de incrustación Iframe (Compatible con Moodle, Canvas, Blackboard, Teams):
@@ -218,7 +218,7 @@ export function ProductPreview() {
           {/* Chat Interface Preview */}
           <div className="space-y-4 max-w-4xl mx-auto">
             {/* Header info */}
-            <div className="flex items-center justify-between p-3 rounded-xl bg-zinc-950/60 border border-zinc-800/80 text-xs">
+            <div className="flex items-center justify-between p-3 rounded-lg bg-zinc-950/60 border border-zinc-800/80 text-xs">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-lg bg-indigo-950/60 border border-indigo-500/30 flex items-center justify-center font-bold text-indigo-300">
                   {currentDemo.name.charAt(0)}
@@ -238,7 +238,7 @@ export function ProductPreview() {
 
             {/* Student Query Bubble */}
             <div className="flex items-start gap-3 max-w-2xl ml-auto justify-end">
-              <div className="bg-zinc-800 text-zinc-100 rounded-2xl rounded-tr-none px-4 py-3 text-xs sm:text-sm border border-zinc-700 shadow-md">
+              <div className="bg-zinc-800 text-zinc-100 rounded-lg rounded-tr-none px-4 py-3 text-xs sm:text-sm border border-zinc-700 shadow-md">
                 <p className="font-medium leading-relaxed">{currentDemo.question}</p>
               </div>
               <div className="w-8 h-8 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center text-xs font-semibold text-zinc-300 shrink-0">
@@ -251,7 +251,7 @@ export function ProductPreview() {
               <div className="w-8 h-8 rounded-full bg-indigo-900 border border-indigo-600 flex items-center justify-center text-xs font-bold text-indigo-100 shrink-0 shadow-sm">
                 IA
               </div>
-              <div className="bg-zinc-950 rounded-2xl rounded-tl-none p-5 text-xs sm:text-sm border border-zinc-800 text-zinc-200 space-y-3.5 shadow-lg">
+              <div className="bg-zinc-950 rounded-lg rounded-tl-none p-5 text-xs sm:text-sm border border-zinc-800 text-zinc-200 space-y-3.5 shadow-lg">
                 <div className="flex items-center justify-between pb-2 border-b border-zinc-800/80">
                   <h4 className="font-bold text-zinc-100 text-sm">{currentDemo.responseTitle}</h4>
                   <span className="text-[11px] text-zinc-500 font-mono">Inferencia: 0.28s</span>
@@ -264,7 +264,7 @@ export function ProductPreview() {
                 ))}
 
                 {currentDemo.formula && (
-                  <div className="bg-zinc-900/90 rounded-xl p-3.5 border border-zinc-800 text-center font-mono text-xs sm:text-sm text-indigo-200 shadow-inner">
+                  <div className="bg-zinc-900/90 rounded-lg p-3.5 border border-zinc-800 text-center font-mono text-xs sm:text-sm text-indigo-200 shadow-inner">
                     {currentDemo.formula}
                   </div>
                 )}
@@ -298,7 +298,7 @@ export function ProductPreview() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-4xl mx-auto">
-            <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-950 space-y-3">
+            <div className="p-4 rounded-lg border border-zinc-800 bg-zinc-950 space-y-3">
               <div className="flex items-center justify-between">
                 <span className="px-2 py-0.5 rounded bg-red-950/60 text-red-300 border border-red-500/30 text-[10px] font-mono">PDF</span>
                 <span className="text-emerald-400 text-xs font-semibold">100% Indexado</span>
@@ -310,7 +310,7 @@ export function ProductPreview() {
               </div>
             </div>
 
-            <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-950 space-y-3">
+            <div className="p-4 rounded-lg border border-zinc-800 bg-zinc-950 space-y-3">
               <div className="flex items-center justify-between">
                 <span className="px-2 py-0.5 rounded bg-blue-950/60 text-blue-300 border border-blue-500/30 text-[10px] font-mono">DOCX</span>
                 <span className="text-emerald-400 text-xs font-semibold">100% Indexado</span>
@@ -322,7 +322,7 @@ export function ProductPreview() {
               </div>
             </div>
 
-            <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-950 space-y-3">
+            <div className="p-4 rounded-lg border border-zinc-800 bg-zinc-950 space-y-3">
               <div className="flex items-center justify-between">
                 <span className="px-2 py-0.5 rounded bg-amber-950/60 text-amber-300 border border-amber-500/30 text-[10px] font-mono">MD</span>
                 <span className="text-emerald-400 text-xs font-semibold">100% Indexado</span>
@@ -335,7 +335,7 @@ export function ProductPreview() {
             </div>
           </div>
 
-          <div className="p-4 rounded-xl bg-zinc-950/80 border border-zinc-800 max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="p-4 rounded-lg bg-zinc-950/80 border border-zinc-800 max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="space-y-1">
               <h4 className="text-xs font-semibold text-zinc-200">Presupuesto de Ventana de Contexto:</h4>
               <p className="text-[11px] text-zinc-400">Ranking léxico adaptativo con presupuesto de hasta 60.000 caracteres por inferencia.</p>
@@ -360,7 +360,7 @@ export function ProductPreview() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
             {/* Tone Selector */}
-            <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-950 space-y-3">
+            <div className="p-4 rounded-lg border border-zinc-800 bg-zinc-950 space-y-3">
               <label className="block text-xs font-semibold text-zinc-200">Tono Didáctico</label>
               <div className="space-y-2">
                 {(
@@ -373,7 +373,7 @@ export function ProductPreview() {
                   <button
                     key={item.key}
                     onClick={() => setTone(item.key)}
-                    className={`w-full text-left p-2.5 rounded-lg border text-xs transition-all ${
+                    className={`w-full text-left p-2.5 rounded-lg border text-xs transition-colors ${
                       tone === item.key
                         ? "bg-indigo-950/50 border-indigo-500/50 text-indigo-200"
                         : "bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-zinc-200"
@@ -387,7 +387,7 @@ export function ProductPreview() {
             </div>
 
             {/* Restriction Level */}
-            <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-950 space-y-3">
+            <div className="p-4 rounded-lg border border-zinc-800 bg-zinc-950 space-y-3">
               <label className="block text-xs font-semibold text-zinc-200">Rigor de Restricción</label>
               <div className="space-y-2">
                 {(
@@ -400,7 +400,7 @@ export function ProductPreview() {
                   <button
                     key={item.key}
                     onClick={() => setRestriction(item.key)}
-                    className={`w-full text-left p-2.5 rounded-lg border text-xs transition-all ${
+                    className={`w-full text-left p-2.5 rounded-lg border text-xs transition-colors ${
                       restriction === item.key
                         ? "bg-indigo-950/50 border-indigo-500/50 text-indigo-200"
                         : "bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-zinc-200"
@@ -414,7 +414,7 @@ export function ProductPreview() {
             </div>
 
             {/* Target Audience */}
-            <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-950 space-y-3">
+            <div className="p-4 rounded-lg border border-zinc-800 bg-zinc-950 space-y-3">
               <label className="block text-xs font-semibold text-zinc-200">Nivel del Estudiante</label>
               <div className="space-y-2">
                 {(
@@ -426,7 +426,7 @@ export function ProductPreview() {
                   <button
                     key={item.key}
                     onClick={() => setAudience(item.key)}
-                    className={`w-full text-left p-2.5 rounded-lg border text-xs transition-all ${
+                    className={`w-full text-left p-2.5 rounded-lg border text-xs transition-colors ${
                       audience === item.key
                         ? "bg-indigo-950/50 border-indigo-500/50 text-indigo-200"
                         : "bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-zinc-200"
@@ -441,7 +441,7 @@ export function ProductPreview() {
           </div>
 
           {/* Generated System Instruction Preview */}
-          <div className="max-w-4xl mx-auto p-4 rounded-xl bg-zinc-950 border border-zinc-800 space-y-2">
+          <div className="max-w-4xl mx-auto p-4 rounded-lg bg-zinc-950 border border-zinc-800 space-y-2">
             <span className="text-[11px] font-semibold text-zinc-400">System Prompt Generado en Tiempo Real:</span>
             <p className="text-xs text-zinc-300 font-mono leading-relaxed bg-zinc-900/60 p-3 rounded-lg border border-zinc-850">
               {tone === "formal" && "Adopta un tono formal, estructurado y de alto rigor académico. "}

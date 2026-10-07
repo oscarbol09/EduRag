@@ -41,7 +41,7 @@ export function ComparisonSection() {
         </p>
       </div>
 
-      <div className="rounded-2xl border border-zinc-800 bg-zinc-900/40 overflow-hidden shadow-xl">
+      <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 overflow-hidden shadow-xl">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs sm:text-sm">
             <thead>

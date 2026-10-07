@@ -1,3 +1,4 @@
+import { cookies } from "next/headers";
 import type {
   User,
   Chatbot,
@@ -24,7 +25,17 @@ async function fetchApi<T>(
   options: RequestInit = {},
   timeoutMs: number = LIGHT_TIMEOUT_MS
 ): Promise<T> {
-  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+  let token = null;
+  if (typeof window !== "undefined") {
+    token = localStorage.getItem("token");
+  } else {
+    try {
+      const cookieStore = await cookies();
+      token = cookieStore.get("token")?.value || null;
+    } catch {
+      // In case cookies() is used outside request context
+    }
+  }
 
   const headers: HeadersInit = {
     "Content-Type": "application/json",

@@ -7,8 +7,8 @@ export default function NotFound() {
       <Navbar />
 
       <main className="flex-1 flex items-center justify-center px-4 py-16">
-        <div className="max-w-md w-full card-clean rounded-xl border border-zinc-800/80 bg-zinc-900/40 p-8 text-center">
-          <div className="w-14 h-14 rounded-xl bg-zinc-800/80 border border-zinc-700/60 flex items-center justify-center text-zinc-300 mx-auto mb-4">
+        <div className="max-w-md w-full card-clean rounded-lg border border-zinc-800/80 bg-zinc-900/40 p-8 text-center">
+          <div className="w-14 h-14 rounded-lg bg-zinc-800/80 border border-zinc-700/60 flex items-center justify-center text-zinc-300 mx-auto mb-4">
             <span className="text-xl font-bold font-mono">404</span>
           </div>
           <h1 className="text-xl font-bold text-zinc-100 mb-2">

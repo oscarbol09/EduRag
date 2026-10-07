@@ -112,14 +112,14 @@ export default function HomePage() {
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
             <Link
               href="/register"
-              className="w-full sm:w-auto px-6 py-3 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 border border-indigo-400/30 rounded-xl shadow-lg shadow-indigo-950/50 transition-all active:scale-98 flex items-center justify-center gap-2"
+              className="w-full sm:w-auto px-6 py-3 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 border border-indigo-400/30 rounded-lg shadow-lg shadow-indigo-950/50 transition-colors active:scale-98 flex items-center justify-center gap-2"
             >
               <span>Crear mi primer tutor</span>
               <span className="text-indigo-200 font-mono text-xs">→</span>
             </Link>
             <Link
               href="/marketplace"
-              className="w-full sm:w-auto px-6 py-3 text-sm font-semibold text-zinc-300 hover:text-white bg-zinc-900 hover:bg-zinc-800 border border-zinc-700/80 rounded-xl transition-all active:scale-98"
+              className="w-full sm:w-auto px-6 py-3 text-sm font-semibold text-zinc-300 hover:text-white bg-zinc-900 hover:bg-zinc-800 border border-zinc-700/80 rounded-lg transition-colors active:scale-98"
             >
               Explorar tutores públicos
             </Link>
@@ -191,13 +191,13 @@ export default function HomePage() {
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2 relative z-10">
             <Link
               href="/register"
-              className="w-full sm:w-auto px-8 py-3.5 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-500 rounded-xl shadow-lg shadow-indigo-950/60 transition-all border border-indigo-400/30"
+              className="w-full sm:w-auto px-8 py-3.5 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-500 rounded-lg shadow-lg shadow-indigo-950/60 transition-colors border border-indigo-400/30"
             >
               Comenzar gratis como estudiante o docente
             </Link>
             <Link
               href="/marketplace"
-              className="w-full sm:w-auto px-6 py-3.5 text-sm font-semibold text-zinc-300 hover:text-white bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 rounded-xl transition-all"
+              className="w-full sm:w-auto px-6 py-3.5 text-sm font-semibold text-zinc-300 hover:text-white bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 rounded-lg transition-colors"
             >
               Ver tutores en el marketplace
             </Link>

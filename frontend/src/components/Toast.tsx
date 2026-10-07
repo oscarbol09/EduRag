@@ -86,7 +86,7 @@ function ToastItem({ toast, onRemove }: { toast: Toast; onRemove: (id: string) =
     <div
       role="alert"
       aria-live="assertive"
-      className={`flex items-start gap-3 px-4 py-3 rounded-xl border text-xs font-medium max-w-sm w-full animate-in slide-in-from-bottom-3 duration-200 ${STYLES[toast.variant]}`}
+      className={`flex items-start gap-3 px-4 py-3 rounded-lg border text-xs font-medium max-w-sm w-full animate-in slide-in-from-bottom-3 duration-200 ${STYLES[toast.variant]}`}
     >
       <span className={`flex-shrink-0 w-6 h-6 rounded-lg flex items-center justify-center ${ICON_STYLES[toast.variant]}`}>
         <ToastIcon variant={toast.variant} />

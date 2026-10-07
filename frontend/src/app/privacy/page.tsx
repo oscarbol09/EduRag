@@ -41,7 +41,7 @@ export default function PrivacyPage() {
         </section>
 
         {/* Section 1: Data Controller */}
-        <section className="card-clean rounded-xl p-6 sm:p-7 border border-zinc-800/80 bg-zinc-900/30 space-y-3">
+        <section className="card-clean rounded-lg p-6 sm:p-7 border border-zinc-800/80 bg-zinc-900/30 space-y-3">
           <h2 className="text-base font-semibold text-zinc-100 flex items-center gap-2">
             <span className="w-6 h-6 rounded-lg bg-zinc-800 border border-zinc-700/80 flex items-center justify-center text-xs font-bold text-zinc-300">1</span>
             Responsable del Tratamiento de Datos
@@ -58,7 +58,7 @@ export default function PrivacyPage() {
         </section>
 
         {/* Section 2: Principles of Data Minimization */}
-        <section className="card-clean rounded-xl p-6 sm:p-7 border border-zinc-800/80 bg-zinc-900/30 space-y-3">
+        <section className="card-clean rounded-lg p-6 sm:p-7 border border-zinc-800/80 bg-zinc-900/30 space-y-3">
           <h2 className="text-base font-semibold text-zinc-100 flex items-center gap-2">
             <span className="w-6 h-6 rounded-lg bg-zinc-800 border border-zinc-700/80 flex items-center justify-center text-xs font-bold text-zinc-300">2</span>
             Principio de Minimización de Datos (&ldquo;Solo Datos Necesarios&rdquo;)
@@ -85,7 +85,7 @@ export default function PrivacyPage() {
         </section>
 
         {/* Section 3: Categories of Data Processed */}
-        <section className="card-clean rounded-xl p-6 sm:p-7 border border-zinc-800/80 bg-zinc-900/30 space-y-3">
+        <section className="card-clean rounded-lg p-6 sm:p-7 border border-zinc-800/80 bg-zinc-900/30 space-y-3">
           <h2 className="text-base font-semibold text-zinc-100 flex items-center gap-2">
             <span className="w-6 h-6 rounded-lg bg-zinc-800 border border-zinc-700/80 flex items-center justify-center text-xs font-bold text-zinc-300">3</span>
             Categorías de Información y Tratamiento Criptográfico
@@ -112,7 +112,7 @@ export default function PrivacyPage() {
         </section>
 
         {/* Section 4: Third-Party Service Providers */}
-        <section className="card-clean rounded-xl p-6 sm:p-7 border border-zinc-800/80 bg-zinc-900/30 space-y-3">
+        <section className="card-clean rounded-lg p-6 sm:p-7 border border-zinc-800/80 bg-zinc-900/30 space-y-3">
           <h2 className="text-base font-semibold text-zinc-100 flex items-center gap-2">
             <span className="w-6 h-6 rounded-lg bg-zinc-800 border border-zinc-700/80 flex items-center justify-center text-xs font-bold text-zinc-300">4</span>
             Encargados del Tratamiento y Transferencia Internacional
@@ -143,7 +143,7 @@ export default function PrivacyPage() {
         </section>
 
         {/* Section 5: Rights of Data Subjects */}
-        <section className="card-clean rounded-xl p-6 sm:p-7 border border-zinc-800/80 bg-zinc-900/30 space-y-3">
+        <section className="card-clean rounded-lg p-6 sm:p-7 border border-zinc-800/80 bg-zinc-900/30 space-y-3">
           <h2 className="text-base font-semibold text-zinc-100 flex items-center gap-2">
             <span className="w-6 h-6 rounded-lg bg-zinc-800 border border-zinc-700/80 flex items-center justify-center text-xs font-bold text-zinc-300">5</span>
             Derechos de los Titulares (ARCO & GDPR)
@@ -166,7 +166,7 @@ export default function PrivacyPage() {
         </section>
 
         {/* Section 6: Data Retention & Deletion */}
-        <section className="card-clean rounded-xl p-6 sm:p-7 border border-zinc-800/80 bg-zinc-900/30 space-y-3">
+        <section className="card-clean rounded-lg p-6 sm:p-7 border border-zinc-800/80 bg-zinc-900/30 space-y-3">
           <h2 className="text-base font-semibold text-zinc-100 flex items-center gap-2">
             <span className="w-6 h-6 rounded-lg bg-zinc-800 border border-zinc-700/80 flex items-center justify-center text-xs font-bold text-zinc-300">6</span>
             Retención de Datos y Eliminación en Cascada

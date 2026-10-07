@@ -63,6 +63,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     try {
       const result = await api.auth.login(email, password);
       localStorage.setItem("token", result.token);
+      document.cookie = `token=${result.token}; path=/; max-age=604800; SameSite=Lax`;
       setAuth({ user: result.user, token: result.token, isLoading: false });
       return result.user;
     } catch (error) {
@@ -76,6 +77,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     try {
       const result = await api.auth.register(email, password);
       localStorage.setItem("token", result.token);
+      document.cookie = `token=${result.token}; path=/; max-age=604800; SameSite=Lax`;
       setAuth({ user: result.user, token: result.token, isLoading: false });
       return result.user;
     } catch (error) {
@@ -86,10 +88,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(() => {
     localStorage.removeItem("token");
+    document.cookie = "token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
     setAuth({ user: null, token: null, isLoading: false });
     setChatbots([]);
     setCurrentChatbot(null);
-    // Note: no conversations state to reset (removed dead state)
   }, []);
 
   const loadChatbots = useCallback(async () => {

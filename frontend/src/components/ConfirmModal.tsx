@@ -65,10 +65,10 @@ export function ConfirmModal({
       />
 
       {/* Panel */}
-      <div className="relative bg-zinc-950 rounded-2xl shadow-xl border border-zinc-800 p-6 max-w-sm w-full space-y-4 animate-in zoom-in-95 duration-150">
+      <div className="relative bg-zinc-950 rounded-lg shadow-xl border border-zinc-800 p-6 max-w-sm w-full space-y-4 animate-in zoom-in-95 duration-150">
         <div className="flex items-start gap-3.5">
           <div
-            className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center border ${
+            className={`flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center border ${
               variant === "danger" ? "bg-rose-950/40 text-rose-400 border-rose-500/20" : "bg-amber-950/40 text-amber-400 border-amber-500/20"
             }`}
             aria-hidden="true"
@@ -105,7 +105,7 @@ export function ConfirmModal({
           </button>
           <button
             onClick={onConfirm}
-            className={`flex-1 py-2 px-3 rounded-lg font-medium text-xs transition-all focus:outline-none focus:ring-2 btn-press ${confirmStyles}`}
+            className={`flex-1 py-2 px-3 rounded-lg font-medium text-xs transition-colors focus:outline-none focus:ring-2 btn-press ${confirmStyles}`}
           >
             {confirmLabel}
           </button>

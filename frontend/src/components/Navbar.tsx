@@ -19,7 +19,7 @@ export function Navbar({ variant = "public", backTo, backLabel = "Volver", title
             {backTo ? (
               <Link
                 href={backTo}
-                className="btn-press flex items-center gap-2 text-xs sm:text-sm text-zinc-400 hover:text-zinc-100 font-medium px-3 py-1.5 rounded-lg border border-zinc-800 hover:border-zinc-700 bg-zinc-900/50 hover:bg-zinc-800/50 transition-all group"
+                className="btn-press flex items-center gap-2 text-xs sm:text-sm text-zinc-400 hover:text-zinc-100 font-medium px-3 py-1.5 rounded-lg border border-zinc-800 hover:border-zinc-700 bg-zinc-900/50 hover:bg-zinc-800/50 transition-colors group"
               >
                 <span className="group-hover:-translate-x-0.5 transition-transform text-zinc-400" aria-hidden="true">←</span>
                 <span>{backLabel}</span>

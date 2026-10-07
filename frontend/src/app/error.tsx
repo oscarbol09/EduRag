@@ -16,8 +16,8 @@ export default function GlobalError({
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-zinc-950 px-4 py-12 font-sans text-zinc-100">
-      <div className="max-w-md w-full card-clean rounded-xl border border-zinc-800/80 bg-zinc-900/40 p-8 text-center">
-        <div className="w-12 h-12 rounded-xl bg-zinc-800/80 border border-zinc-700/60 flex items-center justify-center text-rose-400 mx-auto mb-4">
+      <div className="max-w-md w-full card-clean rounded-lg border border-zinc-800/80 bg-zinc-900/40 p-8 text-center">
+        <div className="w-12 h-12 rounded-lg bg-zinc-800/80 border border-zinc-700/60 flex items-center justify-center text-rose-400 mx-auto mb-4">
           <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75} aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>

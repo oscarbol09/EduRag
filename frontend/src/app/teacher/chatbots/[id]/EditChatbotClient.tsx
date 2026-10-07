@@ -204,7 +204,7 @@ export default function EditChatbotClient() {
   if (!chatbot) {
     return (
       <div className="min-h-screen bg-zinc-950 flex items-center justify-center font-sans">
-        <div className="text-center card-clean p-8 rounded-xl border border-zinc-800/80 bg-zinc-900/40 max-w-sm">
+        <div className="text-center card-clean p-8 rounded-lg border border-zinc-800/80 bg-zinc-900/40 max-w-sm">
           <h2 className="text-base font-semibold text-zinc-100">Tutor no encontrado</h2>
           <p className="text-xs text-zinc-400 mt-1 mb-4">El identificador solicitado no existe o no pertenece a tu cuenta.</p>
           <Link href="/teacher" className="btn-press inline-flex px-4 py-2 bg-zinc-100 hover:bg-white text-zinc-950 text-xs font-medium rounded-lg transition-colors">
@@ -266,7 +266,7 @@ export default function EditChatbotClient() {
       <main className="max-w-6xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 flex-1">
         <div className="grid lg:grid-cols-12 gap-6">
           {/* Columna Izquierda: Parámetros Pedagógicos (7 cols) */}
-          <div className="lg:col-span-7 card-clean rounded-xl p-6 sm:p-7 border border-zinc-800/80 bg-zinc-900/30 flex flex-col justify-between">
+          <div className="lg:col-span-7 card-clean rounded-lg p-6 sm:p-7 border border-zinc-800/80 bg-zinc-900/30 flex flex-col justify-between">
             <div>
               <div className="flex items-center justify-between mb-5 border-b border-zinc-800/80 pb-4">
                 <div>
@@ -492,7 +492,7 @@ export default function EditChatbotClient() {
           </div>
 
           {/* Columna Derecha: Document Studio (5 cols) */}
-          <div className="lg:col-span-5 card-clean rounded-xl p-6 sm:p-7 border border-zinc-800/80 bg-zinc-900/30 flex flex-col">
+          <div className="lg:col-span-5 card-clean rounded-lg p-6 sm:p-7 border border-zinc-800/80 bg-zinc-900/30 flex flex-col">
             <div className="flex items-center justify-between mb-5 border-b border-zinc-800/80 pb-4">
               <h2 className="text-base font-semibold text-zinc-100 flex items-center gap-2">
                 <svg className="w-4 h-4 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -508,7 +508,7 @@ export default function EditChatbotClient() {
             {/* Dropzone */}
             <div className="mb-5">
               <label className="block cursor-pointer" aria-label="Subir documento curricular">
-                <div className={`flex items-center justify-center w-full h-32 border-2 border-dashed rounded-xl transition-colors ${
+                <div className={`flex items-center justify-center w-full h-32 border-2 border-dashed rounded-lg transition-colors ${
                   isUploading
                     ? "border-zinc-500 bg-zinc-900/60"
                     : "border-zinc-800 hover:border-zinc-700 bg-zinc-900/20 hover:bg-zinc-900/40"
