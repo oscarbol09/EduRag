@@ -28,3 +28,6 @@ BEGIN
         );
     END IF;
 END $$;
+
+ALTER TABLE public.revoked_tokens ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Deny all" ON public.revoked_tokens FOR ALL USING (false);

@@ -42,3 +42,5 @@ alter table if exists public.chatbots enable row level security;
 alter table if exists public.documents enable row level security;
 alter table if exists public.document_contents enable row level security;
 alter table if exists public.conversations enable row level security;
+
+CREATE POLICY "Tenant isolation" ON public.chatbots FOR ALL TO authenticated USING (owner_id = auth.uid()) WITH CHECK (owner_id = auth.uid());
