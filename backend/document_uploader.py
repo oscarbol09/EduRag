@@ -6,6 +6,7 @@ text extraction from Markdown and plain-text files.
 import logging
 from fastapi import HTTPException
 from supabase_db import get_client
+from fastapi.concurrency import run_in_threadpool
 
 logger = logging.getLogger(__name__)
 
@@ -41,15 +42,17 @@ async def upload_file_to_blob(content: bytes, blob_path: str, content_type: str)
     bucket = "documents"
 
     # Garantizar que el bucket existe antes de subir
-    _ensure_bucket_exists(client, bucket)
+    await run_in_threadpool(_ensure_bucket_exists, client, bucket)
 
     # Subir archivo con manejo de errores explícito
     try:
-        client.storage.from_(bucket).upload(
-            path=blob_path,
-            file=content,
-            file_options={"content-type": content_type, "upsert": "true"},
-        )
+        def _do_upload():
+            return client.storage.from_(bucket).upload(
+                path=blob_path,
+                file=content,
+                file_options={"content-type": content_type, "upsert": "true"},
+            )
+        await run_in_threadpool(_do_upload)
     except Exception as e:
         err_str = str(e).lower()
         logger.error(f"Error al subir archivo a Supabase Storage (path={blob_path}): {e}")
@@ -95,7 +98,7 @@ def validate_file_magic_bytes(content: bytes, filename: str) -> None:
             raise ValueError("Formato de archivo inválido: el archivo de texto contiene bytes binarios no permitidos.")
 
 
-def extract_text_from_file(content: bytes, filename: str, content_type: str | None) -> str:
+async def extract_text_from_file(content: bytes, filename: str, content_type: str | None) -> str:
     """
     Extract plain text from uploaded files with signature validation.
     Supports: Markdown (.md), plain text (.txt), PDF (.pdf), and Word (.docx).
@@ -104,7 +107,7 @@ def extract_text_from_file(content: bytes, filename: str, content_type: str | No
     lower_name = filename.lower()
 
     if lower_name.endswith(".pdf"):
-        try:
+        def _extract_pdf():
             import fitz
             doc = fitz.open(stream=content, filetype="pdf")
             text = []
@@ -113,11 +116,13 @@ def extract_text_from_file(content: bytes, filename: str, content_type: str | No
                 if t:
                     text.append(t)
             return "\n".join(text)
+        try:
+            return await run_in_threadpool(_extract_pdf)
         except Exception as e:
             raise ValueError(f"Error al extraer texto del PDF: {str(e)}")
 
     elif lower_name.endswith(".docx"):
-        try:
+        def _extract_docx():
             import docx
             import io
             doc = docx.Document(io.BytesIO(content))
@@ -143,6 +148,8 @@ def extract_text_from_file(content: bytes, filename: str, content_type: str | No
                         text.append(" | ".join(row_text))
                         
             return "\n".join(text)
+        try:
+            return await run_in_threadpool(_extract_docx)
         except Exception as e:
             raise ValueError(f"Error al extraer texto del archivo DOCX: {str(e)}")
 
