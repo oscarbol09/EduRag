@@ -12,7 +12,7 @@ export default function LoginPage() {
   const router = useRouter();
   const { login } = useApp();
 
-  const handleLoginAction = async (prevState: any, formData: FormData) => {
+  const handleLoginAction = async (prevState: { error: string | null } | null, formData: FormData) => {
     // Anti-spam honeypot
     if (formData.get("_gotcha")) {
       return { error: "Solicitud no válida." };
