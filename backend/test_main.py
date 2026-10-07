@@ -622,56 +622,64 @@ def test_refresh_login_response_includes_refresh_token():
 
 # ─── document_uploader — extract_text_from_file ─────────────────────────────
 
-def test_extract_text_from_md():
+@pytest.mark.asyncio
+async def test_extract_text_from_md():
     """MD debe extraerse como texto plano."""
-    content = "# T\u00edtulo\n\nEsto es un *test*.".encode("utf-8")
-    result = extract_text_from_file(content, "test.md", "text/markdown")
-    assert "T\u00edtulo" in result
+    content = "# Título\n\nEsto es un *test*.".encode("utf-8")
+    result = await extract_text_from_file(content, "test.md", "text/markdown")
+    assert "Título" in result
     assert "test" in result
 
 
-def test_extract_text_from_txt():
+@pytest.mark.asyncio
+async def test_extract_text_from_txt():
     """TXT debe extraerse como texto plano."""
     content = b"Hola mundo"
-    result = extract_text_from_file(content, "test.txt", "text/plain")
+    result = await extract_text_from_file(content, "test.txt", "text/plain")
     assert result == "Hola mundo"
 
 
-def test_extract_text_unknown_extension():
+@pytest.mark.asyncio
+async def test_extract_text_unknown_extension():
     """Extensiones desconocidas deben tratarse como UTF-8."""
     content = b"Texto arbitrario"
-    result = extract_text_from_file(content, "test.unknown", None)
+    result = await extract_text_from_file(content, "test.unknown", None)
     assert result == "Texto arbitrario"
 
 
-def test_extract_text_pdf_magic_bytes_invalid():
+@pytest.mark.asyncio
+async def test_extract_text_pdf_magic_bytes_invalid():
     """PDF sin firma mágica %PDF- debe lanzar ValueError."""
     with pytest.raises(ValueError, match="firma binaria de PDF"):
-        extract_text_from_file(b"not a pdf", "test.pdf", "application/pdf")
+        await extract_text_from_file(b"not a pdf", "test.pdf", "application/pdf")
 
 
-def test_extract_text_pdf_corrupted_payload_raises():
+@pytest.mark.asyncio
+async def test_extract_text_pdf_corrupted_payload_raises():
     """PDF con firma mágica pero cuerpo corrupto debe lanzar ValueError de extracción."""
     with pytest.raises(ValueError, match="Error al extraer texto del PDF"):
-        extract_text_from_file(b"%PDF-1.4\ncorrupt content", "test.pdf", "application/pdf")
+        await extract_text_from_file(b"%PDF-1.4\ncorrupt content", "test.pdf", "application/pdf")
 
 
-def test_extract_text_docx_magic_bytes_invalid():
+@pytest.mark.asyncio
+async def test_extract_text_docx_magic_bytes_invalid():
     """DOCX sin firma mágica PK\x03\x04 debe lanzar ValueError."""
     with pytest.raises(ValueError, match="firma binaria de DOCX"):
-        extract_text_from_file(b"not a docx", "test.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+        await extract_text_from_file(b"not a docx", "test.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
 
 
-def test_extract_text_docx_corrupted_payload_raises():
+@pytest.mark.asyncio
+async def test_extract_text_docx_corrupted_payload_raises():
     """DOCX con cabecera ZIP pero estructura interna corrupta debe lanzar ValueError."""
     with pytest.raises(ValueError, match="Error al extraer texto del archivo DOCX"):
-        extract_text_from_file(b"PK\x03\x04corrupted zip stream", "test.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+        await extract_text_from_file(b"PK\x03\x04corrupted zip stream", "test.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
 
 
-def test_extract_text_txt_binary_null_bytes_rejected():
+@pytest.mark.asyncio
+async def test_extract_text_txt_binary_null_bytes_rejected():
     """TXT con bytes nulos (binario camuflado) debe ser rechazado."""
     with pytest.raises(ValueError, match="bytes binarios no permitidos"):
-        extract_text_from_file(b"MZ\x90\x00\x03\x00\x00\x00binary executable disguised", "malicious.txt", "text/plain")
+        await extract_text_from_file(b"MZ\x90\x00\x03\x00\x00\x00binary executable disguised", "malicious.txt", "text/plain")
 
 
 # ─── password.py — hash/verify ──────────────────────────────────────

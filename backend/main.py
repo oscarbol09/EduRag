@@ -565,9 +565,9 @@ async def upload_document(
 
     content_bytes = b"".join(content_chunks)
 
-    # Extraer texto del archivo subido en un thread para evitar bloquear el event loop
+    # Extraer texto del archivo subido (la función ya maneja su propio threadpool internamente)
     try:
-        text_content = await asyncio.to_thread(extract_text_from_file, content_bytes, filename, file.content_type)
+        text_content = await extract_text_from_file(content_bytes, filename, file.content_type)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 

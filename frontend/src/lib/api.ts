@@ -1,4 +1,3 @@
-import { cookies } from "next/headers";
 import type {
   User,
   Chatbot,
@@ -28,13 +27,6 @@ async function fetchApi<T>(
   let token = null;
   if (typeof window !== "undefined") {
     token = localStorage.getItem("token");
-  } else {
-    try {
-      const cookieStore = await cookies();
-      token = cookieStore.get("token")?.value || null;
-    } catch {
-      // In case cookies() is used outside request context
-    }
   }
 
   const headers: HeadersInit = {
